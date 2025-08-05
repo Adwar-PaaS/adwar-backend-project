@@ -4,15 +4,21 @@ import { ConfigService } from '@nestjs/config';
 import { IDatabase } from '../interfaces/db.interface';
 
 @Injectable()
-export class RedisService implements OnModuleDestroy, IDatabase {
-  private client: RedisClientType;
+export class RedisService
+  implements IDatabase<RedisClientType>, OnModuleDestroy
+{
+  private readonly client: RedisClientType;
 
-  constructor(private config: ConfigService) {
+  constructor(private readonly config: ConfigService) {
+    const host = config.get<string>('REDIS_HOST');
+    const port = config.get<number>('REDIS_PORT');
+
+    if (!host || !port) {
+      throw new Error('[Redis] Invalid config: host or port missing');
+    }
+
     this.client = createClient({
-      socket: {
-        host: config.get('REDIS_HOST'),
-        port: config.get<number>('REDIS_PORT'),
-      },
+      socket: { host, port },
       password: config.get('REDIS_PASSWORD'),
     });
 
@@ -21,8 +27,8 @@ export class RedisService implements OnModuleDestroy, IDatabase {
 
   private _setupEvents() {
     this.client.on('connect', () => console.log('[Redis] Connecting...'));
-    this.client.on('ready', () => console.log('[Redis] Ready.'));
-    this.client.on('error', (err) => console.error('[Redis] Error', err));
+    this.client.on('ready', () => console.log('[Redis] Ready'));
+    this.client.on('error', (err) => console.error('[Redis] Error:', err));
   }
 
   async connect() {

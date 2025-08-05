@@ -1,6 +1,6 @@
-export abstract class IDatabase {
+export abstract class IDatabase<T = unknown> {
   abstract connect(): Promise<void>;
   abstract disconnect(): Promise<void>;
   abstract isHealthy(): Promise<boolean>;
-  abstract getConnection(): unknown;
+  abstract getConnection(): T;
 }

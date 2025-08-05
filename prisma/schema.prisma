@@ -24,10 +24,11 @@ model User {
   phone     String?
   role      Role     @default(CUSTOMER)
 
-  tenantId  String?     // optional for SUPERADMINs or general users
-  tenant    Tenant?     @relation(fields: [tenantId], references: [id])
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
 
-  createdTenants Tenant[] @relation("UserCreatedTenants") // created tenants
+  createdTenants Tenant[] @relation("UserCreatedTenants")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -40,7 +41,7 @@ model Tenant {
   address    String?
 
   createdBy  String
-  creator    User     @relation("UserCreatedTenants", fields: [createdBy], references: [id]) // use same name
+  creator    User     @relation("UserCreatedTenants", fields: [createdBy], references: [id])
 
   warehouses Warehouse[]
   users      User[]

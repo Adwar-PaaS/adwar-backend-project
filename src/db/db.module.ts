@@ -1,26 +1,24 @@
 import { Module, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
-import { MongoDatabaseModule } from './mongo/mongoose.module';
 import { RedisModule } from './redis/redis.module';
-import { DatabaseManagerService } from './database-manager.service';
-import { PrismaService } from './prisma/prisma.service';
-import { RedisService } from './redis/redis.service';
+import { DatabaseFactoryService } from './services/db-factory.service';
+import { DatabaseManagerService } from './services/db-manager.service';
+import { DatabaseType } from './constants/db-type.enum';
 
 @Module({
-  imports: [PrismaModule, MongoDatabaseModule, RedisModule],
-  providers: [DatabaseManagerService],
+  imports: [PrismaModule, RedisModule],
+  providers: [DatabaseFactoryService, DatabaseManagerService],
   exports: [DatabaseManagerService],
 })
 export class DatabaseModule implements OnModuleInit, OnModuleDestroy {
-  constructor(
-    private dbManager: DatabaseManagerService,
-    private prisma: PrismaService,
-    private redis: RedisService,
-  ) {}
+  constructor(private readonly dbManager: DatabaseManagerService) {}
 
   async onModuleInit() {
-    this.dbManager.register(this.prisma);
-    this.dbManager.register(this.redis);
+    const types = [DatabaseType.PRISMA, DatabaseType.REDIS];
+    for (const type of types) {
+      this.dbManager.register(type);
+    }
+
     await this.dbManager.connectAll();
   }
 

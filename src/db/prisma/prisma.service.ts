@@ -3,7 +3,10 @@ import { PrismaClient } from '@prisma/client';
 import { IDatabase } from '../interfaces/db.interface';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy, IDatabase {
+export class PrismaService
+  extends PrismaClient
+  implements IDatabase, OnModuleInit, OnModuleDestroy
+{
   async onModuleInit() {
     await this.connect();
   }
@@ -13,11 +16,18 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async connect() {
-    await this.$connect();
+    try {
+      await this.$connect();
+      console.log('[Prisma] Connected');
+    } catch (err) {
+      console.error('[Prisma] Connection error', err);
+      throw err;
+    }
   }
 
   async disconnect() {
     await this.$disconnect();
+    console.log('[Prisma] Disconnected');
   }
 
   async isHealthy(): Promise<boolean> {

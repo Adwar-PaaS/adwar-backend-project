@@ -1,9 +1,16 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
+import { DATABASE_TOKEN } from '../constants/db-token.constant';
 
 @Global()
 @Module({
-  providers: [PrismaService],
-  exports: [PrismaService],
+  providers: [
+    PrismaService,
+    {
+      provide: DATABASE_TOKEN.PRISMA,
+      useExisting: PrismaService,
+    },
+  ],
+  exports: [DATABASE_TOKEN.PRISMA],
 })
 export class PrismaModule {}
