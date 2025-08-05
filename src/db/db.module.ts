@@ -14,7 +14,7 @@ export class DatabaseModule implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly dbManager: DatabaseManagerService) {}
 
   async onModuleInit() {
-    const types = [DatabaseType.PRISMA, DatabaseType.REDIS];
+    const types = [DatabaseType.PRISMA];
     for (const type of types) {
       this.dbManager.register(type);
     }

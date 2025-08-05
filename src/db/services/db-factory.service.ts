@@ -5,15 +5,15 @@ import { DATABASE_TOKEN } from '../constants/db-token.constant';
 
 @Injectable()
 export class DatabaseFactoryService {
-  private readonly instanceMap: Record<DatabaseType, IDatabase>;
+  private readonly instanceMap: Partial<Record<DatabaseType, IDatabase>>;
 
   constructor(
     @Inject(DATABASE_TOKEN.PRISMA) private readonly prisma: IDatabase,
-    @Inject(DATABASE_TOKEN.REDIS) private readonly redis: IDatabase,
+    // @Inject(DATABASE_TOKEN.REDIS) private readonly redis: IDatabase,
   ) {
     this.instanceMap = {
       [DatabaseType.PRISMA]: this.prisma,
-      [DatabaseType.REDIS]: this.redis,
+      // [DatabaseType.REDIS]: this.redis,
     };
   }
 
