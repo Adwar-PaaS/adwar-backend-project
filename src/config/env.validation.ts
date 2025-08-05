@@ -7,13 +7,12 @@ export default Joi.object({
 
   PORT: Joi.number().default(3000),
 
-  // PostgreSQL
+  CORS_ORIGINS: Joi.string().default('http://localhost:3000'),
+
   DATABASE_URL: Joi.string().uri().required(),
 
-  // MongoDB
   MONGO_URI: Joi.string().uri().required(),
 
-  // Redis
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().default(6379),
   REDIS_PASSWORD: Joi.string().optional(),
