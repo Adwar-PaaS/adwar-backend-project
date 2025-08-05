@@ -24,7 +24,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        tenantId: user.tenantId,
+      },
+      ...tokens,
+    };
   }
 
   async refreshToken(userId: string, email: string) {
@@ -33,6 +44,8 @@ export class AuthService {
 
   private async generateTokens(userId: string, email: string) {
     const user = await this.userService.findOne(userId);
+    if (!user) throw new UnauthorizedException('User not found');
+
     const payload = { sub: userId, email, role: user.role };
 
     return {
