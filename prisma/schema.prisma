@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  TENANTADMIN
+  DRIVER
+  PICKER
+  OPERATION
+  CUSTOMER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  phone     String?
+  role      Role     @default(CUSTOMER)
+
+  tenantId  String?     // optional for SUPERADMINs or general users
+  tenant    Tenant?     @relation(fields: [tenantId], references: [id])
+
+  createdTenants Tenant[] @relation("UserCreatedTenants") // created tenants
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tenant {
+  id         String   @id @default(uuid())
+  status     String
+  lastLogin  DateTime?
+  logoUrl    String?
+  address    String?
+
+  createdBy  String
+  creator    User     @relation("UserCreatedTenants", fields: [createdBy], references: [id]) // use same name
+
+  warehouses Warehouse[]
+  users      User[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Warehouse {
+  id        String   @id @default(uuid())
+  location  String
+  stock     Int      @default(0)
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
