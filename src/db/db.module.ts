@@ -1,12 +1,12 @@
 import { Module, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
-import { RedisModule } from './redis/redis.module';
+// import { RedisModule } from './redis/redis.module';
 import { DatabaseFactoryService } from './services/db-factory.service';
 import { DatabaseManagerService } from './services/db-manager.service';
 import { DatabaseType } from './constants/db-type.enum';
 
 @Module({
-  imports: [PrismaModule, RedisModule],
+  imports: [PrismaModule /*RedisModule*/],
   providers: [DatabaseFactoryService, DatabaseManagerService],
   exports: [DatabaseManagerService],
 })
