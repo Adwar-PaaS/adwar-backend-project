@@ -4,17 +4,36 @@ import { UserService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { APIResponse } from '../../common/utils/api-response.util';
+import { JwtTokenUtil } from '../../common/utils/jwt-token.util';
 
 @Injectable()
 export class AuthService {
+  private jwtUtil: JwtTokenUtil;
+
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    this.jwtUtil = new JwtTokenUtil(jwtService);
+  }
 
   async register(dto: CreateUserDto) {
     const user = await this.userService.create(dto);
-    return this.generateTokens(user.id, user.email);
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = await this.jwtUtil.generateAccessToken(payload);
+
+    return APIResponse.success(
+      { access_token: accessToken },
+      'Registration successful',
+    );
   }
 
   async login(dto: LoginDto) {
@@ -24,35 +43,44 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.generateTokens(user.id, user.email);
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        tenantId: user.tenantId,
-      },
-      ...tokens,
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
     };
+
+    const accessToken = await this.jwtUtil.generateAccessToken(payload);
+
+    return APIResponse.success(
+      {
+        access_token: accessToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role,
+          tenantId: user.tenantId,
+        },
+      },
+      'Login successful',
+    );
   }
 
   async refreshToken(userId: string, email: string) {
-    return this.generateTokens(userId, email);
-  }
-
-  private async generateTokens(userId: string, email: string) {
     const user = await this.userService.findOne(userId);
     if (!user) throw new UnauthorizedException('User not found');
 
-    const payload = { sub: userId, email, role: user.role };
-
-    return {
-      access_token: await this.jwtService.signAsync(payload),
-      refresh_token: await this.jwtService.signAsync(payload, {
-        expiresIn: '7d',
-      }),
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
     };
+
+    const refreshToken = await this.jwtUtil.generateRefreshToken(payload);
+
+    return APIResponse.success(
+      { refresh_token: refreshToken },
+      'Refresh token generated',
+    );
   }
 }
