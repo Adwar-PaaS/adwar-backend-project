@@ -11,7 +11,7 @@ import { PaginationOptions } from '../../common/interfaces/pagination-options.in
 import { buildPrismaPagination } from '../../common/utils/prisma-pagination.util';
 import { PaginationUtil } from '../../common/utils/pagination.util';
 
-@Injectable()
+@Injectable() // login tenant history
 export class TenantService {
   private readonly logger = new Logger(TenantService.name);
 

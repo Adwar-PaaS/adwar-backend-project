@@ -9,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  // const port = configService.get<number>('PORT', 3000);
   const port = parseInt(
     process.env.PORT || configService.get<string>('PORT') || '3000',
     10,
@@ -29,8 +30,9 @@ async function bootstrap() {
   const rateLimitMiddleware = new RateLimitMiddleware();
   app.use(rateLimitMiddleware.use.bind(rateLimitMiddleware));
 
+  // await app.listen(port);
   await app.listen(port, '0.0.0.0');
-  console.log(` App is running on http://localhost:${port}`);
+  console.log(`🚀 App running on http://localhost:${port}`);
 }
 
 void bootstrap();
