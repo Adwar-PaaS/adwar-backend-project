@@ -1,12 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from '../users/dto/create-user.dto';
+
+import { UserService } from '../users/users.service';
+import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+
 import { APIResponse } from '../../common/utils/api-response.util';
 import { JwtTokenUtil } from '../../common/utils/jwt-token.util';
+import { Role } from '../../common/enums/role.enum';
+import { ApiError } from '../../common/exceptions/api-error.exception';
+import { createResponseShape } from '../../common/utils/response-shape.util';
 
 @Injectable()
 export class AuthService {
@@ -19,48 +24,36 @@ export class AuthService {
     this.jwtUtil = new JwtTokenUtil(jwtService);
   }
 
-  async register(dto: CreateUserDto) {
+  async register(dto: RegisterDto) {
     const user = await this.userService.create(dto);
-
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const accessToken = await this.jwtUtil.generateAccessToken(payload);
+    const payload = this.createJwtPayload(user);
+    const access_token = await this.jwtUtil.generateAccessToken(payload);
 
     return APIResponse.success(
-      { access_token: accessToken },
+      {
+        access_token,
+        user: this.formatUser(user),
+      },
       'Registration successful',
+      HttpStatus.CREATED,
     );
   }
 
   async login(dto: LoginDto) {
     const user = await this.userService.findByEmail(dto.email);
 
-    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      throw new UnauthorizedException('Invalid credentials');
+    const isValid = user && (await bcrypt.compare(dto.password, user.password));
+    if (!isValid) {
+      throw new ApiError('Invalid credentials', HttpStatus.UNAUTHORIZED);
     }
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const accessToken = await this.jwtUtil.generateAccessToken(payload);
+    const payload = this.createJwtPayload(user);
+    const access_token = await this.jwtUtil.generateAccessToken(payload);
 
     return APIResponse.success(
       {
-        access_token: accessToken,
-        user: {
-          id: user.id,
-          email: user.email,
-          fullName: user.fullName,
-          role: user.role,
-          tenantId: user.tenantId,
-        },
+        access_token,
+        user: this.formatUser(user),
       },
       'Login successful',
     );
@@ -68,19 +61,45 @@ export class AuthService {
 
   async refreshToken(userId: string, email: string) {
     const user = await this.userService.findOne(userId);
-    if (!user) throw new UnauthorizedException('User not found');
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
+    if (!user) {
+      throw new ApiError('User not found', HttpStatus.UNAUTHORIZED);
+    }
 
-    const refreshToken = await this.jwtUtil.generateRefreshToken(payload);
+    const payload = this.createJwtPayload(user);
+    const refresh_token = await this.jwtUtil.generateRefreshToken(payload);
+
+    return APIResponse.success({ refresh_token }, 'Refresh token generated');
+  }
+
+  async getCurrentUser(user: JwtPayload) {
+    const foundUser = await this.userService.findOne(user.id);
+
+    if (!foundUser) {
+      throw new ApiError('User not found', HttpStatus.UNAUTHORIZED);
+    }
 
     return APIResponse.success(
-      { refresh_token: refreshToken },
-      'Refresh token generated',
+      this.formatUser(foundUser),
+      'Authenticated user fetched successfully',
     );
+  }
+
+  private formatUser(user: any) {
+    return createResponseShape(user, [
+      'id',
+      'email',
+      'fullName',
+      'role',
+      'tenantId',
+    ]);
+  }
+
+  private createJwtPayload(user: any): JwtPayload {
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role as Role,
+    };
   }
 }

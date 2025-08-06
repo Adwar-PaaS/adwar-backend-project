@@ -16,6 +16,11 @@ enum Role {
   CUSTOMER
 }
 
+enum TenantStatus {
+  Activate
+  Deactivate
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -35,7 +40,8 @@ model User {
 
 model Tenant {
   id         String   @id @default(uuid())
-  status     String
+  name       String
+  status     TenantStatus
   lastLogin  DateTime?
   logoUrl    String?
   address    String?

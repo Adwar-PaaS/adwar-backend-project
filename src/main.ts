@@ -2,14 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import { RateLimiterMemory } from 'rate-limiter-flexible';
-import * as express from 'express';
+import { RateLimitMiddleware } from './common/middlewares/rate-limit.middleware';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  const port = parseInt(process.env.PORT || configService.get<string>('PORT') || '3000', 10);
+  const port = parseInt(
+    process.env.PORT || configService.get<string>('PORT') || '3000',
+    10,
+  );
   const allowedOrigins = configService.get<string[]>('CORS_ORIGINS') || [
     'http://localhost:5173',
   ];
@@ -21,28 +24,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const rateLimiter = new RateLimiterMemory({
-    points: 10, // 10 requests
-    duration: 1, // per 1 second
-  });
+  app.useGlobalFilters(new HttpExceptionFilter());
 
-  app.use(
-    async (
-      req: express.Request,
-      res: express.Response,
-      next: express.NextFunction,
-    ) => {
-      try {
-        await rateLimiter.consume(req.ip ?? 'unknown');
-        next();
-      } catch {
-        res.status(429).json({
-          statusCode: 429,
-          message: 'Too Many Requests',
-        });
-      }
-    },
-  );
+  const rateLimitMiddleware = new RateLimitMiddleware();
+  app.use(rateLimitMiddleware.use.bind(rateLimitMiddleware));
 
   await app.listen(port, '0.0.0.0');
   console.log(` App is running on http://localhost:${port}`);

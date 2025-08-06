@@ -11,6 +11,7 @@ export class UserService {
 
   async create(dto: CreateUserDto) {
     const hash = await bcrypt.hash(dto.password, 10);
+
     return this.prisma.user.create({
       data: {
         email: dto.email,
@@ -18,6 +19,7 @@ export class UserService {
         fullName: dto.fullName,
         phone: dto.phone,
         role: dto.role || Role.CUSTOMER,
+        tenantId: dto.tenantId ?? null,
       },
     });
   }

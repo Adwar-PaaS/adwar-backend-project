@@ -15,6 +15,10 @@ export default Joi.object({
   REDIS_PORT: Joi.number().default(6379),
   REDIS_PASSWORD: Joi.string().allow('').optional(),
 
+  CLOUDINARY_CLOUD_NAME: Joi.string().required(),
+  CLOUDINARY_API_KEY: Joi.string().required(),
+  CLOUDINARY_API_SECRET: Joi.string().required(),
+
   JWT_SECRET: Joi.string().required(),
 
   JWT_EXPIRES_IN: Joi.string().default('15m'),

@@ -1,28 +1,31 @@
-export type APIResponseStatus = 'success' | 'error';
-
 export class APIResponse<T = any> {
-  status: APIResponseStatus;
+  statusCode: number;
   message: string;
   data: T | null;
 
-  private constructor(
-    status: APIResponseStatus,
-    message: string,
-    data: T | null,
-  ) {
-    this.status = status;
+  private constructor(statusCode: number, message: string, data: T | null) {
+    this.statusCode = statusCode;
     this.message = message;
     this.data = data;
   }
 
-  static success<T = any>(data: T, message = 'Success'): APIResponse<T> {
-    return new APIResponse('success', message, data);
+  static success<T = any>(
+    data: T,
+    message = 'Success',
+    statusCode = 200,
+  ): APIResponse<T> {
+    return new APIResponse(statusCode, message, data);
   }
 
   static error<T = any>(
     message = 'Something went wrong',
+    statusCode = 400,
     data?: T,
   ): APIResponse<T> {
-    return new APIResponse('error', message, data === undefined ? null : data);
+    return new APIResponse(
+      statusCode,
+      message,
+      data === undefined ? null : data,
+    );
   }
 }
