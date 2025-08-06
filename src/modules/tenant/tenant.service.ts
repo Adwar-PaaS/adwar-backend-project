@@ -11,7 +11,7 @@ import { PaginationOptions } from '../../common/interfaces/pagination-options.in
 import { buildPrismaPagination } from '../../common/utils/prisma-pagination.util';
 import { PaginationUtil } from '../../common/utils/pagination.util';
 
-@Injectable() // login tenant history
+@Injectable()
 export class TenantService {
   private readonly logger = new Logger(TenantService.name);
 
@@ -31,10 +31,8 @@ export class TenantService {
     logo?: Express.Multer.File,
   ) {
     let logoUrl: string | null = null;
-
     try {
       logoUrl = await this.uploadLogo(logo);
-
       const tenant = await this.prisma.tenant.create({
         data: {
           ...dto,
@@ -43,7 +41,6 @@ export class TenantService {
           createdBy: userId,
         },
       });
-
       return this.success(
         tenant,
         this.responseFields.base,
@@ -97,13 +94,9 @@ export class TenantService {
 
     try {
       newLogo = await this.uploadLogo(logo, oldLogo);
-
       const updatedTenant = await this.prisma.tenant.update({
         where: { id },
-        data: {
-          ...dto,
-          logoUrl: newLogo,
-        },
+        data: { ...dto, logoUrl: newLogo },
       });
 
       if (newLogo && oldLogo && newLogo !== oldLogo) {
@@ -150,12 +143,9 @@ export class TenantService {
 
   async remove(id: string) {
     const tenant = await this.findByIdOrThrow(id);
-
     try {
       await this.prisma.tenant.delete({ where: { id } });
-
       await this.tryDeleteLogo(tenant.logoUrl);
-
       return APIResponse.success(
         { id: tenant.id, name: tenant.name },
         'Tenant deleted successfully',
@@ -175,7 +165,6 @@ export class TenantService {
     existing?: string | null,
   ): Promise<string | null> {
     if (!logo) return existing ?? null;
-
     try {
       return await this.uploadService.uploadImage(logo);
     } catch (error) {
@@ -186,7 +175,6 @@ export class TenantService {
 
   private async tryDeleteLogo(url?: string | null, condition = true) {
     if (!url || !condition) return;
-
     try {
       await this.uploadService.deleteFile(url);
     } catch (error) {
