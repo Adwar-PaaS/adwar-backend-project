@@ -11,7 +11,7 @@ async function bootstrap() {
 
   const port = parseInt(process.env.PORT || configService.get<string>('PORT') || '3000', 10);
   const allowedOrigins = configService.get<string[]>('CORS_ORIGINS') || [
-    'http://localhost:3000',
+    'http://localhost:5173',
   ];
 
   app.use(helmet());
