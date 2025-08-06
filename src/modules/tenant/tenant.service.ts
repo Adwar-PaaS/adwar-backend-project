@@ -33,14 +33,17 @@ export class TenantService {
     let logoUrl: string | null = null;
     try {
       logoUrl = await this.uploadLogo(logo);
+
       const tenant = await this.prisma.tenant.create({
         data: {
           ...dto,
           status: dto.status ?? TenantStatus.ACTIVATE,
           logoUrl,
           createdBy: userId,
+          lastLogin: new Date(),
         },
       });
+
       return this.success(
         tenant,
         this.responseFields.base,
@@ -48,7 +51,7 @@ export class TenantService {
         HttpStatus.CREATED,
       );
     } catch (error) {
-      this.logger.error('Failed to create tenant', error.stack);
+      this.logger.error('Create Tenant Error', error.stack);
       await this.tryDeleteLogo(logoUrl);
       throw new ApiError(
         'Failed to create tenant',
@@ -64,6 +67,7 @@ export class TenantService {
       options.page,
       options.limit,
     );
+
     const pagination = buildPrismaPagination({
       ...options,
       searchableFields: ['name', 'address'],
@@ -94,7 +98,8 @@ export class TenantService {
 
     try {
       newLogo = await this.uploadLogo(logo, oldLogo);
-      const updatedTenant = await this.prisma.tenant.update({
+
+      const updated = await this.prisma.tenant.update({
         where: { id },
         data: { ...dto, logoUrl: newLogo },
       });
@@ -104,7 +109,7 @@ export class TenantService {
       }
 
       return this.success(
-        updatedTenant,
+        updated,
         [...this.responseFields.base, ...this.responseFields.extended],
         'Tenant updated successfully',
       );
@@ -143,15 +148,17 @@ export class TenantService {
 
   async remove(id: string) {
     const tenant = await this.findByIdOrThrow(id);
+
     try {
       await this.prisma.tenant.delete({ where: { id } });
       await this.tryDeleteLogo(tenant.logoUrl);
+
       return APIResponse.success(
         { id: tenant.id, name: tenant.name },
         'Tenant deleted successfully',
       );
     } catch (error) {
-      this.logger.error(`Failed to delete tenant ${id}`, error.stack);
+      this.logger.error(`Delete Tenant Error: ${id}`, error.stack);
       throw new ApiError(
         'Failed to delete tenant',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -165,6 +172,7 @@ export class TenantService {
     existing?: string | null,
   ): Promise<string | null> {
     if (!logo) return existing ?? null;
+
     try {
       return await this.uploadService.uploadImage(logo);
     } catch (error) {
@@ -175,6 +183,7 @@ export class TenantService {
 
   private async tryDeleteLogo(url?: string | null, condition = true) {
     if (!url || !condition) return;
+
     try {
       await this.uploadService.deleteFile(url);
     } catch (error) {
