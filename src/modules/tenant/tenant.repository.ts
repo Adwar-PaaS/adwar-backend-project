@@ -5,21 +5,23 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { ITenant } from './interfaces/tenant.interface';
 import { TenantStatus } from '@prisma/client';
 
+type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
+  logoUrl?: string;
+  createdBy: string;
+};
+
+type UpdateTenantInput = UpdateTenantDto & { logoUrl?: string };
+
 @Injectable()
 export class TenantRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(
-    data: Omit<CreateTenantDto, 'logo'> & {
-      logoUrl?: string;
-      createdBy: string;
-    },
-  ): Promise<ITenant> {
-    const { createdBy, status, ...tenantDataWithoutStatus } = data;
+  async create(data: CreateTenantInput): Promise<ITenant> {
+    const { createdBy, status, ...rest } = data;
 
     return this.prisma.tenant.create({
       data: {
-        ...tenantDataWithoutStatus,
+        ...rest,
         status: status ?? TenantStatus.Activate,
         creator: { connect: { id: createdBy } },
       },
@@ -55,11 +57,14 @@ export class TenantRepository {
     return tenant;
   }
 
-  async update(
-    id: string,
-    data: UpdateTenantDto & { logoUrl?: string },
-  ): Promise<ITenant> {
-    return this.prisma.tenant.update({ where: { id }, data });
+  async update(id: string, data: UpdateTenantInput): Promise<ITenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data,
+      include: {
+        creator: { select: { fullName: true } },
+      },
+    });
   }
 
   async delete(id: string): Promise<ITenant> {

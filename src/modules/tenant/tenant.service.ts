@@ -17,11 +17,9 @@ export class TenantService {
     createdBy: string,
     file?: Express.Multer.File,
   ): Promise<ITenant> {
-    let logoUrl: string | undefined;
-
-    if (file) {
-      logoUrl = await this.uploadService.uploadImage(file);
-    }
+    const logoUrl = file
+      ? await this.uploadService.uploadImage(file)
+      : undefined;
 
     const { logo, ...cleanDto } = dto;
 
@@ -56,7 +54,10 @@ export class TenantService {
       logoUrl = await this.uploadService.uploadImage(file);
     }
 
-    return this.repo.update(id, { ...dto, logoUrl });
+    return this.repo.update(id, {
+      ...dto,
+      logoUrl,
+    });
   }
 
   delete(id: string): Promise<ITenant> {
