@@ -41,7 +41,7 @@ export class TenantService {
 
   async update(
     id: string,
-    dto: UpdateTenantDto,
+    dto: CreateTenantDto,
     file?: Express.Multer.File,
   ): Promise<ITenant> {
     let logoUrl = dto.logo;
@@ -55,8 +55,10 @@ export class TenantService {
       logoUrl = await this.uploadService.uploadImage(file);
     }
 
+    const { logo, ...cleanDto } = dto;
+
     return this.repo.update(id, {
-      ...dto,
+      ...cleanDto,
       logoUrl,
     });
   }

@@ -47,7 +47,10 @@ export class TenantRepository {
     return tenant;
   }
 
-  async update(id: string, data: UpdateTenantInput): Promise<ITenant> {
+  async update(
+    id: string,
+    data: CreateTenantDto & { logoUrl?: string },
+  ): Promise<ITenant> {
     return this.prisma.tenant.update({
       where: { id },
       data,

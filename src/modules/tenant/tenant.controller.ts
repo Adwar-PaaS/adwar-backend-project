@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Delete,
+  Put,
   Patch,
   UseGuards,
   UploadedFile,
@@ -53,12 +54,12 @@ export class TenantController {
     return APIResponse.success(tenant, 'Tenant retrieved successfully');
   }
 
-  @Patch(':id')
+  @Put(':id')
   @Roles(Role.SUPERADMIN)
   @UseInterceptors(FileInterceptor('logo'))
   async update(
     @Param('id') id: string,
-    @Body() dto: UpdateTenantDto,
+    @Body() dto: CreateTenantDto,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<APIResponse<ITenant>> {
     const tenant = await this.service.update(id, dto, file);
