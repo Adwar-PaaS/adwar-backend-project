@@ -1,45 +1,53 @@
 import {
   Controller,
   Get,
-  Param,
-  Patch,
-  Delete,
+  Post,
   Body,
+  Param,
+  Delete,
+  Patch,
   UseGuards,
 } from '@nestjs/common';
-import { UserService } from './users.service';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { IUser } from './interfaces/user.interface';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '../../common/enums/role.enum';
+import { Role } from '@prisma/client';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class UserController {
-  constructor(private service: UserService) {}
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Post()
+  @Roles(Role.SUPERADMIN)
+  create(@Body() dto: CreateUserDto): Promise<IUser> {
+    return this.usersService.create(dto);
+  }
 
   @Get()
-  @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
-  findAll() {
-    return this.service.findAll();
+  @Roles(Role.SUPERADMIN)
+  findAll(): Promise<IUser[]> {
+    return this.usersService.findAll();
   }
 
   @Get(':id')
-  @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@Param('id') id: string): Promise<IUser> {
+    return this.usersService.findById(id);
   }
 
   @Patch(':id')
-  @Roles(Role.SUPERADMIN)
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.service.update(id, dto);
+  @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto): Promise<IUser> {
+    return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.SUPERADMIN)
-  remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
+  delete(@Param('id') id: string): Promise<IUser> {
+    return this.usersService.delete(id);
   }
 }

@@ -9,7 +9,7 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 import { APIResponse } from '../../common/utils/api-response.util';
 import { JwtTokenUtil } from '../../common/utils/jwt-token.util';
-import { Role } from '../../common/enums/role.enum';
+import { Role } from '@prisma/client';
 import { ApiError } from '../../common/exceptions/api-error.exception';
 import { createResponseShape } from '../../common/utils/response-shape.util';
 

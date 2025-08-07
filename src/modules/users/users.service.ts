@@ -1,46 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../db/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import * as bcrypt from 'bcrypt';
-import { Role } from '../../common/enums/role.enum';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UsersRepository } from './users.repository';
+import { IUser } from './interfaces/user.interface';
 
 @Injectable()
-export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+export class UsersService {
+  constructor(private readonly userRepo: UsersRepository) {}
 
-  async create(dto: CreateUserDto) {
-    const hash = await bcrypt.hash(dto.password, 10);
-
-    return this.prisma.user.create({
-      data: {
-        email: dto.email,
-        password: hash,
-        fullName: dto.fullName,
-        phone: dto.phone,
-        role: dto.role || Role.CUSTOMER,
-        tenantId: dto.tenantId ?? null,
-      },
-    });
+  create(dto: CreateUserDto): Promise<IUser> {
+    return this.userRepo.create(dto);
   }
 
-  findAll() {
-    return this.prisma.user.findMany();
+  findAll(): Promise<IUser[]> {
+    return this.userRepo.findAll();
   }
 
-  findOne(id: string) {
-    return this.prisma.user.findUnique({ where: { id } });
+  findById(id: string): Promise<IUser> {
+    return this.userRepo.findById(id);
   }
 
-  findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+  update(id: string, dto: UpdateUserDto): Promise<IUser> {
+    return this.userRepo.update(id, dto);
   }
 
-  update(id: string, dto: UpdateUserDto) {
-    return this.prisma.user.update({ where: { id }, data: dto });
+  delete(id: string): Promise<IUser> {
+    return this.userRepo.delete(id);
   }
 
-  remove(id: string) {
-    return this.prisma.user.delete({ where: { id } });
+  findByEmail(email: string): Promise<IUser | null> {
+    return this.userRepo.findByEmail(email);
   }
 }

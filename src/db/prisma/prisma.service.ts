@@ -7,6 +7,8 @@ export class PrismaService
   extends PrismaClient
   implements IDatabase, OnModuleInit, OnModuleDestroy
 {
+  readonly name = 'Prisma';
+
   async onModuleInit() {
     await this.connect();
   }

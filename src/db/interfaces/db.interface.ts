@@ -3,4 +3,5 @@ export abstract class IDatabase<T = unknown> {
   abstract disconnect(): Promise<void>;
   abstract isHealthy(): Promise<boolean>;
   abstract getConnection(): T;
+  abstract name: string;
 }

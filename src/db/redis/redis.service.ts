@@ -7,19 +7,21 @@ import { IDatabase } from '../interfaces/db.interface';
 export class RedisService
   implements IDatabase<RedisClientType>, OnModuleDestroy
 {
+  readonly name = 'Redis';
   private readonly client: RedisClientType;
 
   constructor(private readonly config: ConfigService) {
     const host = config.get<string>('REDIS_HOST');
     const port = config.get<number>('REDIS_PORT');
+    const password = config.get<string>('REDIS_PASSWORD');
 
     if (!host || !port) {
-      throw new Error('[Redis] Invalid config: host or port missing');
+      throw new Error('[Redis] Config error: host/port missing');
     }
 
     this.client = createClient({
       socket: { host, port },
-      password: config.get('REDIS_PASSWORD'),
+      password,
     });
 
     this._setupEvents();

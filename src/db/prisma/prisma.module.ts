@@ -11,6 +11,6 @@ import { DATABASE_TOKEN } from '../constants/db-token.constant';
       useExisting: PrismaService,
     },
   ],
-  exports: [PrismaService, DATABASE_TOKEN.PRISMA],
+  exports: [DATABASE_TOKEN.PRISMA],
 })
 export class PrismaModule {}

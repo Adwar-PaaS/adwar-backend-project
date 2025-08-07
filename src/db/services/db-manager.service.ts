@@ -21,12 +21,10 @@ export class DatabaseManagerService {
       try {
         await db.connect();
         const healthy = await db.isHealthy();
-        if (!healthy) {
-          throw new Error(`[DatabaseManager] ${type} is unhealthy`);
-        }
+        if (!healthy) throw new Error(`${db.name} is unhealthy`);
         console.log(`[DatabaseManager] ${type} connected and healthy`);
       } catch (err) {
-        console.error(`[DatabaseManager] Failed to connect ${type}:`, err);
+        console.error(`[DatabaseManager] Error connecting ${type}:`, err);
       }
     }
   }
@@ -37,7 +35,7 @@ export class DatabaseManagerService {
         await db.disconnect();
         console.log(`[DatabaseManager] ${type} disconnected`);
       } catch (err) {
-        console.error(`[DatabaseManager] Failed to disconnect ${type}:`, err);
+        console.error(`[DatabaseManager] Error disconnecting ${type}:`, err);
       }
     }
   }
