@@ -4,6 +4,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantRepository } from './tenant.repository';
 import { ITenant } from './interfaces/tenant.interface';
 import { UploadService } from '../../shared/upload/upload.service';
+import { TenantStatus } from '@prisma/client';
 
 @Injectable()
 export class TenantService {
@@ -58,6 +59,17 @@ export class TenantService {
       ...dto,
       logoUrl,
     });
+  }
+
+  async toggleStatus(id: string): Promise<ITenant> {
+    const existing = await this.repo.findById(id);
+
+    const newStatus =
+      existing.status === TenantStatus.Activate
+        ? TenantStatus.Deactivate
+        : TenantStatus.Activate;
+
+    return this.repo.updateStatus(id, newStatus);
   }
 
   delete(id: string): Promise<ITenant> {

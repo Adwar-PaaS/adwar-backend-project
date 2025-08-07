@@ -67,6 +67,16 @@ export class TenantRepository {
     });
   }
 
+  async updateStatus(id: string, status: TenantStatus): Promise<ITenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { status },
+      include: {
+        creator: { select: { fullName: true } },
+      },
+    });
+  }
+
   async delete(id: string): Promise<ITenant> {
     return this.prisma.tenant.delete({ where: { id } });
   }

@@ -65,6 +65,16 @@ export class TenantController {
     return APIResponse.success(tenant, 'Tenant updated successfully');
   }
 
+  @Patch(':id/status')
+  @Roles(Role.SUPERADMIN)
+  async updateStatus(@Param('id') id: string): Promise<APIResponse<ITenant>> {
+    const tenant = await this.service.toggleStatus(id);
+    return APIResponse.success(
+      tenant,
+      `Tenant status updated to ${tenant.status}`,
+    );
+  }
+
   @Delete(':id')
   @Roles(Role.SUPERADMIN)
   async delete(@Param('id') id: string): Promise<APIResponse<ITenant>> {
