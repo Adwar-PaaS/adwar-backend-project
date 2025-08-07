@@ -12,6 +12,8 @@ type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
 
 type UpdateTenantInput = UpdateTenantDto & { logoUrl?: string };
 
+const creatorSelect = { creator: { select: { fullName: true } } };
+
 @Injectable()
 export class TenantRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -25,32 +27,20 @@ export class TenantRepository {
         status: status ?? TenantStatus.Activate,
         creator: { connect: { id: createdBy } },
       },
-      include: { creator: { select: { fullName: true } } },
+      include: creatorSelect,
     });
   }
 
   async findAll(): Promise<ITenant[]> {
     return this.prisma.tenant.findMany({
-      include: {
-        creator: {
-          select: {
-            fullName: true,
-          },
-        },
-      },
+      include: creatorSelect,
     });
   }
 
   async findById(id: string): Promise<ITenant> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id },
-      include: {
-        creator: {
-          select: {
-            fullName: true,
-          },
-        },
-      },
+      include: creatorSelect,
     });
 
     if (!tenant) throw new NotFoundException('Tenant not found');
@@ -61,9 +51,7 @@ export class TenantRepository {
     return this.prisma.tenant.update({
       where: { id },
       data,
-      include: {
-        creator: { select: { fullName: true } },
-      },
+      include: creatorSelect,
     });
   }
 
@@ -71,13 +59,13 @@ export class TenantRepository {
     return this.prisma.tenant.update({
       where: { id },
       data: { status },
-      include: {
-        creator: { select: { fullName: true } },
-      },
+      include: creatorSelect,
     });
   }
 
   async delete(id: string): Promise<ITenant> {
-    return this.prisma.tenant.delete({ where: { id } });
+    return this.prisma.tenant.delete({
+      where: { id },
+    });
   }
 }
