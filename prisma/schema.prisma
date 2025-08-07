@@ -45,10 +45,9 @@ model Tenant {
   lastLogin  DateTime?
   logoUrl    String?
   address    String?
-  email      String
+  email      String?
   phone      String?
   
-
   createdBy  String
   creator    User     @relation("UserCreatedTenants", fields: [createdBy], references: [id])
 

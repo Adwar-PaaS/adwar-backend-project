@@ -1,87 +1,74 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
-  UploadedFile,
-  UseInterceptors,
-  Patch,
   Param,
   Delete,
+  Patch,
   UseGuards,
-  Get,
-  Query,
-  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
-import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
+import { ITenant } from './interfaces/tenant.interface';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
-import { PaginationOptions } from '../../common/interfaces/pagination-options.interface';
+import { APIResponse } from '../../common/utils/api-response.util';
 
 @Controller('tenants')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TenantController {
-  constructor(private readonly tenantService: TenantService) {}
+  constructor(private readonly service: TenantService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @Roles(Role.SUPERADMIN)
   @UseInterceptors(FileInterceptor('logo'))
   async create(
+    @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateTenantDto,
-    @UploadedFile() logo: Express.Multer.File,
     @CurrentUser() user: JwtPayload,
-    @Res() res: Response,
-  ) {
-    const result = await this.tenantService.create(dto, user.id, logo);
-    return res.status(result.statusCode).json(result);
+  ): Promise<APIResponse<ITenant>> {
+    const tenant = await this.service.create(dto, user.id, file);
+    return APIResponse.success(tenant, 'Tenant created successfully');
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
-  async findAll(@Query() query: PaginationOptions, @Res() res: Response) {
-    const result = await this.tenantService.list(query);
-    return res.status(result.statusCode).json(result);
+  @Roles(Role.SUPERADMIN)
+  async findAll(): Promise<APIResponse<ITenant[]>> {
+    const tenants = await this.service.findAll();
+    return APIResponse.success(tenants, 'Tenants retrieved successfully');
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  async findOne(@Param('id') id: string, @Res() res: Response) {
-    const result = await this.tenantService.findOne(id);
-    return res.status(result.statusCode).json(result);
+  async findById(@Param('id') id: string): Promise<APIResponse<ITenant>> {
+    const tenant = await this.service.findById(id);
+    return APIResponse.success(tenant, 'Tenant retrieved successfully');
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles(Role.SUPERADMIN)
   @UseInterceptors(FileInterceptor('logo'))
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateTenantDto,
-    @UploadedFile() logo: Express.Multer.File,
-    @Res() res: Response,
-  ) {
-    const result = await this.tenantService.update(id, dto, logo);
-    return res.status(result.statusCode).json(result);
-  }
-
-  @Patch(':id/status')
-  @UseGuards(JwtAuthGuard)
-  async updateStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateTenantStatusDto,
-    @Res() res: Response,
-  ) {
-    const result = await this.tenantService.updateStatus(id, dto.status);
-    return res.status(result.statusCode).json(result);
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<APIResponse<ITenant>> {
+    const tenant = await this.service.update(id, dto, file);
+    return APIResponse.success(tenant, 'Tenant updated successfully');
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
-  async remove(@Param('id') id: string, @Res() res: Response) {
-    const result = await this.tenantService.remove(id);
-    return res.status(result.statusCode).json(result);
+  @Roles(Role.SUPERADMIN)
+  async delete(@Param('id') id: string): Promise<APIResponse<ITenant>> {
+    const tenant = await this.service.delete(id);
+    return APIResponse.success(tenant, 'Tenant deleted successfully');
   }
 }

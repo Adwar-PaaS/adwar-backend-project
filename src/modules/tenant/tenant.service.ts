@@ -1,219 +1,65 @@
-import { Injectable, HttpStatus, Logger } from '@nestjs/common';
-import { PrismaService } from '../../db/prisma/prisma.service';
-import { UploadService } from '../../shared/upload/upload.service';
+import { Injectable } from '@nestjs/common';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
-import { TenantStatus } from '../../common/enums/tenant-status.enum';
-import { APIResponse } from '../../common/utils/api-response.util';
-import { ApiError } from '../../common/exceptions/api-error.exception';
-import { createResponseShape } from '../../common/utils/response-shape.util';
-import { PaginationOptions } from '../../common/interfaces/pagination-options.interface';
-import { buildPrismaPagination } from '../../common/utils/prisma-pagination.util';
-import { PaginationUtil } from '../../common/utils/pagination.util';
+import { TenantRepository } from './tenant.repository';
+import { ITenant } from './interfaces/tenant.interface';
+import { UploadService } from '../../shared/upload/upload.service';
 
 @Injectable()
 export class TenantService {
-  private readonly logger = new Logger(TenantService.name);
-
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly repo: TenantRepository,
     private readonly uploadService: UploadService,
   ) {}
 
-  private readonly responseFields = {
-    base: ['id', 'name', 'logoUrl', 'status', 'address', 'createdAt'] as const,
-    extended: ['updatedAt', 'lastLogin'] as const,
-  };
-
   async create(
     dto: CreateTenantDto,
-    userId: string,
-    logo?: Express.Multer.File,
-  ) {
-    let logoUrl: string | null = null;
-    try {
-      logoUrl = await this.uploadLogo(logo);
+    createdBy: string,
+    file?: Express.Multer.File,
+  ): Promise<ITenant> {
+    let logoUrl: string | undefined;
 
-      const tenant = await this.prisma.tenant.create({
-        data: {
-          ...dto,
-          status: dto.status ?? TenantStatus.ACTIVATE,
-          logoUrl,
-          createdBy: userId,
-          lastLogin: new Date(),
-        },
-      });
-
-      return this.success(
-        tenant,
-        this.responseFields.base,
-        'Tenant created successfully',
-        HttpStatus.CREATED,
-      );
-    } catch (error) {
-      this.logger.error('Create Tenant Error', error.stack);
-      await this.tryDeleteLogo(logoUrl);
-      throw new ApiError(
-        'Failed to create tenant',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        error.message,
-        { stack: error.stack },
-      );
+    if (file) {
+      logoUrl = await this.uploadService.uploadImage(file);
     }
-  }
 
-  async list(options: PaginationOptions) {
-    const { page, limit } = PaginationUtil.sanitize(
-      options.page,
-      options.limit,
-    );
+    const { logo, ...cleanDto } = dto;
 
-    const pagination = buildPrismaPagination({
-      ...options,
-      searchableFields: ['name', 'address'],
+    return this.repo.create({
+      ...cleanDto,
+      logoUrl,
+      createdBy,
     });
-
-    const [tenants, total] = await this.prisma.$transaction([
-      this.prisma.tenant.findMany(pagination),
-      this.prisma.tenant.count({ where: pagination.where }),
-    ]);
-
-    const result = PaginationUtil.offset(tenants, total, page, limit);
-    return APIResponse.success(result, 'Tenants fetched successfully');
   }
 
-  async findOne(id: string) {
-    const tenant = await this.findByIdOrThrow(id);
-    return this.success(
-      tenant,
-      [...this.responseFields.base, ...this.responseFields.extended],
-      'Tenant details fetched',
-    );
+  findAll(): Promise<ITenant[]> {
+    return this.repo.findAll();
   }
 
-  async update(id: string, dto: UpdateTenantDto, logo?: Express.Multer.File) {
-    const tenant = await this.findByIdOrThrow(id);
-    const oldLogo = tenant.logoUrl;
-    let newLogo: string | null = null;
+  findById(id: string): Promise<ITenant> {
+    return this.repo.findById(id);
+  }
 
-    try {
-      newLogo = await this.uploadLogo(logo, oldLogo);
+  async update(
+    id: string,
+    dto: UpdateTenantDto,
+    file?: Express.Multer.File,
+  ): Promise<ITenant> {
+    let logoUrl = dto.logo;
 
-      const updated = await this.prisma.tenant.update({
-        where: { id },
-        data: { ...dto, logoUrl: newLogo },
-      });
-
-      if (newLogo && oldLogo && newLogo !== oldLogo) {
-        await this.tryDeleteLogo(oldLogo);
+    if (file) {
+      const existing = await this.repo.findById(id);
+      if (existing.logoUrl) {
+        await this.uploadService.deleteFile(existing.logoUrl);
       }
 
-      return this.success(
-        updated,
-        [...this.responseFields.base, ...this.responseFields.extended],
-        'Tenant updated successfully',
-      );
-    } catch (error) {
-      await this.tryDeleteLogo(newLogo, newLogo !== oldLogo);
-      throw new ApiError(
-        'Failed to update tenant',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        error,
-      );
-    }
-  }
-
-  async updateStatus(id: string, status: TenantStatus) {
-    const tenant = await this.findByIdOrThrow(id);
-
-    if (tenant.status === status) {
-      return this.success(
-        { id: tenant.id, status },
-        ['id', 'status'],
-        'Tenant status unchanged',
-      );
+      logoUrl = await this.uploadService.uploadImage(file);
     }
 
-    const updated = await this.prisma.tenant.update({
-      where: { id },
-      data: { status },
-    });
-
-    return this.success(
-      updated,
-      ['id', 'status'],
-      `Tenant status updated to ${status}`,
-    );
+    return this.repo.update(id, { ...dto, logoUrl });
   }
 
-  async remove(id: string) {
-    const tenant = await this.findByIdOrThrow(id);
-
-    try {
-      await this.prisma.tenant.delete({ where: { id } });
-      await this.tryDeleteLogo(tenant.logoUrl);
-
-      return APIResponse.success(
-        { id: tenant.id, name: tenant.name },
-        'Tenant deleted successfully',
-      );
-    } catch (error) {
-      this.logger.error(`Delete Tenant Error: ${id}`, error.stack);
-      throw new ApiError(
-        'Failed to delete tenant',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        error,
-      );
-    }
-  }
-
-  private async uploadLogo(
-    logo?: Express.Multer.File,
-    existing?: string | null,
-  ): Promise<string | null> {
-    if (!logo) return existing ?? null;
-
-    try {
-      return await this.uploadService.uploadImage(logo);
-    } catch (error) {
-      this.logger.error('Logo upload failed', error.stack);
-      throw new ApiError('Logo upload failed', HttpStatus.BAD_REQUEST, error);
-    }
-  }
-
-  private async tryDeleteLogo(url?: string | null, condition = true) {
-    if (!url || !condition) return;
-
-    try {
-      await this.uploadService.deleteFile(url);
-    } catch (error) {
-      this.logger.warn(`Failed to delete logo: ${url}`, error.stack);
-    }
-  }
-
-  private async findByIdOrThrow(id: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id },
-      include: { creator: { select: { id: true, fullName: true } } },
-    });
-
-    if (!tenant) {
-      throw new ApiError('Tenant not found', HttpStatus.NOT_FOUND);
-    }
-
-    return tenant;
-  }
-
-  private success<T extends Record<string, any>, K extends keyof T>(
-    model: T,
-    fields: readonly K[],
-    message: string,
-    statusCode = HttpStatus.OK,
-  ) {
-    return APIResponse.success(
-      createResponseShape(model, fields),
-      message,
-      statusCode,
-    );
+  delete(id: string): Promise<ITenant> {
+    return this.repo.delete(id);
   }
 }

@@ -1,35 +1,31 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { IDatabase } from '../interfaces/db.interface';
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements IDatabase, OnModuleInit, OnModuleDestroy
-{
+export class PrismaService extends PrismaClient implements IDatabase {
   readonly name = 'Prisma';
+  private connected = false;
 
-  async onModuleInit() {
-    await this.connect();
-  }
-
-  async onModuleDestroy() {
-    await this.disconnect();
-  }
-
-  async connect() {
-    try {
-      await this.$connect();
-      console.log('[Prisma] Connected');
-    } catch (err) {
-      console.error('[Prisma] Connection error', err);
-      throw err;
+  async connect(): Promise<void> {
+    if (!this.connected) {
+      try {
+        await this.$connect();
+        this.connected = true;
+        console.log('[Prisma] Connected');
+      } catch (err) {
+        console.error('[Prisma] Connection error:', err);
+        throw err;
+      }
     }
   }
 
-  async disconnect() {
-    await this.$disconnect();
-    console.log('[Prisma] Disconnected');
+  async disconnect(): Promise<void> {
+    if (this.connected) {
+      await this.$disconnect();
+      this.connected = false;
+      console.log('[Prisma] Disconnected');
+    }
   }
 
   async isHealthy(): Promise<boolean> {
@@ -41,7 +37,7 @@ export class PrismaService
     }
   }
 
-  getConnection() {
+  getConnection(): PrismaClient {
     return this;
   }
 }

@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { TenantService } from './tenant.service';
 import { TenantController } from './tenant.controller';
-import { PrismaModule } from '../../db/prisma/prisma.module';
+import { TenantService } from './tenant.service';
+import { TenantRepository } from './tenant.repository';
+import { UploadService } from '../../shared/upload/upload.service';
 import { CloudinaryModule } from '../../shared/upload/cloudinary.module';
 
 @Module({
-  imports: [PrismaModule, CloudinaryModule],
-  providers: [TenantService],
+  imports: [CloudinaryModule],
   controllers: [TenantController],
+  providers: [TenantService, TenantRepository, UploadService],
+  exports: [TenantService],
 })
 export class TenantModule {}

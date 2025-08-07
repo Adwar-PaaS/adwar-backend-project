@@ -2,7 +2,7 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
-import { UserService } from '../users/users.service';
+import { UsersRepository } from '../users/users.repository';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -18,7 +18,7 @@ export class AuthService {
   private jwtUtil: JwtTokenUtil;
 
   constructor(
-    private readonly userService: UserService,
+    private readonly userService: UsersRepository,
     private readonly jwtService: JwtService,
   ) {
     this.jwtUtil = new JwtTokenUtil(jwtService);
@@ -60,7 +60,7 @@ export class AuthService {
   }
 
   async refreshToken(userId: string, email: string) {
-    const user = await this.userService.findOne(userId);
+    const user = await this.userService.findById(userId);
 
     if (!user) {
       throw new ApiError('User not found', HttpStatus.UNAUTHORIZED);
@@ -73,7 +73,7 @@ export class AuthService {
   }
 
   async getCurrentUser(user: JwtPayload) {
-    const foundUser = await this.userService.findOne(user.id);
+    const foundUser = await this.userService.findById(user.id);
 
     if (!foundUser) {
       throw new ApiError('User not found', HttpStatus.UNAUTHORIZED);

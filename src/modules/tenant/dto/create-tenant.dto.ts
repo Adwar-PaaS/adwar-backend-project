@@ -1,14 +1,22 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { TenantStatus } from '../../../common/enums/tenant-status.enum';
+import { IsEnum, IsOptional, IsString, IsEmail } from 'class-validator';
+import { TenantStatus } from '@prisma/client';
 
 export class CreateTenantDto {
-  @IsEnum(TenantStatus)
-  @IsOptional()
-  status: TenantStatus = TenantStatus.ACTIVATE;
-
-  @IsNotEmpty()
   @IsString()
   name: string;
+
+  @IsEnum(TenantStatus)
+  status: TenantStatus;
+
+  @IsEmail()
+  email: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  logo?: string;
 
   @IsOptional()
   @IsString()
