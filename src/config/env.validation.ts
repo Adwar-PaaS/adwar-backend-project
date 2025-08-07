@@ -21,5 +21,5 @@ export default Joi.object({
 
   JWT_SECRET: Joi.string().required(),
 
-  JWT_EXPIRES_IN: Joi.string().default('15m'),
+  JWT_EXPIRES_IN: Joi.string().default('1d'),
 });
