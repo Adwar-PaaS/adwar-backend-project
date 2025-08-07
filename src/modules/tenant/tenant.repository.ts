@@ -25,7 +25,9 @@ export class TenantRepository {
         status: status ?? TenantStatus.Activate,
         creator: { connect: { id: createdBy } },
       },
-      include: { creator: { select: { fullName: true } } },
+      include: {
+        creator: { select: { fullName: true } },
+      },
     });
   }
 
@@ -68,6 +70,13 @@ export class TenantRepository {
   }
 
   async delete(id: string): Promise<ITenant> {
-    return this.prisma.tenant.delete({ where: { id } });
+    return this.prisma.tenant.delete({
+      where: { id },
+      include: {
+        creator: {
+          select: { fullName: true },
+        },
+      },
+    });
   }
 }
