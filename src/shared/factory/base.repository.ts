@@ -5,14 +5,17 @@ import { APIResponse } from '../../common/utils/api-response.util';
 import { ApiFeatures } from '../../common/utils/api-features.util';
 
 @Injectable()
-export class CrudFactoryService {
-  private readonly logger = new Logger(CrudFactoryService.name);
+export class BaseRepository<T extends { id: string }> {
+  protected readonly logger = new Logger(BaseRepository.name);
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    protected readonly prisma: PrismaClient,
+    protected readonly model: any,
+  ) {}
 
-  async createOne<T>(model: any, data: any) {
+  async create(data: Partial<T>) {
     try {
-      const newDoc = await model.create({ data });
+      const newDoc = await this.model.create({ data });
       return APIResponse.success(
         newDoc,
         'Created successfully',
@@ -27,14 +30,11 @@ export class CrudFactoryService {
     }
   }
 
-  async updateOne<T>(model: any, id: string, data: any) {
+  async update(id: string, data: Partial<T>) {
     try {
-      const updated = await model.update({
-        where: { id },
-        data,
-      });
+      const updated = await this.model.update({ where: { id }, data });
       return APIResponse.success(updated, 'Updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'P2025') {
         throw new ApiError(
           `No document found with id ${id}`,
@@ -49,15 +49,15 @@ export class CrudFactoryService {
     }
   }
 
-  async deleteOne<T>(model: any, id: string) {
+  async delete(id: string) {
     try {
-      await model.delete({ where: { id } });
+      await this.model.delete({ where: { id } });
       return APIResponse.success(
         null,
         'Deleted successfully',
         HttpStatus.NO_CONTENT,
       );
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'P2025') {
         throw new ApiError(
           `No document found with id ${id}`,
@@ -72,11 +72,8 @@ export class CrudFactoryService {
     }
   }
 
-  async getOne<T>(model: any, id: string, include?: any) {
-    const doc = await model.findUnique({
-      where: { id },
-      include,
-    });
+  async findOne(id: string, include?: any) {
+    const doc = await this.model.findUnique({ where: { id }, include });
     if (!doc) {
       throw new ApiError(
         `No document found with id ${id}`,
@@ -86,15 +83,13 @@ export class CrudFactoryService {
     return APIResponse.success(doc, 'Retrieved successfully');
   }
 
-  async getAll<T>(
-    model: any,
+  async findAll(
     queryString: Record<string, any>,
-    modelName: string,
     baseFilter: Record<string, any> = {},
   ) {
-    const totalRecords = await model.count({ where: baseFilter });
+    const totalRecords = await this.model.count({ where: baseFilter });
 
-    const apiFeatures = new ApiFeatures(model, queryString)
+    const apiFeatures = new ApiFeatures(this.model, queryString)
       .filter()
       .search()
       .sort()
