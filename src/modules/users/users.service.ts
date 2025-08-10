@@ -3,12 +3,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersRepository } from './users.repository';
 import { IUser } from './interfaces/user.interface';
+import { hashPassword } from '../../common/utils/crypto.util';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly userRepo: UsersRepository) {}
 
-  create(dto: CreateUserDto): Promise<IUser> {
+  async create(dto: CreateUserDto): Promise<IUser> {
+    dto.password = await hashPassword(dto.password);
     return this.userRepo.create(dto);
   }
 
@@ -20,7 +22,10 @@ export class UsersService {
     return this.userRepo.findById(id);
   }
 
-  update(id: string, dto: UpdateUserDto): Promise<IUser> {
+  async update(id: string, dto: UpdateUserDto): Promise<IUser> {
+    if (dto.password) {
+      dto.password = await hashPassword(dto.password);
+    }
     return this.userRepo.update(id, dto);
   }
 

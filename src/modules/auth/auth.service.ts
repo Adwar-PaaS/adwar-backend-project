@@ -1,12 +1,12 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
 import { AuthRepository } from './auth.repository';
 import { ApiError } from '../../common/exceptions/api-error.exception';
 import { Role } from '@prisma/client';
 import { ACCESS_TOKEN_EXPIRES } from '../../common/utils/constants.util';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { hashPassword, comparePasswords } from '../../common/utils/crypto.util';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +20,8 @@ export class AuthService {
   }
 
   async register(dto: any) {
+    dto.password = await hashPassword(dto.password);
+
     const user = await this.repo.createUser(dto);
     const payload = this.createJwtPayload(user);
     const accessToken = await this.jwtService.signAsync(payload);
@@ -40,7 +42,7 @@ export class AuthService {
     if (!user)
       throw new ApiError('Invalid credentials', HttpStatus.UNAUTHORIZED);
 
-    const valid = await bcrypt.compare(dto.password, user.password);
+    const valid = await comparePasswords(dto.password, user.password);
     if (!valid)
       throw new ApiError('Invalid credentials', HttpStatus.UNAUTHORIZED);
 
@@ -51,7 +53,7 @@ export class AuthService {
 
     const sessionId = uuid();
     const refreshToken = uuid();
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    const refreshTokenHash = await hashPassword(refreshToken);
 
     await this.repo.createSession(sessionId, {
       userId: user.id,
@@ -79,14 +81,14 @@ export class AuthService {
     if (!session)
       throw new ApiError('Invalid session', HttpStatus.UNAUTHORIZED);
 
-    const ok = await bcrypt.compare(refreshToken, session.refreshTokenHash);
+    const ok = await comparePasswords(refreshToken, session.refreshTokenHash);
     if (!ok) {
       await this.repo.deleteSession(sessionId);
       throw new ApiError('Invalid refresh token', HttpStatus.UNAUTHORIZED);
     }
 
     const newRefreshToken = uuid();
-    const newHash = await bcrypt.hash(newRefreshToken, 10);
+    const newHash = await hashPassword(newRefreshToken);
 
     await this.repo.updateSession(sessionId, {
       ...session,
