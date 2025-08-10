@@ -1,12 +1,13 @@
 import {
-  ExceptionFilter,
   Catch,
+  ExceptionFilter,
   ArgumentsHost,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { ApiError } from '../exceptions/api-error.exception';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -14,52 +15,73 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const res = ctx.getResponse<Response>();
+    const req = ctx.getRequest<Request>();
 
-    const isHttpException = exception instanceof HttpException;
-    const status = isHttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    const { status, message, errorCode, meta, details } =
+      this.extractErrorInfo(exception);
 
-    const errorResponse = isHttpException
-      ? exception.getResponse()
-      : 'Internal server error';
-
-    let message = 'Something went wrong';
-    let errorDetails: any = null;
-
-    if (typeof errorResponse === 'string') {
-      message = errorResponse;
-    } else if (
-      typeof errorResponse === 'object' &&
-      errorResponse !== null &&
-      'message' in errorResponse
-    ) {
-      const extracted = (errorResponse as any).message;
-      message = Array.isArray(extracted) ? extracted.join(', ') : extracted;
-      errorDetails = errorResponse;
-    } else if (exception instanceof Error) {
-      message = exception.message;
-      errorDetails = exception.stack;
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.error(
+        `[${req.method}] ${req.url} → ${status} :: ${message}`,
+        details || '',
+      );
+    } else {
+      this.logger.error(`[${req.method}] ${req.url} → ${status} :: ${message}`);
     }
 
-    this.logger.error(
-      `Exception on ${request.method} ${request.url}`,
-      typeof exception === 'object' && exception !== null
-        ? JSON.stringify(exception, Object.getOwnPropertyNames(exception), 2)
-        : String(exception),
-    );
-
-    response.status(status).json({
+    res.status(status).json({
       statusCode: status,
       message,
-      path: request.url,
-      method: request.method,
+      errorCode,
+      path: req.url,
+      method: req.method,
       timestamp: new Date().toISOString(),
-      ...(process.env.NODE_ENV !== 'production' && {
-        error: errorDetails,
-      }),
+      ...(process.env.NODE_ENV !== 'production' && { details, meta }),
     });
+  }
+
+  private extractErrorInfo(exception: unknown) {
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Internal server error';
+    let errorCode: string | undefined;
+    let meta: Record<string, any> | undefined;
+    let details: any = undefined;
+
+    if (exception instanceof ApiError) {
+      status = exception.getStatus();
+      const res = exception.getResponse() as any;
+      message = res.message || message;
+      errorCode = res.errorCode;
+      meta = res.meta;
+      details =
+        process.env.NODE_ENV !== 'production' ? exception.stack : undefined;
+      return { status, message, errorCode, meta, details };
+    }
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      const res = exception.getResponse() as any;
+      if (typeof res === 'string') {
+        message = res;
+      } else {
+        message = Array.isArray(res.message)
+          ? res.message.join(', ')
+          : res.message || message;
+        details = res;
+      }
+      return { status, message, errorCode, meta, details };
+    }
+
+    if (exception instanceof Error) {
+      message = exception.message;
+      details =
+        process.env.NODE_ENV !== 'production' ? exception.stack : undefined;
+      return { status, message, errorCode, meta, details };
+    }
+
+    message = String(exception);
+    details = exception;
+    return { status, message, errorCode, meta, details };
   }
 }

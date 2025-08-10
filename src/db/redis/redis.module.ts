@@ -11,6 +11,6 @@ import { DATABASE_TOKEN } from '../constants/db-token.constant';
       useExisting: RedisService,
     },
   ],
-  exports: [DATABASE_TOKEN.REDIS],
+  exports: [RedisService, DATABASE_TOKEN.REDIS],
 })
 export class RedisModule {}

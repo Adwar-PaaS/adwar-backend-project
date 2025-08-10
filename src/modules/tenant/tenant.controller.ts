@@ -14,24 +14,23 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
-import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { ITenant } from './interfaces/tenant.interface';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { APIResponse } from '../../common/utils/api-response.util';
+import { SessionGuard } from '../../modules/auth/guards/session.guard';
 
 @Controller('tenants')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(SessionGuard, RolesGuard)
 export class TenantController {
   constructor(private readonly service: TenantService) {}
 
   @Post()
   @Roles(Role.SUPERADMIN)
-  @UseInterceptors(FileInterceptor('logo'))
+  @UseInterceptors(FileInterceptor('logoUrl'))
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateTenantDto,
