@@ -98,12 +98,16 @@ export class BaseRepository<T extends { id: string }> {
 
     const { data, pagination } = await apiFeatures.query();
 
-    return APIResponse.paginated(data, {
-      total: pagination?.totalRecords ?? 0,
-      page: pagination?.currentPage ?? 1,
-      limit: pagination?.limit ?? 0,
-      hasNext: pagination?.hasNext ?? false,
-      hasPrev: pagination?.hasPrev ?? false,
-    });
+    return APIResponse.paginated(
+      data,
+      {
+        total: pagination?.totalRecords ?? 0,
+        page: pagination?.currentPage ?? 1,
+        limit: pagination?.limit ?? 0,
+        hasNext: pagination?.hasNext ?? false,
+        hasPrev: pagination?.hasPrev ?? false,
+      },
+      `Fetched ${data.length} records successfully`,
+    );
   }
 }
