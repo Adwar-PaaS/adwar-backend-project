@@ -11,7 +11,7 @@ import { checkEmailUnique } from '../../common/utils/check-email.util';
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
   constructor(private readonly prismaService: PrismaService) {
-    super(prismaService, prismaService.user);
+    super(prismaService, prismaService.user, ['email', 'fullName', 'role']);
   }
 
   async createUser(data: CreateUserDto): Promise<IUser> {

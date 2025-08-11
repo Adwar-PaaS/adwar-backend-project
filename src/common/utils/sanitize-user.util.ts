@@ -5,8 +5,8 @@ export function sanitizeUser<T extends IUser>(user: T): Omit<T, 'password'> {
   return safeUser;
 }
 
-export function sanitizeUsers<T extends IUser>(
+export function sanitizeUsers<T extends { password?: string }>(
   users: T[],
 ): Omit<T, 'password'>[] {
-  return users.map(sanitizeUser);
+  return users.map(({ password, ...rest }) => rest);
 }

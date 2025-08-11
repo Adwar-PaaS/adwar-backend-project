@@ -1,5 +1,4 @@
 import { HttpStatus } from '@nestjs/common';
-
 export class APIResponse<T = any> {
   readonly statusCode: HttpStatus;
   readonly message: string;

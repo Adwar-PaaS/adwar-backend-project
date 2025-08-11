@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
-interface PaginationResult {
+export interface PaginationResult {
   totalRecords: number;
   totalPages: number;
   currentPage: number;
@@ -19,7 +19,8 @@ export class ApiFeatures<T> {
 
   constructor(
     private readonly prismaModel: any,
-    private readonly queryString: Record<string, any>,
+    private readonly queryString: Partial<Record<string, any>>,
+    private readonly searchableFields: string[] = [],
   ) {}
 
   filter(): this {
@@ -27,11 +28,17 @@ export class ApiFeatures<T> {
     const excludeFields = ['page', 'sort', 'limit', 'fields', 'search'];
     excludeFields.forEach((field) => delete queryObj[field]);
 
+    if (!this.queryOptions.where) this.queryOptions.where = {};
+
     Object.entries(queryObj).forEach(([key, value]) => {
-      if (value.includes(',')) {
+      if (value === undefined || value === null) return;
+
+      if (typeof value === 'string' && value.includes(',')) {
         this.queryOptions.where[key] = { in: value.split(',') };
-      } else if (/^[><]=?/.test(value)) {
+      } else if (typeof value === 'string' && /^[><]=?/.test(value)) {
         const num = Number(value.replace(/^[><]=?/, ''));
+        if (isNaN(num)) return;
+
         if (value.startsWith('>=')) this.queryOptions.where[key] = { gte: num };
         else if (value.startsWith('<='))
           this.queryOptions.where[key] = { lte: num };
@@ -39,6 +46,13 @@ export class ApiFeatures<T> {
           this.queryOptions.where[key] = { gt: num };
         else if (value.startsWith('<'))
           this.queryOptions.where[key] = { lt: num };
+      } else if (
+        typeof value === 'string' &&
+        (value === 'true' || value === 'false')
+      ) {
+        this.queryOptions.where[key] = value === 'true';
+      } else if (!isNaN(Number(value))) {
+        this.queryOptions.where[key] = Number(value);
       } else {
         this.queryOptions.where[key] = value;
       }
@@ -48,10 +62,13 @@ export class ApiFeatures<T> {
   }
 
   sort(): this {
-    if (this.queryString.sort) {
+    if (
+      typeof this.queryString.sort === 'string' &&
+      this.queryString.sort.trim()
+    ) {
       this.queryOptions.orderBy = this.queryString.sort
         .split(',')
-        .map((field: string) => {
+        .map((field) => {
           const isDesc = field.startsWith('-');
           return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
         });
@@ -62,11 +79,14 @@ export class ApiFeatures<T> {
   }
 
   limitFields(): this {
-    if (this.queryString.fields) {
+    if (
+      typeof this.queryString.fields === 'string' &&
+      this.queryString.fields.trim()
+    ) {
       this.queryOptions.select = this.queryString.fields
         .split(',')
-        .reduce((acc: Record<string, boolean>, field: string) => {
-          acc[field] = true;
+        .reduce<Record<string, boolean>>((acc, field) => {
+          acc[field.trim()] = true;
           return acc;
         }, {});
     }
@@ -74,23 +94,47 @@ export class ApiFeatures<T> {
   }
 
   search(): this {
-    if (this.queryString.search) {
-      const searchTerm = this.queryString.search;
-      this.queryOptions.where = {
-        ...this.queryOptions.where,
-        OR: [
-          { name: { contains: searchTerm, mode: 'insensitive' } },
-          { description: { contains: searchTerm, mode: 'insensitive' } },
-          { keywords: { has: searchTerm } }, // if keywords is an array
-        ],
-      };
+    if (
+      typeof this.queryString.search === 'string' &&
+      this.queryString.search.trim() &&
+      this.searchableFields.length > 0
+    ) {
+      const searchTerm = this.queryString.search.trim();
+      const lowerSearch = searchTerm.toLowerCase();
+
+      if (!this.queryOptions.where) this.queryOptions.where = {};
+
+      const existingOR = Array.isArray(this.queryOptions.where.OR)
+        ? this.queryOptions.where.OR
+        : [];
+
+      const orConditions = this.searchableFields.reduce<any[]>((acc, field) => {
+        if (field === 'role') {
+          const matchingRoles = Object.values(Role).filter((value: string) =>
+            value.toLowerCase().includes(lowerSearch),
+          ) as Role[];
+          if (matchingRoles.length > 0) {
+            acc.push({ [field]: { in: matchingRoles } });
+          }
+        } else {
+          acc.push({
+            [field]: { contains: searchTerm, mode: 'insensitive' },
+          });
+        }
+        return acc;
+      }, []);
+
+      this.queryOptions.where.OR = [...existingOR, ...orConditions];
     }
     return this;
   }
 
   paginate(totalRecords: number): this {
-    let page = Math.max(parseInt(this.queryString.page, 10) || 1, 1);
-    const limit = Math.max(parseInt(this.queryString.limit, 10) || 50, 1);
+    let page = Math.max(parseInt(this.queryString.page as string, 10) || 1, 1);
+    const limit = Math.max(
+      parseInt(this.queryString.limit as string, 10) || 50,
+      1,
+    );
     const totalPages = Math.max(Math.ceil(totalRecords / limit), 1);
 
     if (page > totalPages) page = totalPages;
@@ -121,8 +165,8 @@ export class ApiFeatures<T> {
       return this.paginationResult
         ? { data, pagination: this.paginationResult }
         : { data };
-    } catch (error) {
-      this.logger.error(`Error executing query: ${error.message}`);
+    } catch (error: any) {
+      this.logger.error(`Error executing query: ${error.message}`, error.stack);
       throw new HttpException(
         'Failed to execute query',
         HttpStatus.INTERNAL_SERVER_ERROR,

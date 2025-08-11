@@ -3,14 +3,19 @@ import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../../common/exceptions/api-error.exception';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { ApiFeatures } from '../../common/utils/api-features.util';
+import {
+  sanitizeUsers,
+  sanitizeUser,
+} from '../../common/utils/sanitize-user.util';
 
 @Injectable()
-export class BaseRepository<T extends { id: string }> {
+export class BaseRepository<T extends { id: string; password?: string }> {
   protected readonly logger = new Logger(BaseRepository.name);
 
   constructor(
     protected readonly prisma: PrismaClient,
     protected readonly model: any,
+    protected readonly searchableFields: string[] = [],
   ) {}
 
   async create(data: Partial<T>) {
@@ -80,7 +85,10 @@ export class BaseRepository<T extends { id: string }> {
         HttpStatus.NOT_FOUND,
       );
     }
-    return APIResponse.success(doc, 'Retrieved successfully');
+
+    const sanitizedDoc = sanitizeUser(doc);
+
+    return APIResponse.success(sanitizedDoc, 'Data retrieved successfully');
   }
 
   async findAll(
@@ -89,7 +97,11 @@ export class BaseRepository<T extends { id: string }> {
   ) {
     const totalRecords = await this.model.count({ where: baseFilter });
 
-    const apiFeatures = new ApiFeatures(this.model, queryString)
+    const apiFeatures = new ApiFeatures<T>(
+      this.model,
+      queryString,
+      this.searchableFields,
+    )
       .filter()
       .search()
       .sort()
@@ -98,8 +110,10 @@ export class BaseRepository<T extends { id: string }> {
 
     const { data, pagination } = await apiFeatures.query();
 
+    const sanitizedData = sanitizeUsers(data);
+
     return APIResponse.paginated(
-      data,
+      sanitizedData,
       {
         total: pagination?.totalRecords ?? 0,
         page: pagination?.currentPage ?? 1,
