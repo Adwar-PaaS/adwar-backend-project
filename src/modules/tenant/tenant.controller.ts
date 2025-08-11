@@ -14,6 +14,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { ITenant } from './interfaces/tenant.interface';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -55,10 +56,10 @@ export class TenantController {
 
   @Put(':id')
   @Roles(Role.SUPERADMIN)
-  @UseInterceptors(FileInterceptor('logo'))
+  @UseInterceptors(FileInterceptor('logoUrl'))
   async update(
     @Param('id') id: string,
-    @Body() dto: CreateTenantDto,
+    @Body() dto: UpdateTenantDto,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<APIResponse<ITenant>> {
     const tenant = await this.service.update(id, dto, file);

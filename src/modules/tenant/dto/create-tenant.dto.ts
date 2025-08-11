@@ -16,7 +16,7 @@ export class CreateTenantDto {
   phone?: string;
 
   @IsOptional()
-  logo?: string;
+  logoUrl?: string;
 
   @IsOptional()
   @IsString()

@@ -45,7 +45,7 @@ model Tenant {
   lastLogin  DateTime?
   logoUrl    String?
   address    String?
-  email      String?
+  email      String?  @unique
   phone      String?
   
   createdBy  String

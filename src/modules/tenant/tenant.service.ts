@@ -20,9 +20,8 @@ export class TenantService {
   ): Promise<ITenant> {
     const logoUrl = file
       ? await this.uploadService.uploadImage(file)
-      : undefined;
-
-    const { logo, ...cleanDto } = dto;
+      : dto.logoUrl;
+    const { logoUrl: _, ...cleanDto } = dto;
 
     return this.repo.create({
       ...cleanDto,
@@ -41,21 +40,20 @@ export class TenantService {
 
   async update(
     id: string,
-    dto: CreateTenantDto,
+    dto: UpdateTenantDto,
     file?: Express.Multer.File,
   ): Promise<ITenant> {
-    let logoUrl = dto.logo;
+    let logoUrl = dto.logoUrl;
 
     if (file) {
       const existing = await this.repo.findById(id);
       if (existing.logoUrl) {
         await this.uploadService.deleteFile(existing.logoUrl);
       }
-
       logoUrl = await this.uploadService.uploadImage(file);
     }
 
-    const { logo, ...cleanDto } = dto;
+    const { logoUrl: _, ...cleanDto } = dto;
 
     return this.repo.update(id, {
       ...cleanDto,
