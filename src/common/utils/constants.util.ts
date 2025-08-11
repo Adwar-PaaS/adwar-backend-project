@@ -16,3 +16,14 @@ export const COOKIE_OPTIONS: CookieOptions = {
 export const ACCESS_TOKEN_EXPIRES = '15m';
 export const SESSION_PREFIX = 'sess:';
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+
+export const USER_SAFE_SELECT = {
+  id: true,
+  email: true,
+  fullName: true,
+  phone: true,
+  role: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;

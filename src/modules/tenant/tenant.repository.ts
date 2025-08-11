@@ -4,6 +4,7 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { ITenant } from './interfaces/tenant.interface';
 import { TenantStatus } from '@prisma/client';
+import { checkEmailUnique } from '../../common/utils/check-email.util';
 
 type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
   logoUrl?: string;
@@ -19,6 +20,8 @@ export class TenantRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: CreateTenantInput): Promise<ITenant> {
+    await checkEmailUnique(this.prisma, 'tenant', data.email);
+
     const { createdBy, status, ...rest } = data;
 
     return this.prisma.tenant.create({
@@ -47,10 +50,11 @@ export class TenantRepository {
     return tenant;
   }
 
-  async update(
-    id: string,
-    data: CreateTenantDto & { logoUrl?: string },
-  ): Promise<ITenant> {
+  async update(id: string, data: UpdateTenantInput): Promise<ITenant> {
+    if (data.email) {
+      await checkEmailUnique(this.prisma, 'tenant', data.email, id);
+    }
+
     return this.prisma.tenant.update({
       where: { id },
       data,

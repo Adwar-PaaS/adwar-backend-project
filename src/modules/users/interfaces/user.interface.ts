@@ -3,7 +3,7 @@ import { Role } from '@prisma/client';
 export interface IUser {
   id: string;
   email: string;
-  password: string;
+  password?: string;
   fullName: string;
   phone: string | null;
   role: Role;
