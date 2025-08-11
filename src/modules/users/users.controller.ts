@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Delete,
+  Query,
   Patch,
   UseGuards,
 } from '@nestjs/common';
@@ -24,14 +25,14 @@ export class UsersController {
 
   @Post()
   @Roles(Role.SUPERADMIN)
-  create(@Body() dto: CreateUserDto): Promise<IUser> {
+  async create(@Body() dto: CreateUserDto): Promise<IUser> {
     return this.usersService.create(dto);
   }
 
   @Get()
   @Roles(Role.SUPERADMIN)
-  findAll(): Promise<IUser[]> {
-    return this.usersService.findAll();
+  async findAll(@Query() query: Record<string, any>) {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')
@@ -47,7 +48,7 @@ export class UsersController {
 
   @Delete(':id')
   @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
-  delete(@Param('id') id: string): Promise<IUser> {
+  delete(@Param('id') id: string): Promise<{ success: boolean }> {
     return this.usersService.delete(id);
   }
 }

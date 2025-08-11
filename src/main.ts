@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RateLimitMiddleware } from './common/middlewares/rate-limit.middleware';
+import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as cookieParser from 'cookie-parser';
 
@@ -25,6 +26,14 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
   });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
   app.use(cookieParser());
 

@@ -7,33 +7,34 @@ import { hashPassword } from '../../common/utils/crypto.util';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepo: UsersRepository) {}
+  constructor(private readonly usersRepo: UsersRepository) {}
 
   async create(dto: CreateUserDto): Promise<IUser> {
     dto.password = await hashPassword(dto.password);
-    return this.userRepo.create(dto);
+    return this.usersRepo.createUser(dto);
   }
 
-  findAll(): Promise<IUser[]> {
-    return this.userRepo.findAll();
+  findAll(query: Record<string, any>) {
+    return this.usersRepo.findAll(query);
   }
 
-  findById(id: string): Promise<IUser> {
-    return this.userRepo.findById(id);
+  findById(id: string) {
+    return this.usersRepo.getById(id);
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<IUser> {
+  async update(id: string, dto: UpdateUserDto) {
     if (dto.password) {
       dto.password = await hashPassword(dto.password);
     }
-    return this.userRepo.update(id, dto);
+    return this.usersRepo.updateUser(id, dto);
   }
 
-  delete(id: string): Promise<IUser> {
-    return this.userRepo.delete(id);
+  async delete(id: string): Promise<{ success: boolean }> {
+    await this.usersRepo.delete(id);
+    return { success: true };
   }
 
-  findByEmail(email: string): Promise<IUser | null> {
-    return this.userRepo.findByEmail(email);
+  findByEmail(email: string) {
+    return this.usersRepo.getByEmail(email);
   }
 }

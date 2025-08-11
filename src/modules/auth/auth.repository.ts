@@ -18,11 +18,11 @@ export class AuthRepository {
   }
 
   async findUserByEmail(email: string) {
-    return this.usersRepo.findByEmail(email);
+    return this.usersRepo.getByEmail(email);
   }
 
   async findUserById(userId: string) {
-    return this.usersRepo.findById(userId);
+    return this.usersRepo.findOne(userId);
   }
 
   async createSession(sessionId: string, data: any) {
