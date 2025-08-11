@@ -82,7 +82,7 @@ export class AuthController {
       .json(APIResponse.success(null, 'Logged out'));
   }
 
-  @Get('check-auth')
+  @Get('me')
   @UseGuards(SessionGuard)
   async checkAuth(@CurrentUser() user: JwtPayload) {
     const currentUser = await this.auth.getCurrentUser(user.id);
