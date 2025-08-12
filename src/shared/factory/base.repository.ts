@@ -1,7 +1,6 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../../common/exceptions/api-error.exception';
-import { APIResponse } from '../../common/utils/api-response.util';
 import { ApiFeatures } from '../../common/utils/api-features.util';
 import {
   sanitizeUsers,
@@ -18,14 +17,10 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     protected readonly searchableFields: string[] = [],
   ) {}
 
-  async create(data: Partial<T>) {
+  async create(data: Partial<T>): Promise<T> {
     try {
       const newDoc = await this.model.create({ data });
-      return APIResponse.success(
-        newDoc,
-        'Created successfully',
-        HttpStatus.CREATED,
-      );
+      return sanitizeUser(newDoc) as T;
     } catch (error) {
       this.logger.error(error);
       throw new ApiError(
@@ -35,10 +30,10 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     }
   }
 
-  async update(id: string, data: Partial<T>) {
+  async update(id: string, data: Partial<T>): Promise<T> {
     try {
       const updated = await this.model.update({ where: { id }, data });
-      return APIResponse.success(updated, 'Updated successfully');
+      return sanitizeUser(updated) as T;
     } catch (error: any) {
       if (error.code === 'P2025') {
         throw new ApiError(
@@ -54,14 +49,9 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     }
   }
 
-  async delete(id: string) {
+  async delete(id: string): Promise<void> {
     try {
       await this.model.delete({ where: { id } });
-      return APIResponse.success(
-        null,
-        'Deleted successfully',
-        HttpStatus.NO_CONTENT,
-      );
     } catch (error: any) {
       if (error.code === 'P2025') {
         throw new ApiError(
@@ -77,7 +67,7 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     }
   }
 
-  async findOne(id: string, include?: any) {
+  async findOne(id: string, include?: any): Promise<T> {
     const doc = await this.model.findUnique({ where: { id }, include });
     if (!doc) {
       throw new ApiError(
@@ -85,16 +75,20 @@ export class BaseRepository<T extends { id: string; password?: string }> {
         HttpStatus.NOT_FOUND,
       );
     }
-
-    const sanitizedDoc = sanitizeUser(doc);
-
-    return APIResponse.success(sanitizedDoc, 'Data retrieved successfully');
+    return sanitizeUser(doc) as T;
   }
 
   async findAll(
     queryString: Record<string, any>,
     baseFilter: Record<string, any> = {},
-  ) {
+  ): Promise<{
+    data: T[];
+    total: number;
+    page: number;
+    limit: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  }> {
     const totalRecords = await this.model.count({ where: baseFilter });
 
     const apiFeatures = new ApiFeatures<T>(
@@ -110,18 +104,13 @@ export class BaseRepository<T extends { id: string; password?: string }> {
 
     const { data, pagination } = await apiFeatures.query();
 
-    const sanitizedData = sanitizeUsers(data);
-
-    return APIResponse.paginated(
-      sanitizedData,
-      {
-        total: pagination?.totalRecords ?? 0,
-        page: pagination?.currentPage ?? 1,
-        limit: pagination?.limit ?? 0,
-        hasNext: pagination?.hasNext ?? false,
-        hasPrev: pagination?.hasPrev ?? false,
-      },
-      `Fetched ${data.length} records successfully`,
-    );
+    return {
+      data: sanitizeUsers(data) as T[],
+      total: pagination?.totalRecords ?? 0,
+      page: pagination?.currentPage ?? 1,
+      limit: pagination?.limit ?? 0,
+      hasNext: pagination?.hasNext ?? false,
+      hasPrev: pagination?.hasPrev ?? false,
+    };
   }
 }

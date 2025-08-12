@@ -8,15 +8,16 @@ import {
   Query,
   Patch,
   UseGuards,
+  HttpStatus,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { IUser } from './interfaces/user.interface';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
+import { APIResponse } from '../../common/utils/api-response.util';
 
 @Controller('users')
 @UseGuards(SessionGuard, RolesGuard)
@@ -25,30 +26,48 @@ export class UsersController {
 
   @Post()
   @Roles(Role.SUPERADMIN)
-  async create(@Body() dto: CreateUserDto): Promise<IUser> {
-    return this.usersService.create(dto);
+  async create(@Body() dto: CreateUserDto) {
+    const user = await this.usersService.create(dto);
+    return APIResponse.success(
+      user,
+      'User created successfully',
+      HttpStatus.CREATED,
+    );
   }
 
   @Get()
   @Roles(Role.SUPERADMIN)
   async findAll(@Query() query: Record<string, any>) {
-    return this.usersService.findAll(query);
+    const { data, total, page, limit, hasNext, hasPrev } =
+      await this.usersService.findAll(query);
+    return APIResponse.paginated(
+      data,
+      { total, page, limit, hasNext, hasPrev },
+      'Fetched users successfully',
+    );
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<IUser> {
-    return this.usersService.findById(id);
+  async findOne(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    return APIResponse.success(user, 'User retrieved successfully');
   }
 
   @Patch(':id')
   @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto): Promise<IUser> {
-    return this.usersService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    const updatedUser = await this.usersService.update(id, dto);
+    return APIResponse.success(updatedUser, 'User updated successfully');
   }
 
   @Delete(':id')
   @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
-  delete(@Param('id') id: string): Promise<{ success: boolean }> {
-    return this.usersService.delete(id);
+  async delete(@Param('id') id: string) {
+    await this.usersService.delete(id);
+    return APIResponse.success(
+      null,
+      'User deleted successfully',
+      HttpStatus.NO_CONTENT,
+    );
   }
 }
