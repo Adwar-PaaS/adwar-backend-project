@@ -45,14 +45,14 @@ export class UsersController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
-    return APIResponse.success(user, 'User retrieved successfully');
+    return APIResponse.success({ user }, 'User retrieved successfully');
   }
 
   @Patch(':id')
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const updatedUser = await this.usersService.update(id, dto);
-    return APIResponse.success(updatedUser, 'User updated successfully');
+    return APIResponse.success({ updatedUser }, 'User updated successfully');
   }
 
   @Delete(':id')

@@ -38,9 +38,9 @@ export class TenantController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateTenantDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<APIResponse<{ tenant: ITenant }>> {
+  ): Promise<APIResponse<ITenant>> {
     const tenant = await this.service.create(dto, user.id, file);
-    return APIResponse.success({ tenant }, 'Tenant created successfully');
+    return APIResponse.success(tenant, 'Tenant created successfully');
   }
 
   @Get()
@@ -80,10 +80,10 @@ export class TenantController {
 
   @Delete(':id')
   @Roles(Role.SUPERADMIN)
-  async delete(@Param('id') id: string): Promise<APIResponse<ITenant>> {
-    const deleted = await this.service.delete(id);
+  async delete(@Param('id') id: string): Promise<APIResponse<null>> {
+    await this.service.delete(id);
     return APIResponse.success(
-      deleted,
+      null,
       'Tenant deleted successfully',
       HttpStatus.NO_CONTENT,
     );
