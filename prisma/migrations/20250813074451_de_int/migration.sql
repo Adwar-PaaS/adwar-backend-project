@@ -1,6 +1,9 @@
 -- CreateEnum
 CREATE TYPE "public"."Role" AS ENUM ('SUPERADMIN', 'ADMIN', 'DRIVER', 'PICKER', 'OPERATION', 'CUSTOMER');
 
+-- CreateEnum
+CREATE TYPE "public"."TenantStatus" AS ENUM ('Activate', 'Deactivate');
+
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
@@ -19,10 +22,13 @@ CREATE TABLE "public"."User" (
 -- CreateTable
 CREATE TABLE "public"."Tenant" (
     "id" TEXT NOT NULL,
-    "status" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "status" "public"."TenantStatus" NOT NULL,
     "lastLogin" TIMESTAMP(3),
     "logoUrl" TEXT,
     "address" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
     "createdBy" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -44,6 +50,9 @@ CREATE TABLE "public"."Warehouse" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Tenant_email_key" ON "public"."Tenant"("email");
 
 -- AddForeignKey
 ALTER TABLE "public"."User" ADD CONSTRAINT "User_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
