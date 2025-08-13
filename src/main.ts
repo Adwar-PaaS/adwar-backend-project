@@ -8,12 +8,15 @@ import session from 'express-session';
 import { RedisStore } from 'connect-redis';
 import { RedisService } from './db/redis/redis.service';
 import { sessionCookieConfig } from './config/cookie.config';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
 
   app.use(helmet());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -21,11 +24,22 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   app.use(cookieParser());
+
+  app.set('trust proxy', 1);
+
+  app.enableCors({
+    origin: configService.get<string[]>('CORS_ORIGINS') || [
+      'http://localhost:5173',
+    ],
+    credentials: true,
+  });
 
   const redisService = app.get(RedisService);
   const redisClient = redisService.getConnection();
-
   const store = new RedisStore({
     client: redisClient,
     prefix: 'sess:',
