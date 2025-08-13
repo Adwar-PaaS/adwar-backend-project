@@ -1,10 +1,16 @@
 import type { CookieOptions as ExpressCookieOptions } from 'express';
 import type { CookieOptions as SessionCookieOptions } from 'express-session';
 
-const cookieConfig = {
+const isProd = process.env.NODE_ENV === 'production';
+
+const cookieConfig: Pick<
+  ExpressCookieOptions,
+  'httpOnly' | 'secure' | 'sameSite' | 'path'
+> = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax',
+  path: '/',
 };
 
 const maxAgeMs = Number(process.env.SESSION_MAX_AGE) || 7 * 24 * 60 * 60 * 1000;
