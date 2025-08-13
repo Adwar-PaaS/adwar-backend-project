@@ -16,11 +16,14 @@ export default Joi.object({
   REDIS_PASSWORD: Joi.string().allow('').optional(),
   REDIS_USERNAME: Joi.string().optional(),
 
+  SESSION_COOKIE_NAME: Joi.string().required(),
+  SESSION_SECRET: Joi.string().required(),
+  SESSION_MAX_AGE: Joi.number().default(604800000),
+
+  THROTTLE_TTL: Joi.number().default(60),
+  THROTTLE_LIMIT: Joi.number().default(100),
+
   CLOUDINARY_CLOUD_NAME: Joi.string().required(),
   CLOUDINARY_API_KEY: Joi.string().required(),
   CLOUDINARY_API_SECRET: Joi.string().required(),
-
-  JWT_SECRET: Joi.string().required(),
-
-  JWT_EXPIRES_IN: Joi.string().default('1d'),
 });

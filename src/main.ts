@@ -1,32 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { RateLimitMiddleware } from './common/middlewares/rate-limit.middleware';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import { RedisStore } from 'connect-redis';
+import { RedisService } from './db/redis/redis.service';
+import { sessionCookieConfig } from './config/cookie.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  const port = parseInt(
-    process.env.PORT || configService.get<string>('PORT') || '3000',
-    10,
-  );
-
-  const allowedOrigins = configService.get<string[]>('CORS_ORIGINS') || [
-    'http://localhost:5173',
-  ];
-
   app.use(helmet());
-
-  app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
-  });
-
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -34,13 +21,30 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
   app.use(cookieParser());
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  const redisService = app.get(RedisService);
+  const redisClient = redisService.getConnection();
 
-  const rateLimitMiddleware = new RateLimitMiddleware();
-  app.use(rateLimitMiddleware.use.bind(rateLimitMiddleware));
+  const store = new RedisStore({
+    client: redisClient,
+    prefix: 'sess:',
+  });
+
+  app.use(
+    session({
+      store,
+      name: configService.get<string>('SESSION_COOKIE_NAME') || 'session_id',
+      secret: configService.get<string>('SESSION_SECRET') || 'please-change-me',
+      resave: false,
+      saveUninitialized: false,
+      rolling: false,
+      cookie: sessionCookieConfig,
+    }),
+  );
+
+  const port =
+    Number(process.env.PORT) || configService.get<number>('PORT') || 3000;
 
   await app.listen(port, '0.0.0.0');
   console.log(`🚀 App running on http://localhost:${port}`);

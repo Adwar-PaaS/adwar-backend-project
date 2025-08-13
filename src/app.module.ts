@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/users/users.module';
 import { TenantModule } from './modules/tenant/tenant.module';
@@ -14,6 +15,19 @@ import { AppService } from './app.service';
       isGlobal: true,
       validationSchema,
     }),
+
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            ttl: config.get<number>('THROTTLE_TTL') || 60,
+            limit: config.get<number>('THROTTLE_LIMIT') || 100,
+          },
+        ],
+      }),
+    }),
+
     AuthModule,
     UserModule,
     TenantModule,

@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "public"."Role" AS ENUM ('SUPERADMIN', 'TENANTADMIN', 'DRIVER', 'PICKER', 'OPERATION', 'CUSTOMER');
+CREATE TYPE "public"."Role" AS ENUM ('SUPERADMIN', 'ADMIN', 'DRIVER', 'PICKER', 'OPERATION', 'CUSTOMER');
 
 -- CreateTable
 CREATE TABLE "public"."User" (

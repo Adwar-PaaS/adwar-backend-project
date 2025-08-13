@@ -1,91 +1,103 @@
 import {
-  Controller,
-  Post,
   Body,
-  UseGuards,
-  Req,
+  Controller,
   Get,
-  Res,
   HttpStatus,
+  Post,
+  Req,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
-import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
+import { Request, Response } from 'express';
+import { SessionGuard } from './guards/session.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { APIResponse } from '../../common/utils/api-response.util';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { SessionGuard } from './guards/session.guard';
-import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
-import {
-  setAuthCookies,
-  clearAuthCookies,
-} from '../../common/utils/cookie.util';
-import { COOKIE_NAMES } from '../../common/utils/constants.util';
-import { APIResponse } from '../../common/utils/api-response.util';
+import type { Session } from 'express-session';
+import { clearCookieConfig } from '../../config/cookie.config';
+
+export interface AuthenticatedRequest extends Request {
+  session: Session & { userId?: string; role?: string };
+}
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Res() res: Response) {
-    const result = await this.auth.register(dto);
-    return res
-      .status(HttpStatus.CREATED)
-      .json(
-        APIResponse.success(
-          result,
-          'Registration successful',
-          HttpStatus.CREATED,
-        ),
-      );
+  async register(@Body() dto: RegisterDto) {
+    const user = await this.auth.register(dto);
+    return APIResponse.success(
+      { user },
+      'Registration successful',
+      HttpStatus.CREATED,
+    );
   }
 
   @Post('login')
-  async login(
-    @Body() dto: LoginDto,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    const { accessToken, refreshToken, sessionId, user } =
-      await this.auth.login(dto, req.ip, req.headers['user-agent']);
-    setAuthCookies(res, accessToken, refreshToken, sessionId);
-    return res
-      .status(HttpStatus.OK)
-      .json(APIResponse.success({ user }, 'Login successful'));
-  }
+  async login(@Body() dto: LoginDto, @Req() req: AuthenticatedRequest) {
+    const user = await this.auth.login(dto.email, dto.password);
 
-  @Post('refresh-token')
-  async refresh(@Req() req: Request, @Res() res: Response) {
-    const refreshToken = req.cookies?.[COOKIE_NAMES.REFRESH];
-    const sessionId = req.cookies?.[COOKIE_NAMES.SESSION];
-
-    const result = await this.auth.refresh(sessionId, refreshToken);
-    setAuthCookies(
-      res,
-      result.accessToken,
-      result.refreshToken,
-      result.sessionId,
+    await new Promise<void>((resolve, reject) =>
+      req.session.regenerate((err) => (err ? reject(err) : resolve())),
     );
 
-    return res
-      .status(HttpStatus.OK)
-      .json(APIResponse.success({ user: result.user }, 'Token refreshed'));
+    req.session.userId = user.id;
+    if (user.role) req.session.role = user.role;
+
+    await new Promise<void>((resolve, reject) =>
+      req.session.save((err) => (err ? reject(err) : resolve())),
+    );
+
+    return APIResponse.success({ user }, 'Login successful', HttpStatus.OK);
   }
 
   @Post('logout')
   @UseGuards(SessionGuard)
-  async logout(@Req() req: Request, @Res() res: Response) {
-    await this.auth.logout(req.cookies?.[COOKIE_NAMES.SESSION]);
-    clearAuthCookies(res);
+  async logout(@Req() req: AuthenticatedRequest, @Res() res: Response) {
+    await new Promise<void>((resolve, reject) =>
+      req.session.destroy((err) => (err ? reject(err) : resolve())),
+    );
+
+    res.clearCookie(
+      process.env.SESSION_COOKIE_NAME || 'session_id',
+      clearCookieConfig,
+    );
+
     return res
       .status(HttpStatus.OK)
-      .json(APIResponse.success(null, 'Logged out'));
+      .json(APIResponse.success(null, 'Logged out successfully'));
   }
 
   @Get('me')
   @UseGuards(SessionGuard)
-  async checkAuth(@CurrentUser() user: JwtPayload) {
+  async me(@CurrentUser() user: { id: string }) {
     const currentUser = await this.auth.getCurrentUser(user.id);
-    return APIResponse.success({ user: currentUser }, 'Authenticated user');
+    return APIResponse.success(
+      { user: currentUser },
+      'Authenticated user',
+      HttpStatus.OK,
+    );
+  }
+
+  @Post('refresh')
+  @UseGuards(SessionGuard)
+  async refresh(@Req() req: AuthenticatedRequest) {
+    if (!req.session) throw new Error('Session missing');
+    req.session.touch();
+    await new Promise<void>((resolve, reject) =>
+      req.session.save((err) => (err ? reject(err) : resolve())),
+    );
+
+    const currentUser = await this.auth.getCurrentUser(
+      req.session.userId as string,
+    );
+    return APIResponse.success(
+      { user: currentUser },
+      'Session refreshed successfully',
+      HttpStatus.OK,
+    );
   }
 }

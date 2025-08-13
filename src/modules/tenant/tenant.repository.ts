@@ -1,30 +1,31 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
+import { Tenant, TenantStatus } from '@prisma/client';
+import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
-import { ITenant } from './interfaces/tenant.interface';
-import { TenantStatus } from '@prisma/client';
 import { checkEmailUnique } from '../../common/utils/check-email.util';
 
 type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
   logoUrl?: string;
   createdBy: string;
 };
-
 type UpdateTenantInput = UpdateTenantDto & { logoUrl?: string };
 
 const creatorSelect = { creator: { select: { fullName: true } } };
 
 @Injectable()
-export class TenantRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class TenantRepository extends BaseRepository<Tenant> {
+  constructor(private readonly prismaService: PrismaService) {
+    super(prismaService, prismaService.tenant, ['name', 'email']);
+  }
 
-  async create(data: CreateTenantInput): Promise<ITenant> {
-    await checkEmailUnique(this.prisma, 'tenant', data.email);
+  async createTenant(data: CreateTenantInput): Promise<Tenant> {
+    await checkEmailUnique(this.prismaService, 'tenant', data.email);
 
     const { createdBy, status, ...rest } = data;
 
-    return this.prisma.tenant.create({
+    return this.model.create({
       data: {
         ...rest,
         status: status ?? TenantStatus.Activate,
@@ -34,45 +35,40 @@ export class TenantRepository {
     });
   }
 
-  async findAll(): Promise<ITenant[]> {
-    return this.prisma.tenant.findMany({
-      include: creatorSelect,
-    });
+  async findAllWithCreator(): Promise<Tenant[]> {
+    return this.model.findMany({ include: creatorSelect });
   }
 
-  async findById(id: string): Promise<ITenant> {
-    const tenant = await this.prisma.tenant.findUnique({
+  async getById(id: string): Promise<Tenant> {
+    const tenant = await this.model.findUnique({
       where: { id },
       include: creatorSelect,
     });
-
     if (!tenant) throw new NotFoundException('Tenant not found');
     return tenant;
   }
 
-  async update(id: string, data: UpdateTenantInput): Promise<ITenant> {
+  async updateTenant(id: string, data: UpdateTenantInput): Promise<Tenant> {
     if (data.email) {
-      await checkEmailUnique(this.prisma, 'tenant', data.email, id);
+      await checkEmailUnique(this.prismaService, 'tenant', data.email, id);
     }
 
-    return this.prisma.tenant.update({
+    return this.model.update({
       where: { id },
       data,
       include: creatorSelect,
     });
   }
 
-  async updateStatus(id: string, status: TenantStatus): Promise<ITenant> {
-    return this.prisma.tenant.update({
+  async updateStatus(id: string, status: TenantStatus): Promise<Tenant> {
+    return this.model.update({
       where: { id },
       data: { status },
       include: creatorSelect,
     });
   }
 
-  async delete(id: string): Promise<ITenant> {
-    return this.prisma.tenant.delete({
-      where: { id },
-    });
+  async deleteTenant(id: string): Promise<Tenant> {
+    return this.model.delete({ where: { id } });
   }
 }

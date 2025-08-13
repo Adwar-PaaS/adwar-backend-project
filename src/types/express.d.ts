@@ -1,9 +1,8 @@
-import { JwtPayload } from '../modules/auth/interfaces/jwt-payload.interface';
+import 'express-session';
+import { AuthUser } from '../modules/auth/interfaces/auth-user.interface';
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JwtPayload;
-    }
+declare module 'express-session' {
+  interface SessionData {
+    user?: AuthUser;
   }
 }

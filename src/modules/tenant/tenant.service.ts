@@ -9,7 +9,7 @@ import { TenantStatus } from '@prisma/client';
 @Injectable()
 export class TenantService {
   constructor(
-    private readonly repo: TenantRepository,
+    private readonly tenantRepo: TenantRepository,
     private readonly uploadService: UploadService,
   ) {}
 
@@ -21,21 +21,22 @@ export class TenantService {
     const logoUrl = file
       ? await this.uploadService.uploadImage(file)
       : dto.logoUrl;
+
     const { logoUrl: _, ...cleanDto } = dto;
 
-    return this.repo.create({
+    return this.tenantRepo.createTenant({
       ...cleanDto,
       logoUrl,
       createdBy,
     });
   }
 
-  findAll(): Promise<ITenant[]> {
-    return this.repo.findAll();
+  findAll(query: Record<string, any>) {
+    return this.tenantRepo.findAll(query);
   }
 
   findById(id: string): Promise<ITenant> {
-    return this.repo.findById(id);
+    return this.tenantRepo.getById(id);
   }
 
   async update(
@@ -46,7 +47,7 @@ export class TenantService {
     let logoUrl = dto.logoUrl;
 
     if (file) {
-      const existing = await this.repo.findById(id);
+      const existing = await this.tenantRepo.getById(id);
       if (existing.logoUrl) {
         await this.uploadService.deleteFile(existing.logoUrl);
       }
@@ -55,24 +56,24 @@ export class TenantService {
 
     const { logoUrl: _, ...cleanDto } = dto;
 
-    return this.repo.update(id, {
+    return this.tenantRepo.updateTenant(id, {
       ...cleanDto,
       logoUrl,
     });
   }
 
   async toggleStatus(id: string): Promise<ITenant> {
-    const existing = await this.repo.findById(id);
+    const existing = await this.tenantRepo.getById(id);
 
     const newStatus =
       existing.status === TenantStatus.Activate
         ? TenantStatus.Deactivate
         : TenantStatus.Activate;
 
-    return this.repo.updateStatus(id, newStatus);
+    return this.tenantRepo.updateStatus(id, newStatus);
   }
 
   delete(id: string): Promise<ITenant> {
-    return this.repo.delete(id);
+    return this.tenantRepo.deleteTenant(id);
   }
 }

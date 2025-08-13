@@ -29,7 +29,7 @@ export class UsersController {
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
     return APIResponse.success(
-      user,
+      { user },
       'User created successfully',
       HttpStatus.CREATED,
     );
@@ -38,13 +38,8 @@ export class UsersController {
   @Get()
   @Roles(Role.SUPERADMIN)
   async findAll(@Query() query: Record<string, any>) {
-    const { data, total, page, limit, hasNext, hasPrev } =
-      await this.usersService.findAll(query);
-    return APIResponse.paginated(
-      data,
-      { total, page, limit, hasNext, hasPrev },
-      'Fetched users successfully',
-    );
+    const users = await this.usersService.findAll(query);
+    return APIResponse.success({ users }, 'Fetched users successfully');
   }
 
   @Get(':id')
@@ -54,14 +49,14 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const updatedUser = await this.usersService.update(id, dto);
     return APIResponse.success(updatedUser, 'User updated successfully');
   }
 
   @Delete(':id')
-  @Roles(Role.SUPERADMIN, Role.TENANTADMIN)
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
   async delete(@Param('id') id: string) {
     await this.usersService.delete(id);
     return APIResponse.success(

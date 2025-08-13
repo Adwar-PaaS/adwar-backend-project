@@ -10,6 +10,8 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
+  Query,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TenantService } from './tenant.service';
@@ -20,9 +22,9 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, RolesGuard)
@@ -35,16 +37,16 @@ export class TenantController {
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateTenantDto,
-    @CurrentUser() user: JwtPayload,
-  ): Promise<APIResponse<ITenant>> {
+    @CurrentUser() user: AuthUser,
+  ): Promise<APIResponse<{ tenant: ITenant }>> {
     const tenant = await this.service.create(dto, user.id, file);
-    return APIResponse.success(tenant, 'Tenant created successfully');
+    return APIResponse.success({ tenant }, 'Tenant created successfully');
   }
 
   @Get()
   @Roles(Role.SUPERADMIN)
-  async findAll(): Promise<APIResponse<ITenant[]>> {
-    const tenants = await this.service.findAll();
+  async findAll(@Query() query: Record<string, any>) {
+    const tenants = await this.service.findAll(query);
     return APIResponse.success(tenants, 'Tenants retrieved successfully');
   }
 
@@ -79,7 +81,11 @@ export class TenantController {
   @Delete(':id')
   @Roles(Role.SUPERADMIN)
   async delete(@Param('id') id: string): Promise<APIResponse<ITenant>> {
-    const tenant = await this.service.delete(id);
-    return APIResponse.success(tenant, 'Tenant deleted successfully');
+    const deleted = await this.service.delete(id);
+    return APIResponse.success(
+      deleted,
+      'Tenant deleted successfully',
+      HttpStatus.NO_CONTENT,
+    );
   }
 }
