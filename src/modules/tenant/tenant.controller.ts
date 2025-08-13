@@ -38,22 +38,37 @@ export class TenantController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateTenantDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<APIResponse<ITenant>> {
+  ): Promise<APIResponse<{ tenant: ITenant }>> {
     const tenant = await this.service.create(dto, user.id, file);
-    return APIResponse.success(tenant, 'Tenant created successfully');
+    return APIResponse.success({ tenant }, 'Tenant created successfully');
   }
 
   @Get()
   @Roles(Role.SUPERADMIN)
   async findAll(@Query() query: Record<string, any>) {
-    const tenants = await this.service.findAll(query);
-    return APIResponse.success(tenants, 'Tenants retrieved successfully');
+    const { data, total, page, limit, hasNext, hasPrev } =
+      await this.service.findAll(query);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Fetched tenants successfully',
+      data: {
+        tenants: data,
+        total,
+        page,
+        limit,
+        hasNext,
+        hasPrev,
+      },
+    };
   }
 
   @Get(':id')
-  async findById(@Param('id') id: string): Promise<APIResponse<ITenant>> {
+  async findById(
+    @Param('id') id: string,
+  ): Promise<APIResponse<{ tenant: ITenant }>> {
     const tenant = await this.service.findById(id);
-    return APIResponse.success(tenant, 'Tenant retrieved successfully');
+    return APIResponse.success({ tenant }, 'Tenant retrieved successfully');
   }
 
   @Put(':id')
@@ -63,17 +78,19 @@ export class TenantController {
     @Param('id') id: string,
     @Body() dto: UpdateTenantDto,
     @UploadedFile() file?: Express.Multer.File,
-  ): Promise<APIResponse<ITenant>> {
+  ): Promise<APIResponse<{ tenant: ITenant }>> {
     const tenant = await this.service.update(id, dto, file);
-    return APIResponse.success(tenant, 'Tenant updated successfully');
+    return APIResponse.success({ tenant }, 'Tenant updated successfully');
   }
 
   @Patch(':id/status')
   @Roles(Role.SUPERADMIN)
-  async updateStatus(@Param('id') id: string): Promise<APIResponse<ITenant>> {
+  async updateStatus(
+    @Param('id') id: string,
+  ): Promise<APIResponse<{ tenant: ITenant }>> {
     const tenant = await this.service.toggleStatus(id);
     return APIResponse.success(
-      tenant,
+      { tenant },
       `Tenant status updated to ${tenant.status}`,
     );
   }

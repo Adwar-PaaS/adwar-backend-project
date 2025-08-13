@@ -38,8 +38,21 @@ export class UsersController {
   @Get()
   @Roles(Role.SUPERADMIN)
   async findAll(@Query() query: Record<string, any>) {
-    const users = await this.usersService.findAll(query);
-    return APIResponse.success({ users }, 'Fetched users successfully');
+    const { data, total, page, limit, hasNext, hasPrev } =
+      await this.usersService.findAll(query);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Fetched users successfully',
+      data: {
+        users: data,
+        total,
+        page,
+        limit,
+        hasNext,
+        hasPrev,
+      },
+    };
   }
 
   @Get(':id')
