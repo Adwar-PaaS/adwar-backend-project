@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ApiError } from '../../common/exceptions/api-error.exception';
 import { ApiFeatures } from '../../common/utils/api-features.util';
 import {
@@ -7,26 +7,45 @@ import {
   sanitizeUser,
 } from '../../common/utils/sanitize-user.util';
 
+type PrismaDelegate = {
+  create: (args: any) => Promise<any>;
+  update: (args: any) => Promise<any>;
+  delete: (args: any) => Promise<any>;
+  findUnique: (args: any) => Promise<any>;
+  findMany: (args: any) => Promise<any[]>;
+  count: (args: any) => Promise<number>;
+};
+
 @Injectable()
 export class BaseRepository<T extends { id: string; password?: string }> {
   protected readonly logger = new Logger(BaseRepository.name);
 
   constructor(
     protected readonly prisma: PrismaClient,
-    protected readonly model: any,
+    protected readonly model: PrismaDelegate,
     protected readonly searchableFields: string[] = [],
   ) {}
+
+  private handleError(action: string, error: any, id?: string): never {
+    if (error?.code === 'P2025' && id) {
+      throw new ApiError(
+        `No document found with id ${id}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    this.logger.error(
+      `Error during ${action}: ${error?.message || error}`,
+      error?.stack,
+    );
+    throw new ApiError(`Failed to ${action}`, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
 
   async create(data: Partial<T>): Promise<T> {
     try {
       const newDoc = await this.model.create({ data });
       return sanitizeUser(newDoc) as T;
     } catch (error) {
-      this.logger.error(error);
-      throw new ApiError(
-        'Failed to create resource',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      this.handleError('create resource', error);
     }
   }
 
@@ -34,85 +53,71 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     try {
       const updated = await this.model.update({ where: { id }, data });
       return sanitizeUser(updated) as T;
-    } catch (error: any) {
-      if (error.code === 'P2025') {
-        throw new ApiError(
-          `No document found with id ${id}`,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      this.logger.error(error);
-      throw new ApiError(
-        'Failed to update resource',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    } catch (error) {
+      this.handleError('update resource', error, id);
     }
   }
 
   async delete(id: string): Promise<void> {
     try {
       await this.model.delete({ where: { id } });
-    } catch (error: any) {
-      if (error.code === 'P2025') {
+    } catch (error) {
+      this.handleError('delete resource', error, id);
+    }
+  }
+
+  async findOne(
+    id: string,
+    include?: Prisma.SelectSubset<any, any>['include'],
+  ): Promise<T> {
+    try {
+      const doc = await this.model.findUnique({ where: { id }, include });
+      if (!doc) {
         throw new ApiError(
           `No document found with id ${id}`,
           HttpStatus.NOT_FOUND,
         );
       }
-      this.logger.error(error);
-      throw new ApiError(
-        'Failed to delete resource',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      return sanitizeUser(doc) as T;
+    } catch (error) {
+      this.handleError('find resource', error, id);
     }
-  }
-
-  async findOne(id: string, include?: any): Promise<T> {
-    const doc = await this.model.findUnique({ where: { id }, include });
-    if (!doc) {
-      throw new ApiError(
-        `No document found with id ${id}`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    return sanitizeUser(doc) as T;
   }
 
   async findAll(
     queryString: Record<string, any> = {},
     baseFilter: Record<string, any> = {},
-    include?: any,
-  ): Promise<{
-    data: T[];
-    total: number;
-    page: number;
-    limit: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  }> {
-    const totalRecords = await this.model.count({ where: baseFilter });
+    include?: Prisma.SelectSubset<any, any>['include'],
+  ) {
+    try {
+      const apiFeatures = new ApiFeatures<
+        typeof this.model,
+        Record<string, any>
+      >(this.model, queryString, this.searchableFields)
+        .filter()
+        .search()
+        .mergeFilter(baseFilter)
+        .sort()
+        .limitFields();
 
-    const apiFeatures = new ApiFeatures<typeof this.model, Record<string, any>>(
-      this.model,
-      queryString,
-      this.searchableFields,
-    )
-      .filter()
-      .search()
-      .sort()
-      .limitFields()
-      .paginate(totalRecords)
-      .include(include);
+      await apiFeatures.paginate();
 
-    const { data, pagination } = await apiFeatures.query();
+      if (include) {
+        apiFeatures.include(include);
+      }
 
-    return {
-      data: sanitizeUsers(data) as T[],
-      total: pagination?.totalRecords ?? 0,
-      page: pagination?.currentPage ?? 1,
-      limit: pagination?.limit ?? 0,
-      hasNext: pagination?.hasNext ?? false,
-      hasPrev: pagination?.hasPrev ?? false,
-    };
+      const { data, pagination } = await apiFeatures.query();
+
+      return {
+        data: sanitizeUsers(data) as T[],
+        total: pagination?.totalRecords ?? 0,
+        page: pagination?.currentPage ?? 1,
+        limit: pagination?.limit ?? 0,
+        hasNext: pagination?.hasNext ?? false,
+        hasPrev: pagination?.hasPrev ?? false,
+      };
+    } catch (error) {
+      this.handleError('find all resources', error);
+    }
   }
 }

@@ -13,7 +13,10 @@ export interface PaginationResult {
 }
 
 export class ApiFeatures<
-  TModel extends { findMany: (args?: any) => Promise<any> },
+  TModel extends {
+    findMany: (args?: any) => Promise<any>;
+    count?: (args?: any) => Promise<number>;
+  },
   TWhere extends Record<string, any>,
 > {
   private readonly logger = new Logger(ApiFeatures.name);
@@ -30,6 +33,8 @@ export class ApiFeatures<
   filter(): this {
     const { page, sort, limit, fields, search, ...filters } = this.queryString;
 
+    if (!filters || Object.keys(filters).length === 0) return this;
+
     for (const [key, rawValue] of Object.entries(filters)) {
       if (rawValue == null || rawValue === '') continue;
 
@@ -43,10 +48,12 @@ export class ApiFeatures<
 
       (this.queryOptions.where as Record<string, unknown>)[key] = parsed;
     }
+
     return this;
   }
 
   private parseFilterValue(key: string, value: string): unknown {
+    // Role validation
     if (key === 'role') {
       const upper = value.toUpperCase();
       if (!this.roleValues.has(upper as Role)) {
@@ -55,42 +62,51 @@ export class ApiFeatures<
       return upper as Role;
     }
 
+    // IN list filter
     if (value.includes(',')) {
-      return { in: value.split(',').map((v) => v.trim()) };
+      const items = value.split(',').map((v) => v.trim());
+      return this.detectAndConvertArray(items);
     }
 
+    // Comparison operators (> >= < <=)
     const match = value.match(/^([<>]=?)(.+)$/);
     if (match) {
-      const [, op, num] = match;
-      const parsedNum = Number(num);
-      if (!isNaN(parsedNum)) {
-        const opMap: Record<string, keyof Prisma.IntFilter> = {
-          '>': 'gt',
-          '>=': 'gte',
-          '<': 'lt',
-          '<=': 'lte',
-        };
-        return { [opMap[op]]: parsedNum };
-      }
+      const [, op, raw] = match;
+      const parsed = this.detectAndConvertSingle(raw.trim());
+      const opMap: Record<string, string> = {
+        '>': 'gt',
+        '>=': 'gte',
+        '<': 'lt',
+        '<=': 'lte',
+      };
+      return { [opMap[op]]: parsed };
     }
 
-    if (value === 'true' || value === 'false') {
-      return value === 'true';
-    }
+    // Boolean
+    if (value === 'true' || value === 'false') return value === 'true';
 
-    if (/^\d+$/.test(value)) {
-      return Number(value);
-    }
+    // Numeric / Date / String
+    return this.detectAndConvertSingle(value);
+  }
 
+  private detectAndConvertSingle(value: string): string | number | Date {
+    if (/^\d+$/.test(value)) return Number(value);
+    if (!isNaN(Date.parse(value))) return new Date(value);
     return value;
+  }
+
+  private detectAndConvertArray(values: string[]): { in: any[] } {
+    const converted = values.map((v) => this.detectAndConvertSingle(v));
+    return { in: converted };
   }
 
   search(): this {
     if (!this.queryString.search || !this.searchableFields.length) return this;
 
     const searchTerm = String(this.queryString.search).trim().toLowerCase();
-    const normalizedSearch = searchTerm.replace(/\s+/g, '');
+    if (!searchTerm) return this;
 
+    const normalizedSearch = searchTerm.replace(/\s+/g, '');
     const orConditions: TWhere[] = [];
 
     for (const field of this.searchableFields) {
@@ -112,25 +128,23 @@ export class ApiFeatures<
       }
     }
 
-    this.queryOptions.where = {
-      ...(this.queryOptions.where ?? {}),
-      OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
-    };
+    if (orConditions.length) {
+      this.queryOptions.where = {
+        ...(this.queryOptions.where ?? {}),
+        OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
+      };
+    }
 
     return this;
   }
 
   sort(): this {
-    if (
-      typeof this.queryString.sort === 'string' &&
-      this.queryString.sort.trim()
-    ) {
-      this.queryOptions.orderBy = this.queryString.sort
-        .split(',')
-        .map((field) => {
-          const isDesc = field.startsWith('-');
-          return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
-        });
+    const { sort } = this.queryString;
+    if (typeof sort === 'string' && sort.trim()) {
+      this.queryOptions.orderBy = sort.split(',').map((field) => {
+        const isDesc = field.startsWith('-');
+        return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
+      });
     } else {
       this.queryOptions.orderBy = [{ createdAt: 'desc' }];
     }
@@ -138,15 +152,16 @@ export class ApiFeatures<
   }
 
   limitFields(): this {
-    if (typeof this.queryString.fields !== 'string') return this;
+    const { fields } = this.queryString;
+    if (typeof fields !== 'string' || !fields.trim()) return this;
 
-    const fields = this.queryString.fields
+    const selectedFields = fields
       .split(',')
       .map((f) => f.trim())
       .filter(Boolean);
 
-    if (fields.length) {
-      this.queryOptions.select = fields.reduce(
+    if (selectedFields.length) {
+      this.queryOptions.select = selectedFields.reduce(
         (acc, f) => ({ ...acc, [f]: true }),
         {} as Record<string, boolean>,
       );
@@ -154,9 +169,30 @@ export class ApiFeatures<
     return this;
   }
 
-  paginate(totalRecords: number): this {
+  private async calculateTotal(): Promise<number> {
+    try {
+      return await (this.prismaModel as any).count({
+        where: this.queryOptions.where,
+      });
+    } catch (error: any) {
+      this.logger.error(
+        `Error calculating total: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        'Failed to calculate total records',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async paginate(): Promise<this> {
+    const totalRecords = await this.calculateTotal();
     const page = Math.max(Number(this.queryString.page) || 1, 1);
-    const limit = Math.max(Number(this.queryString.limit) || 50, 1);
+    const limit = Math.min(
+      Math.max(Number(this.queryString.limit) || 50, 1),
+      200,
+    );
     const totalPages = Math.max(Math.ceil(totalRecords / limit), 1);
     const safePage = Math.min(page, totalPages);
 
@@ -173,11 +209,24 @@ export class ApiFeatures<
       nextPage: safePage < totalPages ? safePage + 1 : null,
       prevPage: safePage > 1 ? safePage - 1 : null,
     };
+
     return this;
   }
 
   include(includeObj: object): this {
-    this.queryOptions.include = includeObj;
+    if (includeObj && typeof includeObj === 'object') {
+      this.queryOptions.include = includeObj;
+    }
+    return this;
+  }
+
+  mergeFilter(filter: Record<string, any>): this {
+    if (filter && typeof filter === 'object') {
+      this.queryOptions.where = {
+        ...(this.queryOptions.where || {}),
+        ...filter,
+      };
+    }
     return this;
   }
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
 import { User } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
@@ -14,20 +14,18 @@ export class UsersRepository extends BaseRepository<User> {
 
   async createUser(data: CreateUserDto): Promise<User> {
     await checkEmailUnique(this.prismaService, 'user', data.email);
-    return this.model.create({ data });
+    return this.create(data);
   }
 
   async updateUser(id: string, data: UpdateUserDto): Promise<User> {
     if (data.email) {
       await checkEmailUnique(this.prismaService, 'user', data.email, id);
     }
-    return this.model.update({ where: { id }, data });
+    return this.update(id, data);
   }
 
   async getById(id: string): Promise<User> {
-    const user = await this.model.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
-    return user;
+    return this.findOne(id);
   }
 
   async getByEmail(email: string): Promise<User | null> {

@@ -1,6 +1,6 @@
-import { IUser } from '../../modules/users/interfaces/user.interface';
-
-export function sanitizeUser<T extends IUser>(user: T): Omit<T, 'password'> {
+export function sanitizeUser<T extends { password?: string }>(
+  user: T,
+): Omit<T, 'password'> {
   const { password, ...safeUser } = user;
   return safeUser;
 }
@@ -8,5 +8,5 @@ export function sanitizeUser<T extends IUser>(user: T): Omit<T, 'password'> {
 export function sanitizeUsers<T extends { password?: string }>(
   users: T[],
 ): Omit<T, 'password'>[] {
-  return users.map(({ password, ...rest }) => rest);
+  return users.map(sanitizeUser);
 }
