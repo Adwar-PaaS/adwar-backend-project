@@ -5,8 +5,9 @@ export class CreateTenantDto {
   @IsString()
   name: string;
 
+  @IsOptional()
   @IsEnum(TenantStatus)
-  status: TenantStatus;
+  status?: TenantStatus;
 
   @IsEmail()
   email: string;

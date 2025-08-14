@@ -5,7 +5,6 @@ import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { checkEmailUnique } from '../../common/utils/check-email.util';
-import { ApiFeatures } from '../../common/utils/api-features.util';
 import slugify from 'slugify';
 
 type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
@@ -28,13 +27,13 @@ export class TenantRepository extends BaseRepository<Tenant> {
   async createTenant(data: CreateTenantInput): Promise<Tenant> {
     await checkEmailUnique(this.prismaService, 'tenant', data.email);
 
-    const { createdBy, status, ...rest } = data;
+    const { createdBy, ...rest } = data;
 
     return this.model.create({
       data: {
         ...rest,
         slug: slugify(data.name, { lower: true, strict: true }),
-        status: status ?? TenantStatus.Activate,
+        status: data.status ?? TenantStatus.Activate,
         creator: { connect: { id: createdBy } },
       },
       include: creatorSelect,
@@ -65,8 +64,8 @@ export class TenantRepository extends BaseRepository<Tenant> {
     return tenant.users;
   }
 
-  async findAllWithCreator(): Promise<Tenant[]> {
-    return this.model.findMany({ include: creatorSelect });
+  async findAllWithCreator(queryString: Record<string, any>) {
+    return this.findAll(queryString, {}, creatorSelect);
   }
 
   async getById(id: string): Promise<Tenant> {
@@ -93,33 +92,6 @@ export class TenantRepository extends BaseRepository<Tenant> {
       },
       include: creatorSelect,
     });
-  }
-
-  async findAllWithCreatorPagination(queryString: Record<string, any>) {
-    const totalRecords = await this.model.count();
-
-    const apiFeatures = new ApiFeatures<Tenant>(
-      this.model,
-      queryString,
-      this.searchableFields,
-    )
-      .filter()
-      .search()
-      .sort()
-      .limitFields()
-      .paginate(totalRecords)
-      .include(creatorSelect);
-
-    const { data, pagination } = await apiFeatures.query();
-
-    return {
-      data,
-      total: pagination?.totalRecords ?? 0,
-      page: pagination?.currentPage ?? 1,
-      limit: pagination?.limit ?? 0,
-      hasNext: pagination?.hasNext ?? false,
-      hasPrev: pagination?.hasPrev ?? false,
-    };
   }
 
   async updateStatus(id: string, status: TenantStatus): Promise<Tenant> {

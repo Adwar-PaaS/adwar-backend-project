@@ -79,8 +79,9 @@ export class BaseRepository<T extends { id: string; password?: string }> {
   }
 
   async findAll(
-    queryString: Record<string, any>,
+    queryString: Record<string, any> = {},
     baseFilter: Record<string, any> = {},
+    include?: any,
   ): Promise<{
     data: T[];
     total: number;
@@ -100,7 +101,8 @@ export class BaseRepository<T extends { id: string; password?: string }> {
       .search()
       .sort()
       .limitFields()
-      .paginate(totalRecords);
+      .paginate(totalRecords)
+      .include(include);
 
     const { data, pagination } = await apiFeatures.query();
 

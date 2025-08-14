@@ -26,16 +26,14 @@ export class ApiFeatures<T> {
 
   filter(): this {
     const { page, sort, limit, fields, search, ...filters } = this.queryString;
-    this.queryOptions.where ||= {};
 
-    for (const [key, rawValue] of Object.entries(filters)) {
-      if (rawValue == null) continue;
-      const parsed = this.parseFilterValue(key, String(rawValue).trim());
+    for (const [key, value] of Object.entries(filters)) {
+      if (value == null || value === '') continue;
+      const parsed = this.parseFilterValue(key, String(value).trim());
       if (parsed !== undefined) {
-        this.queryOptions.where[key] = parsed;
+        this.queryOptions.where![key] = parsed;
       }
     }
-
     return this;
   }
 
@@ -44,8 +42,11 @@ export class ApiFeatures<T> {
       const upper = value.toUpperCase();
       return this.roleValues.has(upper as Role) ? (upper as Role) : undefined;
     }
-    if (value.includes(','))
+
+    if (value.includes(',')) {
       return { in: value.split(',').map((v) => v.trim()) };
+    }
+
     const match = value.match(/^([<>]=?)(.+)$/);
     if (match) {
       const [, op, num] = match;
@@ -60,35 +61,47 @@ export class ApiFeatures<T> {
         return { [opMap[op]]: n };
       }
     }
-    if (value === 'true' || value === 'false') return value === 'true';
-    if (!isNaN(Number(value))) return Number(value);
+
+    if (value === 'true' || value === 'false') {
+      return value === 'true';
+    }
+
+    if (!isNaN(Number(value))) {
+      return Number(value);
+    }
+
     return value;
   }
 
   search(): this {
     if (!this.queryString.search || !this.searchableFields.length) return this;
 
-    const searchTerm = String(this.queryString.search).trim();
-    const lowerSearch = searchTerm.toLowerCase();
+    const searchTerm = String(this.queryString.search).trim().toLowerCase();
+    const normalized = searchTerm.replace(/\s+/g, '');
 
-    const existingOR = Array.isArray(this.queryOptions.where.OR)
-      ? this.queryOptions.where.OR
+    const existingOR = Array.isArray(this.queryOptions.where?.OR)
+      ? this.queryOptions.where!.OR
       : [];
 
-    const orConditions = this.searchableFields.flatMap(
-      (field): Prisma.UserWhereInput[] => {
+    const orConditions = this.searchableFields
+      .map((field) => {
         if (field === 'role') {
           const matches = (Object.values(Role) as string[]).filter((role) =>
-            role.toLowerCase().includes(lowerSearch),
+            role.replace(/\s+/g, '').toLowerCase().includes(normalized),
           ) as Role[];
-          return matches.length ? [{ [field]: { in: matches } }] : [];
+          return matches.length ? { [field]: { in: matches } } : null;
         }
 
-        return [{ [field]: { contains: searchTerm, mode: 'insensitive' } }];
-      },
-    );
+        return {
+          [field]: {
+            contains: normalized,
+            mode: 'insensitive',
+          },
+        };
+      })
+      .filter(Boolean);
 
-    this.queryOptions.where.OR = [...existingOR, ...orConditions];
+    this.queryOptions.where!.OR = [...existingOR, ...orConditions];
     return this;
   }
 
@@ -109,14 +122,19 @@ export class ApiFeatures<T> {
 
   limitFields(): this {
     if (typeof this.queryString.fields !== 'string') return this;
+
     const fields = this.queryString.fields
       .split(',')
       .map((f) => f.trim())
       .filter(Boolean);
+
     if (fields.length) {
       this.queryOptions.select = fields.reduce(
-        (acc, f) => ({ ...acc, [f]: true }),
-        {},
+        (acc, f) => {
+          acc[f] = true;
+          return acc;
+        },
+        {} as Record<string, boolean>,
       );
     }
     return this;
@@ -141,7 +159,6 @@ export class ApiFeatures<T> {
       nextPage: safePage < totalPages ? safePage + 1 : null,
       prevPage: safePage > 1 ? safePage - 1 : null,
     };
-
     return this;
   }
 
@@ -158,6 +175,7 @@ export class ApiFeatures<T> {
         : { data };
     } catch (error: any) {
       this.logger.error(`Error executing query: ${error.message}`, error.stack);
+
       if (error.message?.includes('not found in enum')) {
         const enumName =
           error.message.match(/enum '(\w+)'/)?.[1] ?? 'unknown enum';
@@ -166,6 +184,7 @@ export class ApiFeatures<T> {
           HttpStatus.BAD_REQUEST,
         );
       }
+
       throw new HttpException(
         'Failed to execute query',
         HttpStatus.INTERNAL_SERVER_ERROR,

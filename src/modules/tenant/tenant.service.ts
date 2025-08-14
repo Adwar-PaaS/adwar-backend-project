@@ -32,7 +32,7 @@ export class TenantService {
   }
 
   findAll(query: Record<string, any>) {
-    return this.tenantRepo.findAllWithCreatorPagination(query);
+    return this.tenantRepo.findAllWithCreator(query);
   }
 
   findById(id: string): Promise<ITenant> {

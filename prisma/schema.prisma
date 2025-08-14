@@ -42,7 +42,7 @@ model Tenant {
   id         String   @id @default(uuid())
   name       String
   slug       String   @unique
-  status     TenantStatus
+  status     TenantStatus  @default(Activate)
   lastLogin  DateTime?
   logoUrl    String?
   address    String?
