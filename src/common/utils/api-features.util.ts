@@ -12,27 +12,36 @@ export interface PaginationResult {
   prevPage: number | null;
 }
 
-export class ApiFeatures<T> {
+export class ApiFeatures<
+  TModel extends { findMany: (args?: any) => Promise<any> },
+  TWhere extends Record<string, any>,
+> {
   private readonly logger = new Logger(ApiFeatures.name);
   private readonly roleValues = new Set(Object.values(Role));
   private queryOptions: Prisma.SelectSubset<any, any> = { where: {} };
   private paginationResult: PaginationResult | null = null;
 
   constructor(
-    private readonly prismaModel: { findMany: Function },
+    private readonly prismaModel: TModel,
     private readonly queryString: Record<string, any> = {},
-    private readonly searchableFields: string[] = [],
+    private readonly searchableFields: (keyof TWhere & string)[] = [],
   ) {}
 
   filter(): this {
     const { page, sort, limit, fields, search, ...filters } = this.queryString;
 
-    for (const [key, value] of Object.entries(filters)) {
-      if (value == null || value === '') continue;
-      const parsed = this.parseFilterValue(key, String(value).trim());
-      if (parsed !== undefined) {
-        this.queryOptions.where![key] = parsed;
+    for (const [key, rawValue] of Object.entries(filters)) {
+      if (rawValue == null || rawValue === '') continue;
+
+      const parsed = this.parseFilterValue(key, String(rawValue).trim());
+      if (parsed === undefined) {
+        throw new HttpException(
+          `Invalid value for filter "${key}"`,
+          HttpStatus.BAD_REQUEST,
+        );
       }
+
+      (this.queryOptions.where as Record<string, unknown>)[key] = parsed;
     }
     return this;
   }
@@ -40,7 +49,10 @@ export class ApiFeatures<T> {
   private parseFilterValue(key: string, value: string): unknown {
     if (key === 'role') {
       const upper = value.toUpperCase();
-      return this.roleValues.has(upper as Role) ? (upper as Role) : undefined;
+      if (!this.roleValues.has(upper as Role)) {
+        throw new HttpException('Invalid role value', HttpStatus.BAD_REQUEST);
+      }
+      return upper as Role;
     }
 
     if (value.includes(',')) {
@@ -50,15 +62,15 @@ export class ApiFeatures<T> {
     const match = value.match(/^([<>]=?)(.+)$/);
     if (match) {
       const [, op, num] = match;
-      const n = Number(num);
-      if (!isNaN(n)) {
+      const parsedNum = Number(num);
+      if (!isNaN(parsedNum)) {
         const opMap: Record<string, keyof Prisma.IntFilter> = {
           '>': 'gt',
           '>=': 'gte',
           '<': 'lt',
           '<=': 'lte',
         };
-        return { [opMap[op]]: n };
+        return { [opMap[op]]: parsedNum };
       }
     }
 
@@ -66,7 +78,7 @@ export class ApiFeatures<T> {
       return value === 'true';
     }
 
-    if (!isNaN(Number(value))) {
+    if (/^\d+$/.test(value)) {
       return Number(value);
     }
 
@@ -79,37 +91,32 @@ export class ApiFeatures<T> {
     const searchTerm = String(this.queryString.search).trim().toLowerCase();
     const normalizedSearch = searchTerm.replace(/\s+/g, '');
 
-    const existingOR = Array.isArray(this.queryOptions.where?.OR)
-      ? this.queryOptions.where!.OR
-      : [];
+    const orConditions: TWhere[] = [];
 
-    const orConditions = this.searchableFields.flatMap(
-      (field: string): Record<string, unknown>[] => {
-        if (field === 'role') {
-          const matches = (Object.values(Role) as string[]).filter((role) =>
-            role.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch),
-          ) as Role[];
-          return matches.length ? [{ [field]: { in: matches } }] : [];
+    for (const field of this.searchableFields) {
+      if (field === 'role') {
+        const matches = (Object.values(Role) as string[]).filter((role) =>
+          role.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch),
+        ) as Role[];
+
+        if (matches.length) {
+          orConditions.push({ [field]: { in: matches } } as TWhere);
         }
-
-        return [
+      } else {
+        orConditions.push(
+          { [field]: { contains: searchTerm, mode: 'insensitive' } } as TWhere,
           {
-            [field]: {
-              contains: searchTerm,
-              mode: 'insensitive',
-            },
-          },
-          {
-            [field]: {
-              contains: normalizedSearch,
-              mode: 'insensitive',
-            },
-          },
-        ];
-      },
-    );
+            [field]: { contains: normalizedSearch, mode: 'insensitive' },
+          } as TWhere,
+        );
+      }
+    }
 
-    this.queryOptions.where!.OR = [...existingOR, ...orConditions];
+    this.queryOptions.where = {
+      ...(this.queryOptions.where ?? {}),
+      OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
+    };
+
     return this;
   }
 
@@ -118,10 +125,12 @@ export class ApiFeatures<T> {
       typeof this.queryString.sort === 'string' &&
       this.queryString.sort.trim()
     ) {
-      this.queryOptions.orderBy = this.queryString.sort.split(',').map((f) => {
-        const isDesc = f.startsWith('-');
-        return { [f.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
-      });
+      this.queryOptions.orderBy = this.queryString.sort
+        .split(',')
+        .map((field) => {
+          const isDesc = field.startsWith('-');
+          return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
+        });
     } else {
       this.queryOptions.orderBy = [{ createdAt: 'desc' }];
     }
@@ -138,10 +147,7 @@ export class ApiFeatures<T> {
 
     if (fields.length) {
       this.queryOptions.select = fields.reduce(
-        (acc, f) => {
-          acc[f] = true;
-          return acc;
-        },
+        (acc, f) => ({ ...acc, [f]: true }),
         {} as Record<string, boolean>,
       );
     }
@@ -175,7 +181,10 @@ export class ApiFeatures<T> {
     return this;
   }
 
-  async query(): Promise<{ data: T[]; pagination?: PaginationResult }> {
+  async query<TRecord extends { password?: string } = any>(): Promise<{
+    data: TRecord[];
+    pagination?: PaginationResult;
+  }> {
     try {
       const data = await this.prismaModel.findMany(this.queryOptions);
       return this.paginationResult
@@ -183,16 +192,6 @@ export class ApiFeatures<T> {
         : { data };
     } catch (error: any) {
       this.logger.error(`Error executing query: ${error.message}`, error.stack);
-
-      if (error.message?.includes('not found in enum')) {
-        const enumName =
-          error.message.match(/enum '(\w+)'/)?.[1] ?? 'unknown enum';
-        throw new HttpException(
-          `Invalid value for ${enumName}`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
       throw new HttpException(
         'Failed to execute query',
         HttpStatus.INTERNAL_SERVER_ERROR,

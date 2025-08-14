@@ -92,7 +92,7 @@ export class BaseRepository<T extends { id: string; password?: string }> {
   }> {
     const totalRecords = await this.model.count({ where: baseFilter });
 
-    const apiFeatures = new ApiFeatures<T>(
+    const apiFeatures = new ApiFeatures<typeof this.model, Record<string, any>>(
       this.model,
       queryString,
       this.searchableFields,
