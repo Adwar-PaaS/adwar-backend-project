@@ -77,29 +77,37 @@ export class ApiFeatures<T> {
     if (!this.queryString.search || !this.searchableFields.length) return this;
 
     const searchTerm = String(this.queryString.search).trim().toLowerCase();
-    const normalized = searchTerm.replace(/\s+/g, '');
+    const normalizedSearch = searchTerm.replace(/\s+/g, '');
 
     const existingOR = Array.isArray(this.queryOptions.where?.OR)
       ? this.queryOptions.where!.OR
       : [];
 
-    const orConditions = this.searchableFields
-      .map((field) => {
+    const orConditions = this.searchableFields.flatMap(
+      (field: string): Record<string, unknown>[] => {
         if (field === 'role') {
           const matches = (Object.values(Role) as string[]).filter((role) =>
-            role.replace(/\s+/g, '').toLowerCase().includes(normalized),
+            role.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch),
           ) as Role[];
-          return matches.length ? { [field]: { in: matches } } : null;
+          return matches.length ? [{ [field]: { in: matches } }] : [];
         }
 
-        return {
-          [field]: {
-            contains: normalized,
-            mode: 'insensitive',
+        return [
+          {
+            [field]: {
+              contains: searchTerm,
+              mode: 'insensitive',
+            },
           },
-        };
-      })
-      .filter(Boolean);
+          {
+            [field]: {
+              contains: normalizedSearch,
+              mode: 'insensitive',
+            },
+          },
+        ];
+      },
+    );
 
     this.queryOptions.where!.OR = [...existingOR, ...orConditions];
     return this;
