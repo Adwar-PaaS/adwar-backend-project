@@ -71,6 +71,15 @@ export class TenantController {
     return APIResponse.success({ tenant }, 'Tenant retrieved successfully');
   }
 
+  @Get(':id/users')
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
+  async getTenantUsers(
+    @Param('id') id: string,
+  ): Promise<APIResponse<{ users: any[] }>> {
+    const users = await this.service.getUsersInTenant(id);
+    return APIResponse.success({ users }, 'Tenant users fetched successfully');
+  }
+
   @Put(':id')
   @Roles(Role.SUPERADMIN)
   @UseInterceptors(FileInterceptor('logoUrl'))

@@ -3,6 +3,7 @@ import { TenantStatus } from '@prisma/client';
 export interface ITenant {
   id: string;
   name: string;
+  slug: string;
   status: TenantStatus;
   lastLogin: Date | null;
   logoUrl: string | null;

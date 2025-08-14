@@ -14,6 +14,7 @@ export interface PaginationResult {
 
 export class ApiFeatures<T> {
   private readonly logger = new Logger(ApiFeatures.name);
+  private readonly roleValues = new Set(Object.values(Role));
   private queryOptions: Prisma.SelectSubset<any, any> = { where: {} };
   private paginationResult: PaginationResult | null = null;
 
@@ -27,47 +28,41 @@ export class ApiFeatures<T> {
     const { page, sort, limit, fields, search, ...filters } = this.queryString;
     this.queryOptions.where ||= {};
 
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value == null) return;
-      const strValue = String(value).trim();
-
-      if (strValue.includes(',')) {
-        this.queryOptions.where[key] = {
-          in: strValue.split(',').map((v) => v.trim()),
-        };
-        return;
+    for (const [key, rawValue] of Object.entries(filters)) {
+      if (rawValue == null) continue;
+      const parsed = this.parseFilterValue(key, String(rawValue).trim());
+      if (parsed !== undefined) {
+        this.queryOptions.where[key] = parsed;
       }
-
-      const match = strValue.match(/^([<>]=?)(.+)$/);
-      if (match) {
-        const [, op, num] = match;
-        const n = Number(num);
-        if (!isNaN(n)) {
-          const opMap: Record<string, keyof Prisma.IntFilter> = {
-            '>': 'gt',
-            '>=': 'gte',
-            '<': 'lt',
-            '<=': 'lte',
-          };
-          this.queryOptions.where[key] = { [opMap[op]]: n };
-        }
-        return;
-      }
-
-      if (strValue === 'true' || strValue === 'false') {
-        this.queryOptions.where[key] = strValue === 'true';
-        return;
-      }
-
-      if (!isNaN(Number(strValue))) {
-        this.queryOptions.where[key] = Number(strValue);
-        return;
-      }
-
-      this.queryOptions.where[key] = strValue;
-    });
+    }
 
     return this;
+  }
+
+  private parseFilterValue(key: string, value: string): unknown {
+    if (key === 'role') {
+      const upper = value.toUpperCase();
+      return this.roleValues.has(upper as Role) ? (upper as Role) : undefined;
+    }
+    if (value.includes(','))
+      return { in: value.split(',').map((v) => v.trim()) };
+    const match = value.match(/^([<>]=?)(.+)$/);
+    if (match) {
+      const [, op, num] = match;
+      const n = Number(num);
+      if (!isNaN(n)) {
+        const opMap: Record<string, keyof Prisma.IntFilter> = {
+          '>': 'gt',
+          '>=': 'gte',
+          '<': 'lt',
+          '<=': 'lte',
+        };
+        return { [opMap[op]]: n };
+      }
+    }
+    if (value === 'true' || value === 'false') return value === 'true';
+    if (!isNaN(Number(value))) return Number(value);
+    return value;
   }
 
   search(): this {
@@ -150,6 +145,11 @@ export class ApiFeatures<T> {
     return this;
   }
 
+  include(includeObj: object): this {
+    this.queryOptions.include = includeObj;
+    return this;
+  }
+
   async query(): Promise<{ data: T[]; pagination?: PaginationResult }> {
     try {
       const data = await this.prismaModel.findMany(this.queryOptions);
@@ -158,7 +158,6 @@ export class ApiFeatures<T> {
         : { data };
     } catch (error: any) {
       this.logger.error(`Error executing query: ${error.message}`, error.stack);
-
       if (error.message?.includes('not found in enum')) {
         const enumName =
           error.message.match(/enum '(\w+)'/)?.[1] ?? 'unknown enum';
@@ -167,7 +166,6 @@ export class ApiFeatures<T> {
           HttpStatus.BAD_REQUEST,
         );
       }
-
       throw new HttpException(
         'Failed to execute query',
         HttpStatus.INTERNAL_SERVER_ERROR,

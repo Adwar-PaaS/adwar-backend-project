@@ -32,7 +32,7 @@ export class TenantService {
   }
 
   findAll(query: Record<string, any>) {
-    return this.tenantRepo.findAll(query);
+    return this.tenantRepo.findAllWithCreatorPagination(query);
   }
 
   findById(id: string): Promise<ITenant> {
@@ -71,6 +71,10 @@ export class TenantService {
         : TenantStatus.Activate;
 
     return this.tenantRepo.updateStatus(id, newStatus);
+  }
+
+  async getUsersInTenant(tenantId: string) {
+    return this.tenantRepo.getTenantUsers(tenantId);
   }
 
   delete(id: string): Promise<ITenant> {
