@@ -16,6 +16,11 @@ enum Role {
   CUSTOMER
 }
 
+enum UserStatus {
+  Activate
+  Deactivate
+}
+
 enum TenantStatus {
   Activate
   Deactivate
@@ -28,7 +33,8 @@ model User {
   fullName  String
   phone     String?
   role      Role     @default(CUSTOMER)
-
+  status?    TenantStatus  @default(Activate)
+ 
   tenantId  String?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id])
 
