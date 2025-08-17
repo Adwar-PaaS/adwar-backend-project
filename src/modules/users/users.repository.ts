@@ -31,4 +31,11 @@ export class UsersRepository extends BaseRepository<User> {
   async getByEmail(email: string): Promise<User | null> {
     return this.model.findUnique({ where: { email } });
   }
+
+  async updateStatus(id: string, status: string) {
+    return this.model.update({
+      where: { id },
+      data: { status },
+    });
+  }
 }

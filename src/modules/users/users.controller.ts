@@ -18,6 +18,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { APIResponse } from '../../common/utils/api-response.util';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 
 @Controller('users')
 @UseGuards(SessionGuard, RolesGuard)
@@ -66,6 +67,16 @@ export class UsersController {
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const updatedUser = await this.usersService.update(id, dto);
     return APIResponse.success({ updatedUser }, 'User updated successfully');
+  }
+
+  @Patch(':id/status')
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserStatusDto,
+  ) {
+    const user = await this.usersService.updateStatus(id, dto.status);
+    return APIResponse.success({ user }, 'User status updated successfully');
   }
 
   @Delete(':id')

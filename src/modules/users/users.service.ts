@@ -37,4 +37,8 @@ export class UsersService {
   findByEmail(email: string) {
     return this.usersRepo.getByEmail(email);
   }
+
+  async updateStatus(id: string, status: string) {
+    return this.usersRepo.updateStatus(id, status);
+  }
 }
