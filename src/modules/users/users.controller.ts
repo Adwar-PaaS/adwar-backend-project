@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Param,
   Delete,
@@ -37,7 +38,7 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(Role.SUPERADMIN)
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
   async findAll(@Query() query: Record<string, any>) {
     const { data, total, page, limit, hasNext, hasPrev } =
       await this.usersService.findAll(query);
@@ -62,7 +63,7 @@ export class UsersController {
     return APIResponse.success({ user }, 'User retrieved successfully');
   }
 
-  @Patch(':id')
+  @Put(':id')
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const updatedUser = await this.usersService.update(id, dto);
