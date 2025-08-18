@@ -26,7 +26,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Roles(Role.SUPERADMIN)
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
     return APIResponse.success(
