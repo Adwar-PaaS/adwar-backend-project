@@ -1,19 +1,18 @@
-import { TenantStatus } from '@prisma/client';
+import { Status } from '@prisma/client';
 
 export interface ITenant {
   id: string;
   name: string;
   slug: string;
-  status: TenantStatus;
-  lastLogin: Date | null;
+  status: Status;
   logoUrl: string | null;
   address: string | null;
   email: string | null;
   phone: string | null;
-  createdBy: string;
   creator?: {
     fullName: string;
-  };
+  } | null;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
 }

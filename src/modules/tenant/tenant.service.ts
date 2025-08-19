@@ -4,7 +4,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantRepository } from './tenant.repository';
 import { ITenant } from './interfaces/tenant.interface';
 import { UploadService } from '../../shared/upload/upload.service';
-import { TenantStatus } from '@prisma/client';
+import { Status } from '@prisma/client';
 
 @Injectable()
 export class TenantService {
@@ -66,9 +66,9 @@ export class TenantService {
     const existing = await this.tenantRepo.getById(id);
 
     const newStatus =
-      existing.status === TenantStatus.Activate
-        ? TenantStatus.Deactivate
-        : TenantStatus.Activate;
+      existing.status === Status.Activate
+        ? Status.Deactivate
+        : Status.Activate;
 
     return this.tenantRepo.updateStatus(id, newStatus);
   }

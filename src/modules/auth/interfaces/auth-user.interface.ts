@@ -1,12 +1,19 @@
-import type { Prisma } from '@prisma/client';
+import { RoleName, EntityType, ActionType } from '@prisma/client';
 
-export type AuthUser = Prisma.UserGetPayload<{
-  include: {
-    role: {
-      include: {
-        permissions: true;
-      };
-    };
-    userTenants: true;
+export interface AuthUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: {
+    id: string;
+    name: RoleName;
+    permissions: {
+      entity: EntityType;
+      action: ActionType;
+    }[];
   };
-}>;
+  userTenants: {
+    tenantId: string;
+    isOwner: boolean;
+  }[];
+}

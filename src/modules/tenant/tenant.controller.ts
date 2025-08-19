@@ -18,21 +18,17 @@ import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { ITenant } from './interfaces/tenant.interface';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Controller('tenants')
-@UseGuards(SessionGuard, RolesGuard)
+@UseGuards(SessionGuard)
 export class TenantController {
   constructor(private readonly service: TenantService) {}
 
   @Post()
-  @Roles(Role.SUPERADMIN)
   @UseInterceptors(FileInterceptor('logoUrl'))
   async create(
     @UploadedFile() file: Express.Multer.File,
@@ -44,7 +40,6 @@ export class TenantController {
   }
 
   @Get()
-  @Roles(Role.SUPERADMIN)
   async findAll(@Query() query: Record<string, any>) {
     const { data, total, page, limit, hasNext, hasPrev } =
       await this.service.findAll(query);
@@ -72,7 +67,6 @@ export class TenantController {
   }
 
   @Get(':id/users')
-  @Roles(Role.SUPERADMIN, Role.ADMIN)
   async getTenantUsers(
     @Param('id') id: string,
   ): Promise<APIResponse<{ users: any[] }>> {
@@ -81,7 +75,6 @@ export class TenantController {
   }
 
   @Put(':id')
-  @Roles(Role.SUPERADMIN)
   @UseInterceptors(FileInterceptor('logoUrl'))
   async update(
     @Param('id') id: string,
@@ -93,7 +86,6 @@ export class TenantController {
   }
 
   @Patch(':id/status')
-  @Roles(Role.SUPERADMIN)
   async updateStatus(
     @Param('id') id: string,
   ): Promise<APIResponse<{ tenant: ITenant }>> {
@@ -105,7 +97,6 @@ export class TenantController {
   }
 
   @Delete(':id')
-  @Roles(Role.SUPERADMIN)
   async delete(@Param('id') id: string): Promise<APIResponse<null>> {
     await this.service.delete(id);
     return APIResponse.success(

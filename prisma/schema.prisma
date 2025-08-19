@@ -39,6 +39,7 @@ enum EntityType {
 }
 
 enum ActionType {
+  ALL
   CREATE
   UPDATE
   DELETE
@@ -80,6 +81,8 @@ model Tenant {
   userTenants UserTenant[]
   warehouses  Warehouse[]
 
+  roles Role[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -107,14 +110,14 @@ model UserTenant {
 }
 
 model Role {
-  id       String   @id @default(uuid())
-  name     RoleName
+  id   String   @id @default(uuid())
+  name RoleName
 
   tenantId String?
-  tenant   Tenant?  @relation(fields: [tenantId], references: [id])
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
-  users       User[]
-  permissions RolePermission[]
+  users User[]
+  rolePermissions RolePermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -122,26 +125,39 @@ model Role {
   @@unique([tenantId, name])
 }
 
-model RolePermission {
-  id     String @id @default(uuid())
+model Permission {
+  id      String    @id @default(uuid())
+  entity  EntityType
+  action  ActionType
 
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id])
-
-  entity   EntityType
-  action   ActionType
+  rolePermissions RolePermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([roleId, entity, action])
+  @@unique([entity, action])
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+
+  roleId       String
+  role         Role   @relation(fields: [roleId], references: [id])
+
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleId, permissionId])
 }
 
 model Warehouse {
   id           String          @id @default(uuid())
   location     String
   currentStock Int             @default(0)
-  capacity     Int
+  capacity     Int?
   status       WarehouseStatus @default(OPEN_TO_ADD)
 
   tenantId String

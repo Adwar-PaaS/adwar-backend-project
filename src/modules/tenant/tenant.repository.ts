@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { Tenant, TenantStatus } from '@prisma/client';
+import { Tenant, Status, UserTenant } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -33,7 +33,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
       data: {
         ...rest,
         slug: slugify(data.name, { lower: true, strict: true }),
-        status: data.status ?? TenantStatus.Activate,
+        status: data.status ?? Status.Activate,
         creator: { connect: { id: createdBy } },
       },
       include: creatorSelect,
@@ -50,6 +50,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
             email: true,
             fullName: true,
             phone: true,
+            status: true,
             role: true,
             createdAt: true,
           },
@@ -94,7 +95,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
     });
   }
 
-  async updateStatus(id: string, status: TenantStatus): Promise<Tenant> {
+  async updateStatus(id: string, status: Status): Promise<Tenant> {
     return this.model.update({
       where: { id },
       data: { status },

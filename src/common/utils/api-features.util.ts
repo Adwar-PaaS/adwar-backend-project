@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, RoleName } from '@prisma/client';
 
 export interface PaginationResult {
   totalRecords: number;
@@ -20,7 +20,7 @@ export class ApiFeatures<
   TWhere extends Record<string, any>,
 > {
   private readonly logger = new Logger(ApiFeatures.name);
-  private readonly roleValues = new Set(Object.values(Role));
+  private readonly roleValues = new Set(Object.values(RoleName));
   private queryOptions: Partial<Prisma.UserFindManyArgs> & { where?: TWhere } =
     {};
   private paginationResult: PaginationResult | null = null;
@@ -57,10 +57,10 @@ export class ApiFeatures<
   private parseFilterValue(key: string, value: string): unknown {
     if (key === 'role') {
       const upper = value.toUpperCase();
-      if (!this.roleValues.has(upper as Role)) {
+      if (!this.roleValues.has(upper as RoleName)) {
         throw new HttpException('Invalid role value', HttpStatus.BAD_REQUEST);
       }
-      return upper as Role;
+      return upper as RoleName;
     }
 
     if (value.includes(',')) {
@@ -103,9 +103,9 @@ export class ApiFeatures<
 
     for (const field of this.searchableFields) {
       if (field === 'role') {
-        const matches = (Object.values(Role) as string[]).filter((role) =>
+        const matches = (Object.values(RoleName) as string[]).filter((role) =>
           role.replace(/\s+/g, '').toLowerCase().includes(normalized),
-        ) as Role[];
+        ) as RoleName[];
 
         if (matches.length) {
           orConditions.push({ [field]: { in: matches } } as TWhere);

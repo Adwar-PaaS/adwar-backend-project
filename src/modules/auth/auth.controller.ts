@@ -17,9 +17,17 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import type { Session } from 'express-session';
 import { clearCookieConfig } from '../../config/cookie.config';
+import { AuthUser } from './interfaces/auth-user.interface';
 
 export interface AuthenticatedRequest extends Request {
-  session: Session & { userId?: string; role?: string };
+  session: Session & {
+    userId?: string;
+    role?: {
+      id: string;
+      name: string;
+    };
+  };
+  user?: AuthUser;
 }
 
 @Controller('auth')
@@ -44,8 +52,9 @@ export class AuthController {
       req.session.regenerate((err) => (err ? reject(err) : resolve())),
     );
 
+    // minimal session information (fast checks)
     req.session.userId = user.id;
-    if (user.role) req.session.role = user.role;
+    req.session.role = { id: user.role.id, name: user.role.name };
 
     await new Promise<void>((resolve, reject) =>
       req.session.save((err) => (err ? reject(err) : resolve())),

@@ -20,6 +20,7 @@ import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { Permissions } from '../../common/decorators/permission.decorator';
 import { PermissionsGuard } from '../../common/guards/permission.guard';
 import { EntityType, ActionType } from '@prisma/client';
+import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 
 @Controller('users')
 @UseGuards(SessionGuard, PermissionsGuard)
@@ -33,6 +34,17 @@ export class UsersController {
     return APIResponse.success(
       { user },
       'User created successfully',
+      HttpStatus.CREATED,
+    );
+  }
+
+  @Post('tenant')
+  @Permissions(EntityType.USER, ActionType.CREATE)
+  async createTenantUser(@Body() dto: CreateTenantUserDto) {
+    const user = await this.usersService.createTenantUser(dto);
+    return APIResponse.success(
+      { user },
+      'Tenant user created successfully',
       HttpStatus.CREATED,
     );
   }

@@ -13,6 +13,7 @@ type PrismaDelegate = {
   findUnique: (args: any) => Promise<any>;
   findMany: (args: any) => Promise<any[]>;
   count: (args: any) => Promise<number>;
+  delete: (args: any) => Promise<any>;
 };
 
 @Injectable()
@@ -57,7 +58,6 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     }
   }
 
-  // ✅ Soft delete instead of hard delete
   async delete(id: string): Promise<void> {
     try {
       await this.model.update({
@@ -69,27 +69,23 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     }
   }
 
-  // ✅ Make sure we only fetch not-deleted records
-  async findOne(
-    id: string,
-    include?: Prisma.SelectSubset<any, any>['include'],
-  ): Promise<T> {
+  async findOne(where: Record<string, any>, include?: any): Promise<T> {
     try {
       const doc = await this.model.findUnique({
-        where: { id },
+        where,
         include,
       });
 
       if (!doc || doc.deletedAt) {
         throw new ApiError(
-          `No document found with id ${id}`,
+          `No document found with criteria ${JSON.stringify(where)}`,
           HttpStatus.NOT_FOUND,
         );
       }
 
       return sanitizeUser(doc) as T;
     } catch (error) {
-      this.handleError('find resource', error, id);
+      this.handleError('find resource', error);
     }
   }
 

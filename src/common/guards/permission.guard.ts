@@ -25,6 +25,7 @@ export class PermissionsGuard implements CanActivate {
     if (!user) throw new ForbiddenException('Not authenticated');
 
     if (user.userTenants?.some((ut) => ut.isOwner)) return true;
+
     if (user.role?.name === RoleName.SUPERADMIN) return true;
 
     const hasPermission = user.role?.permissions?.some(

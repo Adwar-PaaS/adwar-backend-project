@@ -4,6 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersRepository } from './users.repository';
 import { IUser } from './interfaces/user.interface';
 import { hashPassword } from '../../common/utils/crypto.util';
+import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -19,7 +20,7 @@ export class UsersService {
   }
 
   findById(id: string) {
-    return this.usersRepo.getById(id);
+    return this.usersRepo.findOne(id);
   }
 
   async update(id: string, dto: UpdateUserDto) {
@@ -29,9 +30,13 @@ export class UsersService {
     return this.usersRepo.updateUser(id, dto);
   }
 
-  async delete(id: string): Promise<{ success: boolean }> {
+  async createTenantUser(dto: CreateTenantUserDto): Promise<IUser> {
+    dto.password = await hashPassword(dto.password);
+    return this.usersRepo.createTenantUser(dto);
+  }
+
+  async delete(id: string): Promise<void> {
     await this.usersRepo.delete(id);
-    return { success: true };
   }
 
   findByEmail(email: string) {
