@@ -7,7 +7,7 @@ import { AuthUser } from './interfaces/auth-user.interface';
 
 function mapPrismaUserToAuthUser(user: any): AuthUser {
   const permissions =
-    user?.role?.rolePermissions?.map((rp) => rp.permission) ?? [];
+    user?.role?.rolePermissions?.map((rp: any) => rp.permission) ?? [];
 
   return {
     id: user.id,
@@ -51,7 +51,7 @@ export class AuthService {
     const created = await this.usersRepo.create({
       email: dto.email,
       password: hashed,
-      fullName: dto.fullName,
+      fullName: dto.fullName ?? '',
       roleId: customerRole.id,
     });
 
@@ -68,7 +68,7 @@ export class AuthService {
   }
 
   async getCurrentUser(userId: string) {
-    const user = await this.usersRepo.findOne(userId);
+    const user = await this.usersRepo.findById(userId);
     if (!user) throw new ApiError('User not found', HttpStatus.UNAUTHORIZED);
     return mapPrismaUserToAuthUser(user);
   }

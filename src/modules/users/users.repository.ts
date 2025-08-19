@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { User, RoleName } from '@prisma/client';
+import { User, RoleName, Status } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -8,26 +8,36 @@ import { checkEmailUnique } from '../../common/utils/check-email.util';
 
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(protected readonly prisma: PrismaService) {
     super(prisma, prisma.user, ['email', 'fullName', 'role']);
+  }
+
+  private getUserInclude() {
+    return {
+      role: {
+        include: { 
+          rolePermissions: {
+            include: {
+              permission: true,
+            },
+          },
+        },
+      },
+      userTenants: true,
+    };
   }
 
   async create(data: {
     email: string;
     password: string;
-    fullName?: string;
+    fullName: string;
     phone?: string | null;
     roleId: string;
   }): Promise<User> {
     await checkEmailUnique(this.prisma, 'user', data.email);
     return this.prisma.user.create({
       data,
-      include: {
-        role: {
-          include: { rolePermissions: { include: { permission: true } } },
-        },
-        userTenants: true,
-      },
+      include: this.getUserInclude(),
     });
   }
 
@@ -67,12 +77,7 @@ export class UsersRepository extends BaseRepository<User> {
           },
         },
       },
-      include: {
-        role: {
-          include: { rolePermissions: { include: { permission: true } } },
-        },
-        userTenants: true,
-      },
+      include: this.getUserInclude(),
     });
   }
 
@@ -83,36 +88,21 @@ export class UsersRepository extends BaseRepository<User> {
     return this.prisma.user.update({
       where: { id },
       data,
-      include: {
-        role: {
-          include: { rolePermissions: { include: { permission: true } } },
-        },
-        userTenants: true,
-      },
+      include: this.getUserInclude(),
     });
   }
 
-  async findOne(id: string): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { id },
-      include: {
-        role: {
-          include: { rolePermissions: { include: { permission: true } } },
-        },
-        userTenants: true,
-      },
+      include: this.getUserInclude(),
     });
   }
 
   async getByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { email },
-      include: {
-        role: {
-          include: { rolePermissions: { include: { permission: true } } },
-        },
-        userTenants: true,
-      },
+      include: this.getUserInclude(),
     });
   }
 
@@ -120,16 +110,11 @@ export class UsersRepository extends BaseRepository<User> {
     return this.prisma.role.findFirst({ where: { name } });
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: Status) {
     return this.prisma.user.update({
       where: { id },
       data: { status },
-      include: {
-        role: {
-          include: { rolePermissions: { include: { permission: true } } },
-        },
-        userTenants: true,
-      },
+      include: this.getUserInclude(),
     });
   }
 }

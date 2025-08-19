@@ -14,6 +14,6 @@ export class AuthRepository {
   }
 
   async findUserById(userId: string) {
-    return this.usersRepo.findOne(userId);
+    return this.usersRepo.findById(userId);
   }
 }

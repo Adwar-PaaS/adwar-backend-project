@@ -5,6 +5,7 @@ import { UsersRepository } from './users.repository';
 import { IUser } from './interfaces/user.interface';
 import { hashPassword } from '../../common/utils/crypto.util';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
+import { Status } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -20,7 +21,7 @@ export class UsersService {
   }
 
   findById(id: string) {
-    return this.usersRepo.findOne(id);
+    return this.usersRepo.findById(id);
   }
 
   async update(id: string, dto: UpdateUserDto) {
@@ -43,7 +44,7 @@ export class UsersService {
     return this.usersRepo.getByEmail(email);
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: Status) {
     return this.usersRepo.updateStatus(id, status);
   }
 }

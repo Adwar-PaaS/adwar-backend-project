@@ -34,12 +34,11 @@ export class SessionGuard implements CanActivate {
       },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    if (!user || !user.role) {
+      throw new UnauthorizedException('User or role not found');
     }
 
-    const permissions =
-      user.role?.rolePermissions?.map((rp) => rp.permission) ?? [];
+    const permissions = user.role.rolePermissions?.map((rp) => rp.permission) ?? [];
 
     const authUser: AuthUser = {
       id: user.id,
