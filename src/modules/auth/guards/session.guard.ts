@@ -4,22 +4,35 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { PrismaService } from '../../../db/prisma/prisma.service';
 import { AuthUser } from '../interfaces/auth-user.interface';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
 
     if (!req?.session?.userId) {
       throw new UnauthorizedException('Not authenticated');
     }
 
-    req.user = {
-      id: req.session.userId,
-      role: req.session.role,
-    } as AuthUser;
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.session.userId },
+      include: {
+        role: {
+          include: { permissions: true },
+        },
+        userTenants: true,
+      },
+    });
 
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    req.user = user as AuthUser;
     return true;
   }
 }

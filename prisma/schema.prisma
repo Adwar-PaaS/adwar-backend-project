@@ -7,72 +7,149 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
+enum RoleName {
   SUPERADMIN
   ADMIN
   DRIVER
+  PACKER
+  ACCOUNTANT
   PICKER
   OPERATION
   CUSTOMER
 }
 
-enum UserStatus {
+enum Status {
   Activate
   Deactivate
 }
 
-enum TenantStatus {
-  Activate
-  Deactivate
+enum WarehouseStatus {
+  OPEN_TO_ADD
+  EMPTY
+  FULL
+  CLOSED
+  UNDER_MAINTENANCE
+}
+
+enum EntityType {
+  USER
+  TENANT
+  WAREHOUSE
+  ORDER
+}
+
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
 }
 
 model User {
-  id       String     @id @default(uuid())
-  email    String     @unique
+  id       String  @id @default(uuid())
+  email    String  @unique
   password String
   fullName String
   phone    String?
-  role     Role       @default(CUSTOMER)
-  status   UserStatus @default(Activate)
+  status   Status  @default(Activate)
 
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
 
-  createdTenants Tenant[] @relation("UserCreatedTenants")
+  userTenants    UserTenant[]
+  createdTenants Tenant[]     @relation("UserCreatedTenants")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model Tenant {
-  id        String       @id @default(uuid())
-  name      String
-  slug      String       @unique
-  status    TenantStatus @default(Activate)
-  lastLogin DateTime?
-  logoUrl   String?
-  address   String?
-  email     String?      @unique
-  phone     String?
+  id      String  @id @default(uuid())
+  name    String
+  slug    String  @unique
+  status  Status  @default(Activate)
+  logoUrl String?
+  address String?
+  email   String? @unique
+  phone   String?
 
   createdBy String
   creator   User   @relation("UserCreatedTenants", fields: [createdBy], references: [id])
 
-  warehouses Warehouse[]
-  users      User[]
+  userTenants UserTenant[]
+  warehouses  Warehouse[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
-model Warehouse {
-  id       String @id @default(uuid())
-  location String
-  stock    Int    @default(0)
+model UserTenant {
+  id String @id @default(uuid())
+
+  isOwner Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([userId, tenantId])
+}
+
+model Role {
+  id       String   @id @default(uuid())
+  name     RoleName
+
+  tenantId String?
+  tenant   Tenant?  @relation(fields: [tenantId], references: [id])
+
+  users       User[]
+  permissions RolePermission[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+}
+
+model RolePermission {
+  id     String @id @default(uuid())
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  entity   EntityType
+  action   ActionType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleId, entity, action])
+}
+
+model Warehouse {
+  id           String          @id @default(uuid())
+  location     String
+  currentStock Int             @default(0)
+  capacity     Int
+  status       WarehouseStatus @default(OPEN_TO_ADD)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  userTenants UserTenant[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }

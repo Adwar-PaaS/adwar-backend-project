@@ -10,7 +10,6 @@ import {
 type PrismaDelegate = {
   create: (args: any) => Promise<any>;
   update: (args: any) => Promise<any>;
-  delete: (args: any) => Promise<any>;
   findUnique: (args: any) => Promise<any>;
   findMany: (args: any) => Promise<any[]>;
   count: (args: any) => Promise<number>;
@@ -58,26 +57,36 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     }
   }
 
+  // ✅ Soft delete instead of hard delete
   async delete(id: string): Promise<void> {
     try {
-      await this.model.delete({ where: { id } });
+      await this.model.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
     } catch (error) {
-      this.handleError('delete resource', error, id);
+      this.handleError('soft delete resource', error, id);
     }
   }
 
+  // ✅ Make sure we only fetch not-deleted records
   async findOne(
     id: string,
     include?: Prisma.SelectSubset<any, any>['include'],
   ): Promise<T> {
     try {
-      const doc = await this.model.findUnique({ where: { id }, include });
-      if (!doc) {
+      const doc = await this.model.findUnique({
+        where: { id },
+        include,
+      });
+
+      if (!doc || doc.deletedAt) {
         throw new ApiError(
           `No document found with id ${id}`,
           HttpStatus.NOT_FOUND,
         );
       }
+
       return sanitizeUser(doc) as T;
     } catch (error) {
       this.handleError('find resource', error, id);
@@ -96,7 +105,7 @@ export class BaseRepository<T extends { id: string; password?: string }> {
       >(this.model, queryString, this.searchableFields)
         .filter()
         .search()
-        .mergeFilter(baseFilter)
+        .mergeFilter({ ...baseFilter, deletedAt: null })
         .sort()
         .limitFields();
 

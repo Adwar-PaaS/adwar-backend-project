@@ -21,7 +21,8 @@ export class ApiFeatures<
 > {
   private readonly logger = new Logger(ApiFeatures.name);
   private readonly roleValues = new Set(Object.values(Role));
-  private queryOptions: Prisma.SelectSubset<any, any> = { where: {} };
+  private queryOptions: Partial<Prisma.UserFindManyArgs> & { where?: TWhere } =
+    {};
   private paginationResult: PaginationResult | null = null;
 
   constructor(
@@ -32,8 +33,6 @@ export class ApiFeatures<
 
   filter(): this {
     const { page, sort, limit, fields, search, ...filters } = this.queryString;
-
-    if (!filters || Object.keys(filters).length === 0) return this;
 
     for (const [key, rawValue] of Object.entries(filters)) {
       if (rawValue == null || rawValue === '') continue;
@@ -46,14 +45,16 @@ export class ApiFeatures<
         );
       }
 
-      (this.queryOptions.where as Record<string, unknown>)[key] = parsed;
+      this.queryOptions.where = {
+        ...(this.queryOptions.where ?? ({} as TWhere)),
+        [key]: parsed,
+      } as TWhere;
     }
 
     return this;
   }
 
   private parseFilterValue(key: string, value: string): unknown {
-    // Role validation
     if (key === 'role') {
       const upper = value.toUpperCase();
       if (!this.roleValues.has(upper as Role)) {
@@ -62,18 +63,16 @@ export class ApiFeatures<
       return upper as Role;
     }
 
-    // IN list filter
     if (value.includes(',')) {
       const items = value.split(',').map((v) => v.trim());
-      return this.detectAndConvertArray(items);
+      return { in: items.map((v) => this.detectAndConvertSingle(v)) };
     }
 
-    // Comparison operators (> >= < <=)
     const match = value.match(/^([<>]=?)(.+)$/);
     if (match) {
       const [, op, raw] = match;
       const parsed = this.detectAndConvertSingle(raw.trim());
-      const opMap: Record<string, string> = {
+      const opMap: Record<string, keyof Prisma.IntFilter> = {
         '>': 'gt',
         '>=': 'gte',
         '<': 'lt',
@@ -82,10 +81,8 @@ export class ApiFeatures<
       return { [opMap[op]]: parsed };
     }
 
-    // Boolean
     if (value === 'true' || value === 'false') return value === 'true';
 
-    // Numeric / Date / String
     return this.detectAndConvertSingle(value);
   }
 
@@ -95,24 +92,19 @@ export class ApiFeatures<
     return value;
   }
 
-  private detectAndConvertArray(values: string[]): { in: any[] } {
-    const converted = values.map((v) => this.detectAndConvertSingle(v));
-    return { in: converted };
-  }
-
   search(): this {
     if (!this.queryString.search || !this.searchableFields.length) return this;
 
     const searchTerm = String(this.queryString.search).trim().toLowerCase();
     if (!searchTerm) return this;
 
-    const normalizedSearch = searchTerm.replace(/\s+/g, '');
+    const normalized = searchTerm.replace(/\s+/g, '');
     const orConditions: TWhere[] = [];
 
     for (const field of this.searchableFields) {
       if (field === 'role') {
         const matches = (Object.values(Role) as string[]).filter((role) =>
-          role.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch),
+          role.replace(/\s+/g, '').toLowerCase().includes(normalized),
         ) as Role[];
 
         if (matches.length) {
@@ -121,18 +113,16 @@ export class ApiFeatures<
       } else {
         orConditions.push(
           { [field]: { contains: searchTerm, mode: 'insensitive' } } as TWhere,
-          {
-            [field]: { contains: normalizedSearch, mode: 'insensitive' },
-          } as TWhere,
+          { [field]: { contains: normalized, mode: 'insensitive' } } as TWhere,
         );
       }
     }
 
     if (orConditions.length) {
       this.queryOptions.where = {
-        ...(this.queryOptions.where ?? {}),
+        ...(this.queryOptions.where ?? ({} as TWhere)),
         OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
-      };
+      } as TWhere;
     }
 
     return this;
@@ -153,16 +143,16 @@ export class ApiFeatures<
 
   limitFields(): this {
     const { fields } = this.queryString;
-    if (typeof fields !== 'string' || !fields.trim()) return this;
+    if (!fields) return this;
 
-    const selectedFields = fields
+    const selected = fields
       .split(',')
-      .map((f) => f.trim())
+      .map((f: string) => f.trim())
       .filter(Boolean);
 
-    if (selectedFields.length) {
-      this.queryOptions.select = selectedFields.reduce(
-        (acc, f) => ({ ...acc, [f]: true }),
+    if (selected.length) {
+      this.queryOptions.select = selected.reduce(
+        (acc: any, f: any) => ({ ...acc, [f]: true }),
         {} as Record<string, boolean>,
       );
     }
@@ -170,20 +160,9 @@ export class ApiFeatures<
   }
 
   private async calculateTotal(): Promise<number> {
-    try {
-      return await (this.prismaModel as any).count({
-        where: this.queryOptions.where,
-      });
-    } catch (error: any) {
-      this.logger.error(
-        `Error calculating total: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        'Failed to calculate total records',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return (
+      (await this.prismaModel.count?.({ where: this.queryOptions.where })) ?? 0
+    );
   }
 
   async paginate(): Promise<this> {
@@ -213,20 +192,19 @@ export class ApiFeatures<
     return this;
   }
 
-  include(includeObj: object): this {
-    if (includeObj && typeof includeObj === 'object') {
-      this.queryOptions.include = includeObj;
-    }
+  include(includeObj: Record<string, any>): this {
+    this.queryOptions.include = {
+      ...(this.queryOptions.include || {}),
+      ...includeObj,
+    };
     return this;
   }
 
-  mergeFilter(filter: Record<string, any>): this {
-    if (filter && typeof filter === 'object') {
-      this.queryOptions.where = {
-        ...(this.queryOptions.where || {}),
-        ...filter,
-      };
-    }
+  mergeFilter(filter: TWhere): this {
+    this.queryOptions.where = {
+      ...(this.queryOptions.where || ({} as TWhere)),
+      ...filter,
+    };
     return this;
   }
 
