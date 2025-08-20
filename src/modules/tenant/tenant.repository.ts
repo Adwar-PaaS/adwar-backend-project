@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { Tenant, Status, UserTenant } from '@prisma/client';
+import { Tenant, Status } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -16,28 +16,37 @@ type UpdateTenantInput = UpdateTenantDto & {
   slug?: string;
 };
 
-const creatorSelect = { creator: { select: { fullName: true } } };
-
 @Injectable()
 export class TenantRepository extends BaseRepository<Tenant> {
   constructor(private readonly prismaService: PrismaService) {
     super(prismaService, prismaService.tenant, ['name', 'email']);
   }
 
-  async createTenant(data: CreateTenantInput): Promise<Tenant> {
+  private mapToCreator(tenant: any) {
+    if (!tenant) return null;
+    const { createdBy, ...rest } = tenant;
+    return {
+      ...rest,
+      creator: createdBy ? { fullName: createdBy.fullName } : null,
+    };
+  }
+
+  async createTenant(data: CreateTenantInput): Promise<any> {
     await checkEmailUnique(this.prismaService, 'tenant', data.email);
 
     const { createdBy, ...rest } = data;
 
-    return this.model.create({
+    const tenant = await this.model.create({
       data: {
         ...rest,
         slug: slugify(data.name, { lower: true, strict: true }),
         status: data.status ?? Status.ACTIVE,
-        creator: { connect: { id: createdBy } },
+        createdBy: { connect: { id: createdBy } },
       },
-      include: creatorSelect,
+      include: { createdBy: { select: { fullName: true } } },
     });
+
+    return this.mapToCreator(tenant);
   }
 
   async getTenantUsers(tenantId: string) {
@@ -58,32 +67,37 @@ export class TenantRepository extends BaseRepository<Tenant> {
       },
     });
 
-    if (!tenant) {
-      throw new NotFoundException('Tenant not found');
-    }
-
+    if (!tenant) throw new NotFoundException('Tenant not found');
     return tenant.users;
   }
 
   async findAllWithCreator(queryString: Record<string, any>) {
-    return this.findAll(queryString, {}, creatorSelect);
+    const result = await this.findAll(
+      queryString,
+      {},
+      { createdBy: { select: { fullName: true } } },
+    );
+    return {
+      ...result,
+      data: result.data.map((tenant: any) => this.mapToCreator(tenant)),
+    };
   }
 
-  async getById(id: string): Promise<Tenant> {
+  async getById(id: string): Promise<any> {
     const tenant = await this.model.findUnique({
       where: { id },
-      include: creatorSelect,
+      include: { createdBy: { select: { fullName: true } } },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
-    return tenant;
+    return this.mapToCreator(tenant);
   }
 
-  async updateTenant(id: string, data: UpdateTenantInput): Promise<Tenant> {
+  async updateTenant(id: string, data: UpdateTenantInput): Promise<any> {
     if (data.email) {
       await checkEmailUnique(this.prismaService, 'tenant', data.email, id);
     }
 
-    return this.model.update({
+    const tenant = await this.model.update({
       where: { id },
       data: {
         ...data,
@@ -91,16 +105,20 @@ export class TenantRepository extends BaseRepository<Tenant> {
           slug: slugify(data.name, { lower: true, strict: true }),
         }),
       },
-      include: creatorSelect,
+      include: { createdBy: { select: { fullName: true } } },
     });
+
+    return this.mapToCreator(tenant);
   }
 
-  async updateStatus(id: string, status: Status): Promise<Tenant> {
-    return this.model.update({
+  async updateStatus(id: string, status: Status): Promise<any> {
+    const tenant = await this.model.update({
       where: { id },
       data: { status },
-      include: creatorSelect,
+      include: { createdBy: { select: { fullName: true } } },
     });
+
+    return this.mapToCreator(tenant);
   }
 
   async deleteTenant(id: string): Promise<Tenant> {
