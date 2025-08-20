@@ -28,7 +28,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Permissions(EntityType.USER, ActionType.CREATE)
+  @Permissions(EntityType.USERS, ActionType.CREATE)
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
     return APIResponse.success(
@@ -39,7 +39,7 @@ export class UsersController {
   }
 
   @Post('tenant')
-  @Permissions(EntityType.USER, ActionType.CREATE)
+  @Permissions(EntityType.USERS, ActionType.CREATE)
   async createTenantUser(@Body() dto: CreateTenantUserDto) {
     const user = await this.usersService.createTenantUser(dto);
     return APIResponse.success(
@@ -50,7 +50,7 @@ export class UsersController {
   }
 
   @Get()
-  @Permissions(EntityType.USER, ActionType.VIEW)
+  @Permissions(EntityType.USERS, ActionType.VIEW)
   async findAll(@Query() query: Record<string, any>) {
     const { data, total, page, limit, hasNext, hasPrev } =
       await this.usersService.findAll(query);
@@ -70,21 +70,21 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Permissions(EntityType.USER, ActionType.VIEW)
+  @Permissions(EntityType.USERS, ActionType.VIEW)
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
     return APIResponse.success({ user }, 'User retrieved successfully');
   }
 
   @Put(':id')
-  @Permissions(EntityType.USER, ActionType.UPDATE)
+  @Permissions(EntityType.USERS, ActionType.UPDATE)
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const updatedUser = await this.usersService.update(id, dto);
     return APIResponse.success({ updatedUser }, 'User updated successfully');
   }
 
   @Patch(':id/status')
-  @Permissions(EntityType.USER, ActionType.UPDATE)
+  @Permissions(EntityType.USERS, ActionType.UPDATE)
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateUserStatusDto,
@@ -94,7 +94,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Permissions(EntityType.USER, ActionType.DELETE)
+  @Permissions(EntityType.USERS, ActionType.DEACTIVATE)
   async delete(@Param('id') id: string) {
     await this.usersService.delete(id);
     return APIResponse.success(

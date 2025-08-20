@@ -29,7 +29,6 @@ export class RoleController {
    * This is what your frontend will call to display the permission checkboxes
    */
   @Get('permissions/available')
-  @Permissions(EntityType.USER, ActionType.VIEW)
   async getAvailablePermissions() {
     const permissions = await this.roleService.getAvailablePermissions();
     return APIResponse.success({ permissions }, 'Available permissions retrieved');
@@ -39,7 +38,6 @@ export class RoleController {
    * Seed all basic permissions (run this once to populate permissions table)
    */
   @Post('permissions/seed')
-  @Permissions(EntityType.USER, ActionType.CREATE)
   async seedPermissions() {
     await this.permissionService.seedBasicPermissions();
     return APIResponse.success(null, 'Permissions seeded successfully');
@@ -49,7 +47,6 @@ export class RoleController {
    * Get all roles with their permissions
    */
   @Get()
-  @Permissions(EntityType.USER, ActionType.VIEW)
   async getAllRoles(@Query('tenantId') tenantId?: string) {
     const roles = await this.roleService.getAllRoles(tenantId);
     return APIResponse.success({ roles }, 'Roles retrieved successfully');
@@ -60,7 +57,6 @@ export class RoleController {
    * This will show which permissions are currently assigned vs available
    */
   @Get(':roleId')
-  @Permissions(EntityType.USER, ActionType.VIEW)
   async getRole(@Param('roleId') roleId: string) {
     const role = await this.roleService.getRoleWithFormattedPermissions(roleId);
     if (!role) {
@@ -74,7 +70,6 @@ export class RoleController {
    * Body: { name: string, tenantId?: string, permissionIds: string[] }
    */
   @Post()
-  @Permissions(EntityType.USER, ActionType.CREATE)
   async createRole(@Body() createRoleDto: { 
     name: RoleName; 
     tenantId?: string; 
@@ -97,7 +92,6 @@ export class RoleController {
    * Body: { permissionIds: string[] }
    */
   @Put(':roleId/permissions')
-  @Permissions(EntityType.USER, ActionType.UPDATE)
   async updateRolePermissions(
     @Param('roleId') roleId: string,
     @Body() updatePermissionsDto: { permissionIds: string[] },
@@ -113,7 +107,6 @@ export class RoleController {
    * Get roles by name (useful for user creation)
    */
   @Get('by-name/:roleName')
-  @Permissions(EntityType.USER, ActionType.VIEW)
   async getRoleByName(
     @Param('roleName') roleName: RoleName,
     @Query('tenantId') tenantId?: string,

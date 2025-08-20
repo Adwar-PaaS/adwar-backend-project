@@ -112,25 +112,7 @@ export class RoleService {
    * Get all available permissions (for frontend to display)
    */
   async getAvailablePermissions() {
-    const permissions = await this.prisma.permission.findMany({
-      orderBy: [{ entity: 'asc' }, { action: 'asc' }],
-    });
-
-    // Group permissions by entity for easier frontend handling
-    const groupedPermissions = permissions.reduce((acc, permission) => {
-      const entity = permission.entity;
-      if (!acc[entity]) {
-        acc[entity] = [];
-      }
-      acc[entity].push({
-        id: permission.id,
-        action: permission.action,
-        description: `${permission.action.toLowerCase()} ${entity.toLowerCase()}`,
-      });
-      return acc;
-    }, {} as Record<string, Array<{ id: string; action: ActionType; description: string }>>);
-
-    return groupedPermissions;
+    return this.permissionService.getAvailablePermissionsForFrontend();
   }
 
   /**
@@ -157,9 +139,10 @@ export class RoleService {
       role.rolePermissions.map(rp => rp.permission.id)
     );
 
-    const formattedPermissions = Object.entries(permissions).map(([entity, actions]) => ({
-      entity,
-      actions: actions.map(action => ({
+    const formattedPermissions = permissions.map(entityGroup => ({
+      entityName: entityGroup.entityName,
+      displayName: entityGroup.displayName,
+      actions: entityGroup.actions.map(action => ({
         ...action,
         assigned: rolePermissionIds.has(action.id),
       })),
