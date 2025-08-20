@@ -6,23 +6,24 @@ import { RoleName } from '@prisma/client';
 import { AuthUser } from './interfaces/auth-user.interface';
 
 function mapPrismaUserToAuthUser(user: any): AuthUser {
-  const permissions =
-    user?.role?.rolePermissions?.map((rp) => rp.permission) ?? [];
-
+  if (!user) {
+    throw new ApiError('User not found', HttpStatus.NOT_FOUND);
+  }
   return {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
     role: {
-      id: user.role.id,
-      name: user.role.name,
-      permissions: permissions.map((p: any) => ({
-        entity: p.entity,
-        action: p.action,
-      })),
+      id: user.role?.id,
+      name: user.role?.name,
+      permissions:
+        user.role?.permissions?.map((p: any) => ({
+          entity: p.entityType,
+          action: p.actionType,
+        })) ?? [],
     },
     userTenants:
-      user.userTenants?.map((ut: any) => ({
+      user.memberships?.map((ut: any) => ({
         tenantId: ut.tenantId,
         isOwner: ut.isOwner,
       })) ?? [],

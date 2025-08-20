@@ -52,7 +52,6 @@ export class AuthController {
       req.session.regenerate((err) => (err ? reject(err) : resolve())),
     );
 
-    // minimal session information (fast checks)
     req.session.userId = user.id;
     req.session.role = { id: user.role.id, name: user.role.name };
 
