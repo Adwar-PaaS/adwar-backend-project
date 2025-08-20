@@ -1,51 +1,54 @@
 import { PrismaClient, RoleName, Status } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../src/common/utils/crypto.util';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Start seeding...');
+  console.log('🚀 Starting seed...');
 
-  // 1. Seed roles (system-level, tenantId = null)
-  const roles = Object.values(RoleName);
-  for (const role of roles) {
-    await prisma.role.upsert({
-      where: {
-        tenantId_name: { tenantId: null, name: role },
-      },
-      update: {},
-      create: {
-        name: role,
-        tenantId: null, // system role
+  // 1. Ensure SUPER_ADMIN role exists (global role, no tenantId)
+  let superAdminRole = await prisma.role.findFirst({
+    where: { name: RoleName.SUPER_ADMIN, tenantId: null },
+  });
+
+  if (!superAdminRole) {
+    console.log('Creating SUPER_ADMIN role...');
+    superAdminRole = await prisma.role.create({
+      data: {
+        name: RoleName.SUPER_ADMIN,
+        tenantId: null, // ✅ explicitly global role
       },
     });
   }
-  console.log('✅ Roles seeded');
 
-  // 2. Create SUPERADMIN user (system-level)
-  const superAdminRole = await prisma.role.findUniqueOrThrow({
-    where: {
-      tenantId_name: { tenantId: null, name: RoleName.SUPERADMIN },
-    },
+  // 2. Ensure Super Admin user exists
+  console.log('Creating Super Admin user...');
+  const hashedPassword = await hashPassword('12341234');
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: 'superadmin@adwar.com' },
   });
 
-  const passwordHash = await bcrypt.hash('SuperAdmin@123', 10);
+  if (existingUser) {
+    console.log('Super Admin user already exists, updating role...');
+    await prisma.user.update({
+      where: { id: existingUser.id },
+      data: { roleId: superAdminRole.id },
+    });
+  } else {
+    await prisma.user.create({
+      data: {
+        email: 'superadmin@adwar.com',
+        password: hashedPassword,
+        fullName: 'Super Administrator',
+        status: Status.ACTIVE,
+        roleId: superAdminRole.id,
+      },
+    });
+    console.log('✅ Super Admin user created');
+  }
 
-  await prisma.user.upsert({
-    where: { email: 'superadmin@example.com' },
-    update: {},
-    create: {
-      email: 'superadmin@example.com',
-      fullName: 'System Super Admin',
-      password: passwordHash,
-      status: Status.Activate,
-      roleId: superAdminRole.id,
-    },
-  });
-
-  console.log('✅ SUPERADMIN user created (email: superadmin@example.com / pass: SuperAdmin@123)');
-
-  console.log('🌱 Seeding finished!');
+  console.log('🌱 Seed completed');
 }
 
 main()
@@ -57,36 +60,54 @@ main()
     await prisma.$disconnect();
   });
 
-
-// import { PrismaClient, EntityType, ActionType } from '@prisma/client';
+// import { PrismaClient, RoleName, Status } from '@prisma/client';
+// import * as bcrypt from 'bcrypt';
 
 // const prisma = new PrismaClient();
 
 // async function main() {
-//   console.log('🌱 Start seeding permissions...');
+//   console.log('🌱 Start seeding...');
 
-//   const entities = Object.values(EntityType);
-//   const actions = Object.values(ActionType);
-
-//   for (const entity of entities) {
-//     for (const action of actions) {
-//       await prisma.permission.upsert({
-//         where: {
-//           entity_action: {
-//             entity,
-//             action,
-//           },
-//         },
-//         update: {},
-//         create: {
-//           entity,
-//           action,
-//         },
-//       });
-//     }
+//   // 1. Seed roles (system-level, tenantId = null)
+//   const roles = Object.values(RoleName);
+//   for (const role of roles) {
+//     await prisma.role.upsert({
+//       where: {
+//         tenantId_name: { tenantId: null, name: role },
+//       },
+//       update: {},
+//       create: {
+//         name: role,
+//         tenantId: null, // system role
+//       },
+//     });
 //   }
+//   console.log('✅ Roles seeded');
 
-//   console.log('✅ Permissions seeded successfully');
+//   // 2. Create SUPERADMIN user (system-level)
+//   const superAdminRole = await prisma.role.findUniqueOrThrow({
+//     where: {
+//       tenantId_name: { tenantId: null, name: RoleName.SUPERADMIN },
+//     },
+//   });
+
+//   const passwordHash = await bcrypt.hash('SuperAdmin@123', 10);
+
+//   await prisma.user.upsert({
+//     where: { email: 'superadmin@example.com' },
+//     update: {},
+//     create: {
+//       email: 'superadmin@example.com',
+//       fullName: 'System Super Admin',
+//       password: passwordHash,
+//       status: Status.Activate,
+//       roleId: superAdminRole.id,
+//     },
+//   });
+
+//   console.log('✅ SUPERADMIN user created (email: superadmin@example.com / pass: SuperAdmin@123)');
+
+//   console.log('🌱 Seeding finished!');
 // }
 
 // main()
@@ -98,33 +119,72 @@ main()
 //     await prisma.$disconnect();
 //   });
 
+// // import { PrismaClient, EntityType, ActionType } from '@prisma/client';
 
-// import { PrismaClient } from '@prisma/client';
-// import { hashPassword } from '../src/common/utils/crypto.util';
+// // const prisma = new PrismaClient();
 
-// const prisma = new PrismaClient();
+// // async function main() {
+// //   console.log('🌱 Start seeding permissions...');
 
-// async function main() {
-//   const password = 'x123456789';
-//   const hashedPassword = await hashPassword(password);
+// //   const entities = Object.values(EntityType);
+// //   const actions = Object.values(ActionType);
 
-//   await prisma.user.upsert({
-//     where: { email: 'x@adwar.com' },
-//     update: {},
-//     create: {
-//       email: 'x@adwar.com',
-//       password: hashedPassword,
-//       fullName: 'X Admin',
-//       role: 'SUPERADMIN',
-//     },
-//   });
+// //   for (const entity of entities) {
+// //     for (const action of actions) {
+// //       await prisma.permission.upsert({
+// //         where: {
+// //           entity_action: {
+// //             entity,
+// //             action,
+// //           },
+// //         },
+// //         update: {},
+// //         create: {
+// //           entity,
+// //           action,
+// //         },
+// //       });
+// //     }
+// //   }
 
-//   console.log('Seeded SUPERADMIN');
-// }
+// //   console.log('✅ Permissions seeded successfully');
+// // }
 
-// main()
-//   .catch((e) => {
-//     console.error('Seed error:', e);
-//     process.exit(1);
-//   })
-//   .finally(() => prisma.$disconnect());
+// // main()
+// //   .catch((e) => {
+// //     console.error(e);
+// //     process.exit(1);
+// //   })
+// //   .finally(async () => {
+// //     await prisma.$disconnect();
+// //   });
+
+// // import { PrismaClient } from '@prisma/client';
+// // import { hashPassword } from '../src/common/utils/crypto.util';
+
+// // const prisma = new PrismaClient();
+
+// // async function main() {
+// //   const password = 'x123456789';
+// //   const hashedPassword = await hashPassword(password);
+
+// //   await prisma.user.upsert({
+// //     where: { email: 'x@adwar.com' },
+// //     update: {},
+// //     create: {
+// //       email: 'x@adwar.com',
+// //       password: hashedPassword,
+// //       fullName: 'X Admin',
+// //       role: 'SUPERADMIN',
+// //     },
+// //   });
+
+// //   console.log('Seeded SUPERADMIN');
+// // }
+
+// // main()
+// //   .catch((e) => {
+// //     console.error('Seed error:', e);
+// //     process.exit(1);
+// //   })
+// //   .finally(() => prisma.$disconnect());
