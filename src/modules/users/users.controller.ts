@@ -22,6 +22,8 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { EntityType, ActionType } from '@prisma/client';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { PermissionService } from '../../shared/permission/permission.service';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @Controller('users')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -44,8 +46,11 @@ export class UsersController {
 
   @Post('tenant')
   @Permissions(EntityType.USER, ActionType.CREATE)
-  async createTenantUser(@Body() dto: CreateTenantUserDto) {
-    const user = await this.usersService.createTenantUser(dto);
+  async createTenantUser(
+    @Body() dto: CreateTenantUserDto,
+    @CurrentUser() authUser: AuthUser,
+  ) {
+    const user = await this.usersService.createTenantUser(dto, authUser);
     return APIResponse.success(
       { user },
       'Tenant user created successfully',

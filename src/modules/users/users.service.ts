@@ -6,6 +6,7 @@ import { IUser } from './interfaces/user.interface';
 import { hashPassword } from '../../common/utils/crypto.util';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { Status } from '@prisma/client';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Injectable()
 export class UsersService {
@@ -31,8 +32,16 @@ export class UsersService {
     return this.usersRepo.updateUser(id, dto);
   }
 
-  async createTenantUser(dto: CreateTenantUserDto): Promise<IUser> {
+  async createTenantUser(
+    dto: CreateTenantUserDto,
+    authUser: AuthUser,
+  ): Promise<IUser> {
     dto.password = await hashPassword(dto.password);
+
+    if (authUser.role.name === 'SUPER_ADMIN') {
+      dto.isOwner = true;
+    }
+
     return this.usersRepo.createTenantUser(dto);
   }
 
