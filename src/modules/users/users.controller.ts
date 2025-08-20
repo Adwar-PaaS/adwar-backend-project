@@ -21,11 +21,15 @@ import { Permissions } from '../../common/decorators/permission.decorator';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { EntityType, ActionType } from '@prisma/client';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
+import { PermissionService } from '../../shared/permission/permission.service';
 
 @Controller('users')
 @UseGuards(SessionGuard, PermissionGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly permissionService: PermissionService,
+  ) {}
 
   @Post()
   @Permissions(EntityType.USER, ActionType.CREATE)
@@ -46,6 +50,16 @@ export class UsersController {
       { user },
       'Tenant user created successfully',
       HttpStatus.CREATED,
+    );
+  }
+
+  @Get('role/permissions')
+  getEntitiesWithActions() {
+    const data = this.permissionService.getEntitiesWithActions();
+    return APIResponse.success(
+      { permissions: data },
+      'Permissions data retrieved successfully',
+      HttpStatus.OK,
     );
   }
 
