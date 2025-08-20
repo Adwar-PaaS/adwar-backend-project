@@ -87,6 +87,7 @@ CREATE TABLE "public"."RolePermission" (
 -- CreateTable
 CREATE TABLE "public"."Warehouse" (
     "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "location" TEXT NOT NULL,
     "capacity" INTEGER NOT NULL,
     "currentStock" INTEGER NOT NULL DEFAULT 0,

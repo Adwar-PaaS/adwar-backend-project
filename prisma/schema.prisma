@@ -151,6 +151,7 @@ model RolePermission {
 
 model Warehouse {
   id           String          @id @default(uuid())
+  name         String
   location     String
   capacity     Int
   currentStock Int             @default(0)

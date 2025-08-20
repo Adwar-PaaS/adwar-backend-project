@@ -32,8 +32,12 @@ export class WarehouseController {
   @Get()
   @Permissions(EntityType.WAREHOUSE, ActionType.READ)
   async findAll(@Query() query: Record<string, any>) {
-    const warehouses = await this.warehouseService.findAll(query);
-    return APIResponse.success(warehouses, 'Warehouses retrieved successfully');
+    const { data, total, page, limit, hasNext, hasPrev } =
+      await this.warehouseService.findAll(query);
+    return APIResponse.success(
+      { warehouses: data, total, page, limit, hasNext, hasPrev },
+      'Warehouses retrieved successfully',
+    );
   }
 
   @Get(':id')
