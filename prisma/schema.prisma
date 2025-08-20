@@ -14,7 +14,7 @@ enum RoleName {
   PACKER
   ACCOUNTANT
   PICKER
-  OPERATOR
+  OPERATION
   CUSTOMER
 }
 
