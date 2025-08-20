@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { EntityType, ActionType } from '@prisma/client';
+import { EntityType, ActionType, RoleName } from '@prisma/client';
 import { PermissionService } from '../../shared/permission/permission.service';
 
 @Injectable()
@@ -34,6 +34,14 @@ export class PermissionGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('User not authenticated');
+    }
+
+    if (user.userTenants?.some((ut: any) => ut.isOwner)) {
+      return true;
+    }
+
+    if (user.role?.name === RoleName.SUPER_ADMIN) {
+      return true;
     }
 
     const hasPermission = await this.permissionService.hasPermission(

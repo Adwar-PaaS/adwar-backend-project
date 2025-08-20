@@ -20,7 +20,7 @@ export class PermissionService {
       include: {
         role: {
           include: {
-            permissions: true, // ✅ fixed: matches `Role.permissions`
+            permissions: true,
           },
         },
       },
