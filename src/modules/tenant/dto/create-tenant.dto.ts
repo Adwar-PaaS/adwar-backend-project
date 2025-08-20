@@ -1,13 +1,13 @@
 import { IsEnum, IsOptional, IsString, IsEmail } from 'class-validator';
-import { TenantStatus } from '@prisma/client';
+import { Status } from '@prisma/client';
 
 export class CreateTenantDto {
   @IsString()
   name: string;
 
   @IsOptional()
-  @IsEnum(TenantStatus)
-  status?: TenantStatus;
+  @IsEnum(Status)
+  status?: Status;
 
   @IsEmail()
   email: string;

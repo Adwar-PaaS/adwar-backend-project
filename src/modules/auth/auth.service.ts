@@ -68,7 +68,7 @@ export class AuthService {
   }
 
   async getCurrentUser(userId: string) {
-    const user = await this.usersRepo.findOne(userId);
+    const user = await this.usersRepo.findOne({ id: userId });
     if (!user) throw new ApiError('User not found', HttpStatus.UNAUTHORIZED);
     return mapPrismaUserToAuthUser(user);
   }

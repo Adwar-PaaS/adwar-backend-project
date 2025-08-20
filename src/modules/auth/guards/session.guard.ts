@@ -23,23 +23,16 @@ export class SessionGuard implements CanActivate {
       include: {
         role: {
           include: {
-            rolePermissions: {
-              include: {
-                permission: true,
-              },
-            },
+            permissions: true,
           },
         },
-        userTenants: true,
+        memberships: true,
       },
     });
 
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-
-    const permissions =
-      user.role?.rolePermissions?.map((rp) => rp.permission) ?? [];
 
     const authUser: AuthUser = {
       id: user.id,
@@ -48,12 +41,12 @@ export class SessionGuard implements CanActivate {
       role: {
         id: user.role.id,
         name: user.role.name,
-        permissions: permissions.map((p) => ({
-          entity: p.entity,
-          action: p.action,
+        permissions: user.role.permissions.map((p) => ({
+          entity: p.entityType,
+          action: p.actionType,
         })),
       },
-      userTenants: user.userTenants.map((ut) => ({
+      userTenants: user.memberships.map((ut) => ({
         tenantId: ut.tenantId,
         isOwner: ut.isOwner,
       })),

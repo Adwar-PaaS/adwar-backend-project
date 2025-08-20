@@ -5,36 +5,46 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSIONS_KEY } from '../decorators/permission.decorator';
-import { EntityType, ActionType, RoleName } from '@prisma/client';
+import { EntityType, ActionType } from '@prisma/client';
+import { PermissionService } from '../../shared/permission/permission.service';
 
 @Injectable()
-export class PermissionsGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+export class PermissionGuard implements CanActivate {
+  constructor(
+    private reflector: Reflector,
+    private permissionService: PermissionService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
-    const required = this.reflector.get<{
-      entity: EntityType;
-      action: ActionType;
-    }>(PERMISSIONS_KEY, context.getHandler());
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const requiredEntity = this.reflector.get<EntityType>(
+      'entity',
+      context.getHandler(),
+    );
+    const requiredAction = this.reflector.get<ActionType>(
+      'action',
+      context.getHandler(),
+    );
 
-    if (!required) return true;
+    if (!requiredEntity || !requiredAction) {
+      return true;
+    }
 
-    const { user } = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
 
-    if (!user) throw new ForbiddenException('Not authenticated');
+    if (!user) {
+      throw new ForbiddenException('User not authenticated');
+    }
 
-    if (user.userTenants?.some((ut) => ut.isOwner)) return true;
-
-    if (user.role?.name === RoleName.SUPERADMIN) return true;
-
-    const hasPermission = user.role?.permissions?.some(
-      (p) => p.entity === required.entity && p.action === required.action,
+    const hasPermission = await this.permissionService.hasPermission(
+      user.id,
+      requiredEntity,
+      requiredAction,
     );
 
     if (!hasPermission) {
       throw new ForbiddenException(
-        `You do not have permission to ${required.action} on ${required.entity}`,
+        `You don't have permission to ${requiredAction.toLowerCase()} ${requiredEntity.toLowerCase()}`,
       );
     }
 

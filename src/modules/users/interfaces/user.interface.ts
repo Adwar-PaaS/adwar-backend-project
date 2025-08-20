@@ -10,17 +10,18 @@ export interface IUser {
 
   roleId: string;
 
-  userTenants?: {
+  memberships?: {
     tenantId: string;
     isOwner: boolean;
+    warehouseId?: string | null;
   }[];
 
   role?: {
     id: string;
     name: RoleName;
     permissions?: {
-      entity: string;
-      action: string;
+      entityType: string;
+      actionType: string;
     }[];
   };
 

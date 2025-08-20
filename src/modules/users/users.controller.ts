@@ -18,12 +18,12 @@ import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { Permissions } from '../../common/decorators/permission.decorator';
-import { PermissionsGuard } from '../../common/guards/permission.guard';
+import { PermissionGuard } from '../../common/guards/permission.guard';
 import { EntityType, ActionType } from '@prisma/client';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 
 @Controller('users')
-@UseGuards(SessionGuard, PermissionsGuard)
+@UseGuards(SessionGuard, PermissionGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -50,7 +50,7 @@ export class UsersController {
   }
 
   @Get()
-  @Permissions(EntityType.USER, ActionType.VIEW)
+  @Permissions(EntityType.USER, ActionType.READ)
   async findAll(@Query() query: Record<string, any>) {
     const { data, total, page, limit, hasNext, hasPrev } =
       await this.usersService.findAll(query);
@@ -70,7 +70,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Permissions(EntityType.USER, ActionType.VIEW)
+  @Permissions(EntityType.USER, ActionType.READ)
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
     return APIResponse.success({ user }, 'User retrieved successfully');

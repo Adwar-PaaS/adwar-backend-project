@@ -66,9 +66,9 @@ export class TenantService {
     const existing = await this.tenantRepo.getById(id);
 
     const newStatus =
-      existing.status === Status.Activate
-        ? Status.Deactivate
-        : Status.Activate;
+      existing.status === Status.ACTIVE
+        ? Status.INACTIVE
+        : Status.ACTIVE;
 
     return this.tenantRepo.updateStatus(id, newStatus);
   }

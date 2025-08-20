@@ -33,7 +33,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
       data: {
         ...rest,
         slug: slugify(data.name, { lower: true, strict: true }),
-        status: data.status ?? Status.Activate,
+        status: data.status ?? Status.ACTIVE,
         creator: { connect: { id: createdBy } },
       },
       include: creatorSelect,
