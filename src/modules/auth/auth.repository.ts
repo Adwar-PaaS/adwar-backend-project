@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { UsersRepository } from '../users/users.repository';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthRepository {
-  constructor(private readonly usersRepo: UsersRepository) {}
+  constructor(public readonly usersRepo: UsersRepository) {}
 
   async createUser(dto: any) {
-    return this.usersRepo.create(dto);
+    return this.usersRepo.createUser(dto);
   }
 
   async findUserByEmail(email: string) {
@@ -14,6 +15,10 @@ export class AuthRepository {
   }
 
   async findUserById(userId: string) {
-    return this.usersRepo.findOne({ id: userId });
+    return this.usersRepo.findById(userId);
+  }
+
+  async findOne(where: Prisma.UserWhereUniqueInput) {
+    return this.usersRepo.findOne(where);
   }
 }
