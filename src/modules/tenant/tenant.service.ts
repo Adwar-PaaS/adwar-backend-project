@@ -31,6 +31,10 @@ export class TenantService {
     });
   }
 
+  async getRolesInTenant(tenantId: string) {
+    return this.tenantRepo.getTenantRoles(tenantId);
+  }
+
   findAll(query: Record<string, any>) {
     return this.tenantRepo.findAllWithCreator(query);
   }
@@ -66,9 +70,7 @@ export class TenantService {
     const existing = await this.tenantRepo.getById(id);
 
     const newStatus =
-      existing.status === Status.ACTIVE
-        ? Status.INACTIVE
-        : Status.ACTIVE;
+      existing.status === Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE;
 
     return this.tenantRepo.updateStatus(id, newStatus);
   }

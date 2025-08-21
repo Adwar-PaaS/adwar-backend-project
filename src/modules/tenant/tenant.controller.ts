@@ -74,6 +74,14 @@ export class TenantController {
     return APIResponse.success({ users }, 'Tenant users fetched successfully');
   }
 
+  @Get(':id/roles') 
+  async getTenantRoles(
+    @Param('id') id: string,
+  ): Promise<APIResponse<{ roles: any[] }>> {
+    const roles = await this.service.getRolesInTenant(id);
+    return APIResponse.success({ roles }, 'Tenant roles fetched successfully');
+  }
+
   @Put(':id')
   @UseInterceptors(FileInterceptor('logoUrl'))
   async update(

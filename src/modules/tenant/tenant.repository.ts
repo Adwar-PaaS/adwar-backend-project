@@ -53,22 +53,57 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const tenant = await this.model.findUnique({
       where: { id: tenantId },
       include: {
-        users: {
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            phone: true,
-            status: true,
-            role: true,
-            createdAt: true,
+        memberships: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                fullName: true,
+                phone: true,
+                status: true,
+                role: true,
+                createdAt: true,
+              },
+            },
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+                location: true,
+              },
+            },
           },
         },
       },
     });
 
     if (!tenant) throw new NotFoundException('Tenant not found');
-    return tenant.users;
+
+    return tenant.memberships.map((m: { user: any; warehouse: any }) => ({
+      user: m.user,
+      warehouse: m.warehouse,
+    }));
+  }
+
+  async getTenantRoles(tenantId: string) {
+    const tenant = await this.model.findUnique({
+      where: { id: tenantId },
+      include: {
+        roles: {
+          select: {
+            id: true,
+            name: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!tenant) throw new NotFoundException('Tenant not found');
+
+    return tenant.roles;
   }
 
   async findAllWithCreator(queryString: Record<string, any>) {
