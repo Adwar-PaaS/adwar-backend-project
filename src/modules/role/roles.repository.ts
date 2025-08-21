@@ -9,20 +9,21 @@ export class RolesRepository extends BaseRepository<Role> {
     super(prisma, prisma.role, ['name']);
   }
 
-  async createRoleWithPermissions(data: {
-    name: RoleName;
-    tenantId?: string;
-    permissions: { entityType: EntityType; actionType: ActionType }[];
-  }) {
-    return this.prisma.role.create({
+  async addPermissionsToRole(
+    roleId: string,
+    permissions: { entityType: EntityType; actionType: ActionType }[],
+  ) {
+    return this.prisma.role.update({
+      where: { id: roleId },
       data: {
-        name: data.name,
-        tenantId: data.tenantId ?? null,
         permissions: {
-          create: data.permissions.map((p) => ({
-            entityType: p.entityType,
-            actionType: p.actionType,
-          })),
+          createMany: {
+            data: permissions.map((p) => ({
+              entityType: p.entityType,
+              actionType: p.actionType,
+            })),
+            skipDuplicates: true,
+          },
         },
       },
       include: { permissions: true },

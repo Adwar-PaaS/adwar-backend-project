@@ -5,6 +5,7 @@ import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { checkEmailUnique } from '../../common/utils/check-email.util';
+import { sanitizeUser } from '../../common/utils/sanitize-user.util';
 
 const userInclude = {
   role: {
@@ -58,7 +59,7 @@ export class UsersRepository extends BaseRepository<User> {
   }): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         email: data.email,
         password: data.password,
@@ -75,6 +76,8 @@ export class UsersRepository extends BaseRepository<User> {
       },
       include: this.getUserInclude(),
     });
+
+    return sanitizeUser(user) as UserWithRelations;
   }
 
   async updateUser(

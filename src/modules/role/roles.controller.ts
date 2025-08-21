@@ -17,14 +17,21 @@ import { EntityType, ActionType } from '@prisma/client';
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
-  @Post()
-  @Permissions(EntityType.USER, ActionType.CREATE)
-  async createRole(@Body() dto: CreateRoleDto) {
-    const role = await this.rolesService.createRole(dto);
+  @Post(':roleId/permissions')
+  @Permissions(EntityType.USER, ActionType.UPDATE)
+  async addPermissionsToRole(
+    @Param('id') roleId: string,
+    @Body()
+    body: { permissions: { entityType: EntityType; actionType: ActionType }[] },
+  ) {
+    const role = await this.rolesService.addPermissionsToRole(
+      roleId,
+      body.permissions,
+    );
     return APIResponse.success(
       { role },
-      'Role created successfully',
-      HttpStatus.CREATED,
+      'Permissions added to role successfully',
+      HttpStatus.OK,
     );
   }
 

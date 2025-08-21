@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { RolesRepository } from './roles.repository';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { EntityType, ActionType } from '@prisma/client';
 
 @Injectable()
 export class RolesService {
   constructor(private readonly rolesRepo: RolesRepository) {}
 
-  async createRole(dto: CreateRoleDto) {
-    return this.rolesRepo.createRoleWithPermissions(dto);
+  async addPermissionsToRole(
+    roleId: string,
+    permissions: { entityType: EntityType; actionType: ActionType }[],
+  ) {
+    return this.rolesRepo.addPermissionsToRole(roleId, permissions);
   }
 
   async findAll() {
