@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpStatus,
   Put,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -24,6 +25,14 @@ import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { PermissionService } from '../../shared/permission/permission.service';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import {
+  Cacheable,
+  InvalidateCache,
+} from '../../common/decorators/cache.decorator';
+import {
+  CacheInterceptor,
+  InvalidateCacheInterceptor,
+} from '../../common/interceptors/cache.interceptor';
 
 @Controller('users')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -34,6 +43,8 @@ export class UsersController {
   ) {}
 
   @Post()
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*')
   @Permissions(EntityType.USER, ActionType.CREATE)
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
@@ -45,6 +56,8 @@ export class UsersController {
   }
 
   @Post('tenant')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*')
   @Permissions(EntityType.USER, ActionType.CREATE)
   async createTenantUser(
     @Body() dto: CreateTenantUserDto,
@@ -69,26 +82,23 @@ export class UsersController {
   }
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable((req) => `users:page:${req.query.page || 1}`, 60)
   @Permissions(EntityType.USER, ActionType.READ)
   async findAll(@Query() query: Record<string, any>) {
     const { data, total, page, limit, hasNext, hasPrev } =
       await this.usersService.findAll(query);
 
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Fetched users successfully',
-      data: {
-        users: data,
-        total,
-        page,
-        limit,
-        hasNext,
-        hasPrev,
-      },
-    };
+    return APIResponse.success(
+      { users: data, total, page, limit, hasNext, hasPrev },
+      'Fetched users successfully',
+      HttpStatus.OK,
+    );
   }
 
   @Get(':id')
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable((req) => `users:${req.params.id}`, 60)
   @Permissions(EntityType.USER, ActionType.READ)
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
@@ -96,6 +106,8 @@ export class UsersController {
   }
 
   @Put(':id')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*', (req) => `users:${req.params.id}`)
   @Permissions(EntityType.USER, ActionType.UPDATE)
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const updatedUser = await this.usersService.update(id, dto);
@@ -103,6 +115,8 @@ export class UsersController {
   }
 
   @Patch(':id/status')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache((req) => `users:${req.params.id}`, 'users:*')
   @Permissions(EntityType.USER, ActionType.UPDATE)
   async updateStatus(
     @Param('id') id: string,
@@ -113,6 +127,8 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache((req) => `users:${req.params.id}`, 'users:*')
   @Permissions(EntityType.USER, ActionType.DELETE)
   async delete(@Param('id') id: string) {
     await this.usersService.delete(id);

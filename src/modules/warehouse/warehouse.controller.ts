@@ -13,8 +13,12 @@ import { WarehouseService } from './warehouse.service';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { Permissions } from '../../common/decorators/permission.decorator';
 import { EntityType, ActionType } from '@prisma/client';
+import { SessionGuard } from '../../modules/auth/guards/session.guard';
+import { UseGuards } from '@nestjs/common';
+import { PermissionGuard } from '../../common/guards/permission.guard';
 
 @Controller('warehouses')
+@UseGuards(SessionGuard, PermissionGuard)
 export class WarehouseController {
   constructor(private readonly warehouseService: WarehouseService) {}
 

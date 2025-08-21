@@ -22,11 +22,13 @@ export class SessionGuard implements CanActivate {
       where: { id: req.session.userId },
       include: {
         role: {
+          include: { permissions: true },
+        },
+        memberships: {
           include: {
-            permissions: true,
+            tenant: true,
           },
         },
-        memberships: true,
       },
     });
 
@@ -34,10 +36,13 @@ export class SessionGuard implements CanActivate {
       throw new UnauthorizedException('User not found');
     }
 
+    const membership = user.memberships?.[0];
+
     const authUser: AuthUser = {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      isOwner: membership?.isOwner ?? false,
       role: {
         id: user.role.id,
         name: user.role.name,
@@ -46,10 +51,12 @@ export class SessionGuard implements CanActivate {
           action: p.actionType,
         })),
       },
-      userTenants: user.memberships.map((ut) => ({
-        tenantId: ut.tenantId,
-        isOwner: ut.isOwner,
-      })),
+      tenant: membership
+        ? {
+            id: membership.tenantId,
+            slug: membership.tenant.slug,
+          }
+        : undefined,
     };
 
     req.user = authUser;

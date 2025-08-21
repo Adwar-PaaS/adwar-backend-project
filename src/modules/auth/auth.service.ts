@@ -9,10 +9,12 @@ function mapPrismaUserToAuthUser(user: any): AuthUser {
   if (!user) {
     throw new ApiError('User not found', HttpStatus.NOT_FOUND);
   }
+
   return {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
+    isOwner: user.memberships?.[0]?.isOwner ?? false,
     role: {
       id: user.role?.id,
       name: user.role?.name,
@@ -22,11 +24,12 @@ function mapPrismaUserToAuthUser(user: any): AuthUser {
           action: p.actionType,
         })) ?? [],
     },
-    userTenants:
-      user.memberships?.map((ut: any) => ({
-        tenantId: ut.tenantId,
-        isOwner: ut.isOwner,
-      })) ?? [],
+    tenant: user.memberships?.[0]
+      ? {
+          id: user.memberships[0].tenant.id,
+          slug: user.memberships[0].tenant.slug,
+        }
+      : undefined,
   };
 }
 

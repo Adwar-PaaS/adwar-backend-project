@@ -22,9 +22,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
+import { PermissionGuard } from '../../common/guards/permission.guard';
 
 @Controller('tenants')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, PermissionGuard)
 export class TenantController {
   constructor(private readonly service: TenantService) {}
 
@@ -74,7 +75,7 @@ export class TenantController {
     return APIResponse.success({ users }, 'Tenant users fetched successfully');
   }
 
-  @Get(':id/roles') 
+  @Get(':id/roles')
   async getTenantRoles(
     @Param('id') id: string,
   ): Promise<APIResponse<{ roles: any[] }>> {

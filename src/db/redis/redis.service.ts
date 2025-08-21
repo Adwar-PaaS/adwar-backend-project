@@ -73,6 +73,13 @@ export class RedisService
     await this.client.del(key);
   }
 
+  async delByPattern(pattern: string) {
+    const iter = this.client.scanIterator({ MATCH: pattern });
+    for await (const key of iter) {
+      await this.client.del(key);
+    }
+  }
+
   async disconnect() {
     if (this.client.isOpen) {
       await this.client.quit();

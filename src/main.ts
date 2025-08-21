@@ -48,8 +48,8 @@ async function bootstrap() {
   app.use(
     session({
       store,
-      name: configService.get<string>('SESSION_COOKIE_NAME') || 'session_id',
-      secret: configService.get<string>('SESSION_SECRET') || 'please-change-me',
+      name: configService.get<string>('SESSION_COOKIE_NAME') as string,
+      secret: configService.get<string>('SESSION_SECRET') as string,
       resave: false,
       saveUninitialized: false,
       rolling: false,

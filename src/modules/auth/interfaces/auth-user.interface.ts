@@ -4,6 +4,7 @@ export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
+  isOwner?: boolean;
   role: {
     id: string;
     name: RoleName;
@@ -12,8 +13,8 @@ export interface AuthUser {
       action: ActionType;
     }[];
   };
-  userTenants: {
-    tenantId: string;
-    isOwner: boolean;
-  }[];
+  tenant?: {
+    id: string;
+    slug: string;
+  };
 }

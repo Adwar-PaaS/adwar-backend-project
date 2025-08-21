@@ -8,12 +8,15 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
-import { CreateRoleDto } from './dto/create-role.dto';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { Permissions } from '../../common/decorators/permission.decorator';
 import { EntityType, ActionType } from '@prisma/client';
+import { SessionGuard } from '../../modules/auth/guards/session.guard';
+import { UseGuards } from '@nestjs/common';
+import { PermissionGuard } from '../../common/guards/permission.guard';
 
 @Controller('roles')
+@UseGuards(SessionGuard, PermissionGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
