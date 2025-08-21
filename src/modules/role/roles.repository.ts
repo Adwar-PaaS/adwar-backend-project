@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { EntityType, ActionType, RoleName } from '@prisma/client';
+import { EntityType, ActionType, RoleName, Role } from '@prisma/client';
+import { BaseRepository } from '../../shared/factory/base.repository';
 
 @Injectable()
-export class RolesRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class RolesRepository extends BaseRepository<Role> {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma, prisma.role, ['name']);
+  }
 
   async createRoleWithPermissions(data: {
     name: RoleName;
@@ -23,6 +26,12 @@ export class RolesRepository {
         },
       },
       include: { permissions: true },
+    });
+  }
+
+  async findAllRolesWithoutSuperAdmin() {
+    return this.prisma.role.findMany({
+      where: { name: { not: RoleName.SUPER_ADMIN } },
     });
   }
 

@@ -90,12 +90,20 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const tenant = await this.model.findUnique({
       where: { id: tenantId },
       include: {
-        roles: {
-          select: {
-            id: true,
-            name: true,
-            createdAt: true,
-            updatedAt: true,
+        memberships: {
+          include: {
+            user: {
+              include: {
+                role: {
+                  select: {
+                    id: true,
+                    name: true,
+                    createdAt: true,
+                    updatedAt: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -103,7 +111,14 @@ export class TenantRepository extends BaseRepository<Tenant> {
 
     if (!tenant) throw new NotFoundException('Tenant not found');
 
-    return tenant.roles;
+    const rolesMap = new Map<string, any>();
+    for (const membership of tenant.memberships) {
+      if (membership.user?.role) {
+        rolesMap.set(membership.user.role.id, membership.user.role);
+      }
+    }
+
+    return Array.from(rolesMap.values());
   }
 
   async findAllWithCreator(queryString: Record<string, any>) {

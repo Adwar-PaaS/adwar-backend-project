@@ -10,6 +10,10 @@ export class RolesService {
     return this.rolesRepo.createRoleWithPermissions(dto);
   }
 
+  async findAll() {
+    return this.rolesRepo.findAllRolesWithoutSuperAdmin();
+  }
+
   async getRoleById(id: string) {
     return this.rolesRepo.findById(id);
   }

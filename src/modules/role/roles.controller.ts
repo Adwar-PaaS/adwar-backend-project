@@ -18,13 +18,24 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Post()
-  @Permissions(EntityType.USER, ActionType.CREATE) // adjust if needed
+  @Permissions(EntityType.USER, ActionType.CREATE)
   async createRole(@Body() dto: CreateRoleDto) {
     const role = await this.rolesService.createRole(dto);
     return APIResponse.success(
       { role },
       'Role created successfully',
       HttpStatus.CREATED,
+    );
+  }
+
+  @Get()
+  @Permissions(EntityType.USER, ActionType.READ)
+  async getAllRoles() {
+    const roles = await this.rolesService.findAll();
+    return APIResponse.success(
+      { roles },
+      'Roles retrieved successfully',
+      HttpStatus.OK,
     );
   }
 
