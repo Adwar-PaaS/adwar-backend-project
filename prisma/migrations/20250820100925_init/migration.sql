@@ -78,9 +78,10 @@ CREATE TABLE "public"."RolePermission" (
     "id" TEXT NOT NULL,
     "roleId" TEXT NOT NULL,
     "entityType" "public"."EntityType" NOT NULL,
-    "actionType" "public"."ActionType" NOT NULL,
+    "actionType" "ActionType"[] DEFAULT '{}',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "RolePermission_pkey" PRIMARY KEY ("id")
 );

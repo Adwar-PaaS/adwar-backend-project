@@ -1,4 +1,4 @@
-import { Status, RoleName } from '@prisma/client';
+import { Status, RoleName, ActionType, EntityType } from '@prisma/client';
 
 export interface IUser {
   id: string;
@@ -20,8 +20,8 @@ export interface IUser {
     id: string;
     name: RoleName;
     permissions?: {
-      entityType: string;
-      actionType: string;
+      entityType: EntityType;
+      actionType: ActionType | ActionType[];
     }[];
   };
 

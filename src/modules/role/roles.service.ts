@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { RolesRepository } from './roles.repository';
-import { CreateRoleDto } from './dto/create-role.dto';
 import { EntityType, ActionType } from '@prisma/client';
 
 @Injectable()
@@ -9,7 +8,7 @@ export class RolesService {
 
   async addPermissionsToRole(
     roleId: string,
-    permissions: { entityType: EntityType; actionType: ActionType }[],
+    permissions: { entityType: EntityType; actionTypes: ActionType[] }[],
   ) {
     return this.rolesRepo.addPermissionsToRole(roleId, permissions);
   }

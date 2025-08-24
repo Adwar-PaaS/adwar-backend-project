@@ -11,7 +11,7 @@ export class RolesRepository extends BaseRepository<Role> {
 
   async addPermissionsToRole(
     roleId: string,
-    permissions: { entityType: EntityType; actionType: ActionType }[],
+    permissions: { entityType: EntityType; actionTypes: ActionType[] }[],
   ) {
     return this.prisma.role.update({
       where: { id: roleId },
@@ -20,7 +20,7 @@ export class RolesRepository extends BaseRepository<Role> {
           createMany: {
             data: permissions.map((p) => ({
               entityType: p.entityType,
-              actionType: p.actionType,
+              actionType: p.actionTypes,
             })),
             skipDuplicates: true,
           },
@@ -37,10 +37,19 @@ export class RolesRepository extends BaseRepository<Role> {
   }
 
   async findById(id: string) {
-    return this.prisma.role.findUnique({
+    const role = await this.prisma.role.findUnique({
       where: { id },
       include: { permissions: true },
     });
+
+    if (!role) return null;
+
+    role.permissions = role.permissions.map((p: any) => ({
+      ...p,
+      actionType: p.actionType.map((a: string) => a as ActionType),
+    }));
+
+    return role;
   }
 
   async deleteRole(id: string) {

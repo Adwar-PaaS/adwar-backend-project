@@ -6,47 +6,9 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🚀 Starting seed...');
 
-  // 1. Ensure SUPER_ADMIN role exists (global role, no tenantId)
-  let superAdminRole = await prisma.role.findFirst({
-    where: { name: RoleName.SUPER_ADMIN, tenantId: null },
-  });
-
-  if (!superAdminRole) {
-    console.log('Creating SUPER_ADMIN role...');
-    superAdminRole = await prisma.role.create({
-      data: {
-        name: RoleName.SUPER_ADMIN,
-        tenantId: null, // ✅ explicitly global role
-      },
-    });
-  }
-
-  // 2. Ensure Super Admin user exists
-  console.log('Creating Super Admin user...');
-  const hashedPassword = await hashPassword('12341234');
-
-  const existingUser = await prisma.user.findUnique({
-    where: { email: 'superadmin@adwar.com' },
-  });
-
-  if (existingUser) {
-    console.log('Super Admin user already exists, updating role...');
-    await prisma.user.update({
-      where: { id: existingUser.id },
-      data: { roleId: superAdminRole.id },
-    });
-  } else {
-    await prisma.user.create({
-      data: {
-        email: 'superadmin@adwar.com',
-        password: hashedPassword,
-        fullName: 'Super Administrator',
-        status: Status.ACTIVE,
-        roleId: superAdminRole.id,
-      },
-    });
-    console.log('✅ Super Admin user created');
-  }
+  // 0. Clean RolePermission table
+  await prisma.rolePermission.deleteMany({});
+  console.log('🧹 Cleared RolePermission table');
 
   console.log('🌱 Seed completed');
 }

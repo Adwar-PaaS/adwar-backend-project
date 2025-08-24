@@ -46,10 +46,12 @@ export class SessionGuard implements CanActivate {
       role: {
         id: user.role.id,
         name: user.role.name,
-        permissions: user.role.permissions.map((p) => ({
-          entity: p.entityType,
-          action: p.actionType,
-        })),
+        permissions: user.role.permissions.flatMap((p) =>
+          p.actionType.map((action) => ({
+            entity: p.entityType,
+            action: action,
+          })),
+        ),
       },
       tenant: membership
         ? {

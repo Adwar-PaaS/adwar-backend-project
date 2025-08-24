@@ -7,6 +7,104 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  password       String
+  fullName       String
+  phone          String?
+  status         Status       @default(ACTIVE)
+  roleId         String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  createdTenants Tenant[]     @relation("UserCreatedTenants")
+  role           Role         @relation(fields: [roleId], references: [id])
+  memberships    UserTenant[]
+}
+
+model Tenant {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  status      Status       @default(ACTIVE)
+  logoUrl     String?
+  address     String?
+  email       String?      @unique
+  phone       String?
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+  roles       Role[]
+  createdBy   User         @relation("UserCreatedTenants", fields: [createdById], references: [id])
+  memberships UserTenant[]
+  warehouses  Warehouse[]
+}
+
+model UserTenant {
+  id          String     @id @default(uuid())
+  isOwner     Boolean    @default(false)
+  userId      String
+  tenantId    String
+  warehouseId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+  @@index([warehouseId])
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        RoleName
+  tenantId    String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant?          @relation(fields: [tenantId], references: [id])
+  permissions RolePermission[]
+  users       User[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model RolePermission {
+  id         String       @id @default(uuid())
+  roleId     String
+  entityType EntityType
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  actionType ActionType[] @default([])
+  role       Role         @relation(fields: [roleId], references: [id])
+
+  @@unique([roleId, entityType])
+  @@index([roleId])
+}
+
+model Warehouse {
+  id           String          @id @default(uuid())
+  location     String
+  capacity     Int
+  currentStock Int             @default(0)
+  status       WarehouseStatus @default(OPEN)
+  tenantId     String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
+  name         String
+  memberships  UserTenant[]
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
 enum RoleName {
   SUPER_ADMIN
   ADMIN
@@ -52,120 +150,4 @@ enum ActionType {
   DELETE
   ACTIVATE
   DEACTIVATE
-}
-
-model User {
-  id       String  @id @default(uuid())
-  email    String  @unique
-  password String
-  fullName String
-  phone    String?
-  status   Status  @default(ACTIVE)
-
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id])
-
-  memberships    UserTenant[]
-  createdTenants Tenant[]     @relation("UserCreatedTenants")
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-}
-
-model Tenant {
-  id      String  @id @default(uuid())
-  name    String
-  slug    String  @unique
-  status  Status  @default(ACTIVE)
-  logoUrl String?
-  address String?
-  email   String? @unique
-  phone   String?
-
-  createdById String
-  createdBy   User   @relation("UserCreatedTenants", fields: [createdById], references: [id])
-
-  memberships UserTenant[]
-  warehouses  Warehouse[]
-  roles       Role[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-}
-
-model UserTenant {
-  id      String  @id @default(uuid())
-  isOwner Boolean @default(false)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  warehouseId String?
-  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([userId, tenantId])
-  @@index([tenantId])
-  @@index([warehouseId])
-}
-
-model Role {
-  id   String   @id @default(uuid())
-  name RoleName
-
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
-  users       User[]
-  permissions RolePermission[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-
-  @@unique([tenantId, name])
-  @@index([tenantId])
-}
-
-model RolePermission {
-  id     String @id @default(uuid())
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id])
-
-  entityType EntityType
-  actionType ActionType
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([roleId, entityType, actionType])
-  @@index([roleId])
-}
-
-model Warehouse {
-  id           String          @id @default(uuid())
-  name         String
-  location     String
-  capacity     Int
-  currentStock Int             @default(0)
-  status       WarehouseStatus @default(OPEN)
-
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  memberships UserTenant[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([tenantId])
 }

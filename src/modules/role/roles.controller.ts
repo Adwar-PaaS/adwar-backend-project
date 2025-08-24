@@ -14,6 +14,7 @@ import { EntityType, ActionType } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { UseGuards } from '@nestjs/common';
 import { PermissionGuard } from '../../common/guards/permission.guard';
+import { AddPermissionsDto } from './dto/add-permissions.dto';
 
 @Controller('roles')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -23,9 +24,8 @@ export class RolesController {
   @Post(':roleId/permissions')
   @Permissions(EntityType.USER, ActionType.UPDATE)
   async addPermissionsToRole(
-    @Param('id') roleId: string,
-    @Body()
-    body: { permissions: { entityType: EntityType; actionType: ActionType }[] },
+    @Param('roleId') roleId: string,
+    @Body() body: AddPermissionsDto,
   ) {
     const role = await this.rolesService.addPermissionsToRole(
       roleId,

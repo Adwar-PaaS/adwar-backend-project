@@ -31,7 +31,11 @@ export class PermissionService {
     }
 
     return user.role.permissions.some(
-      (rp) => rp.entityType === entity && rp.actionType === action,
+      (rp) =>
+        rp.entityType === entity &&
+        (Array.isArray(rp.actionType)
+          ? rp.actionType.includes(action)
+          : rp.actionType === action),
     );
   }
 
@@ -72,7 +76,9 @@ export class PermissionService {
         }
         acc[perm.entityType].actions.push({
           id: perm.id,
-          action: perm.actionType,
+          action: Array.isArray(perm.actionType)
+            ? perm.actionType[0]
+            : perm.actionType,
           description: `${perm.actionType} ${perm.entityType}`,
         });
         return acc;
@@ -99,14 +105,19 @@ export class PermissionService {
   ) {
     return this.prisma.rolePermission.upsert({
       where: {
-        roleId_entityType_actionType: {
+        roleId_entityType: {
           roleId,
           entityType: entity,
-          actionType: action,
         },
       },
-      update: {},
-      create: { roleId, entityType: entity, actionType: action },
+      update: {
+        actionType: { push: action },
+      },
+      create: {
+        roleId,
+        entityType: entity,
+        actionType: [action],
+      },
     });
   }
 
