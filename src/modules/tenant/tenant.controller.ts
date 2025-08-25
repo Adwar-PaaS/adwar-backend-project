@@ -79,7 +79,7 @@ export class TenantController {
   async getTenantRoles(
     @Param('id') id: string,
   ): Promise<APIResponse<{ roles: any[] }>> {
-    const roles = await this.service.getRolesInTenant(id);
+    const roles = await this.service.getRolesForTenant(id);
     return APIResponse.success({ roles }, 'Tenant roles fetched successfully');
   }
 

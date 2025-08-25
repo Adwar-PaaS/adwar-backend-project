@@ -63,12 +63,6 @@ export class RolesRepository extends BaseRepository<Role> {
     return role.permissions;
   }
 
-  // async findAllRolesWithoutSuperAdmin() {
-  //   return this.prisma.role.findMany({
-  //     where: { name: { not: RoleName.SUPER_ADMIN } },
-  //   });
-  // }
-
   async findById(id: string) {
     const role = await this.prisma.role.findUnique({
       where: { id },

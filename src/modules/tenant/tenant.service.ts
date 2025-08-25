@@ -31,8 +31,8 @@ export class TenantService {
     });
   }
 
-  async getRolesInTenant(tenantId: string) {
-    return this.tenantRepo.getTenantRoles(tenantId);
+  async getRolesForTenant(tenantId: string) {
+    return this.tenantRepo.getRolesForTenant(tenantId);
   }
 
   findAll(query: Record<string, any>) {

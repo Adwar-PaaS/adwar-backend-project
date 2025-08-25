@@ -86,39 +86,11 @@ export class TenantRepository extends BaseRepository<Tenant> {
     }));
   }
 
-  async getTenantRoles(tenantId: string) {
-    const tenant = await this.model.findUnique({
-      where: { id: tenantId },
-      include: {
-        memberships: {
-          include: {
-            user: {
-              include: {
-                role: {
-                  select: {
-                    id: true,
-                    name: true,
-                    createdAt: true,
-                    updatedAt: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+  async getRolesForTenant(tenantId: string) {
+    const roles = await this.prismaService.role.findMany({
+      where: { tenantId },
     });
-
-    if (!tenant) throw new NotFoundException('Tenant not found');
-
-    const rolesMap = new Map<string, any>();
-    for (const membership of tenant.memberships) {
-      if (membership.user?.role) {
-        rolesMap.set(membership.user.role.id, membership.user.role);
-      }
-    }
-
-    return Array.from(rolesMap.values());
+    return roles;
   }
 
   async findAllWithCreator(queryString: Record<string, any>) {

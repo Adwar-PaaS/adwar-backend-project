@@ -124,9 +124,6 @@ CREATE UNIQUE INDEX "UserTenant_userId_tenantId_key" ON "public"."UserTenant"("u
 CREATE INDEX "Role_tenantId_idx" ON "public"."Role"("tenantId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Role_tenantId_name_key" ON "public"."Role"("tenantId", "name");
-
--- CreateIndex
 CREATE INDEX "RolePermission_roleId_idx" ON "public"."RolePermission"("roleId");
 
 -- CreateIndex
