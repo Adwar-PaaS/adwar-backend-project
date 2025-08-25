@@ -14,7 +14,7 @@ export class CreateTenantUserDto {
 
   @IsString()
   @MinLength(6)
-  password: string; 
+  password: string;
 
   @IsString()
   @IsNotEmpty()
@@ -33,4 +33,8 @@ export class CreateTenantUserDto {
   @IsOptional()
   @IsBoolean()
   isOwner?: boolean = false;
+
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string | null;
 }
