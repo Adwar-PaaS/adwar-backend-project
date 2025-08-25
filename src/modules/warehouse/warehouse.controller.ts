@@ -2,7 +2,7 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
+  Put,
   Delete,
   Body,
   Param,
@@ -16,6 +16,8 @@ import { EntityType, ActionType } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { UseGuards } from '@nestjs/common';
 import { PermissionGuard } from '../../common/guards/permission.guard';
+import { CreateWarehouseDto } from './dto/create-warehouse.dto';
+import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
 
 @Controller('warehouses')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -24,7 +26,7 @@ export class WarehouseController {
 
   @Post()
   @Permissions(EntityType.WAREHOUSE, ActionType.CREATE)
-  async create(@Body() dto: any) {
+  async create(@Body() dto: CreateWarehouseDto) {
     const warehouse = await this.warehouseService.create(dto);
     return APIResponse.success(
       { warehouse },
@@ -54,9 +56,9 @@ export class WarehouseController {
     );
   }
 
-  @Patch(':id')
+  @Put(':id')
   @Permissions(EntityType.WAREHOUSE, ActionType.UPDATE)
-  async update(@Param('id') id: string, @Body() dto: any) {
+  async update(@Param('id') id: string, @Body() dto: UpdateWarehouseDto) {
     const warehouse = await this.warehouseService.update(id, dto);
     return APIResponse.success({ warehouse }, 'Warehouse updated successfully');
   }

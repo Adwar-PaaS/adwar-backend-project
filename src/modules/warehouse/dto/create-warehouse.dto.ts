@@ -1,20 +1,25 @@
-// import { WarehouseType } from '@prisma/client'; // should be MAIN, SUB, or BRANCH
-// import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
-// export class CreateWarehouseDto {
-//   @IsNotEmpty()
-//   @IsString()
-//   name: string;
+export class CreateWarehouseDto {
+  @IsNotEmpty()
+  @IsString()
+  name: string;
 
-//   @IsOptional()
-//   @IsString()
-//   type?: WarehouseType;
+  @IsOptional()
+  @IsString()
+  location?: string;
 
-//   @IsOptional()
-//   @IsString()
-//   location?: string;
+  @IsOptional()
+  @IsNumber()
+  capacity?: number;
 
-//   @IsUUID()
-//   @IsNotEmpty()
-//   tenantId: string;
-// }
+  @IsUUID()
+  @IsNotEmpty()
+  tenantId: string;
+}
