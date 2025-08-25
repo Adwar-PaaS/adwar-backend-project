@@ -102,6 +102,19 @@ CREATE TABLE "public"."Warehouse" (
     CONSTRAINT "Warehouse_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "public"."UserPermission" (
+    "id" TEXT NOT NULL,
+    "userTenantId" TEXT NOT NULL,
+    "entityType" "public"."EntityType" NOT NULL,
+    "actionType" "public"."ActionType"[] DEFAULT '{}',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "UserPermission_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
@@ -132,6 +145,12 @@ CREATE UNIQUE INDEX "RolePermission_roleId_entityType_actionType_key" ON "public
 -- CreateIndex
 CREATE INDEX "Warehouse_tenantId_idx" ON "public"."Warehouse"("tenantId");
 
+-- CreateIndex
+CREATE INDEX "UserPermission_userTenantId_idx" ON "public"."UserPermission"("userTenantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserPermission_userTenantId_entityType_key" ON "public"."UserPermission"("userTenantId", "entityType");
+
 -- AddForeignKey
 ALTER TABLE "public"."User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "public"."Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -155,3 +174,6 @@ ALTER TABLE "public"."RolePermission" ADD CONSTRAINT "RolePermission_roleId_fkey
 
 -- AddForeignKey
 ALTER TABLE "public"."Warehouse" ADD CONSTRAINT "Warehouse_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."UserPermission" ADD CONSTRAINT "UserPermission_userTenantId_fkey" FOREIGN KEY ("userTenantId") REFERENCES "public"."UserTenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
