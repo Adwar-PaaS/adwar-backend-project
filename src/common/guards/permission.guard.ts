@@ -6,53 +6,46 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { EntityType, ActionType, RoleName } from '@prisma/client';
-import { PermissionService } from '../../shared/permission/permission.service';
+import { PERMISSIONS_KEY } from '../decorators/permission.decorator';
+import { AuthUser } from '../../modules/auth/interfaces/auth-user.interface';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
-  constructor(
-    private reflector: Reflector,
-    private permissionService: PermissionService,
-  ) {}
+  constructor(private reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredEntity = this.reflector.get<EntityType>(
-      'entity',
-      context.getHandler(),
-    );
-    const requiredAction = this.reflector.get<ActionType>(
-      'action',
-      context.getHandler(),
-    );
+    const { entity, action } =
+      this.reflector.get<{ entity: EntityType; action: ActionType }>(
+        PERMISSIONS_KEY,
+        context.getHandler(),
+      ) || {};
 
-    if (!requiredEntity || !requiredAction) {
+    if (!entity || !action) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const user: AuthUser | undefined = request.user;
 
     if (!user) {
       throw new ForbiddenException('User not authenticated');
-    }
-
-    if (user.userTenants?.some((ut: any) => ut.isOwner)) {
-      return true;
     }
 
     if (user.role?.name === RoleName.SUPER_ADMIN) {
       return true;
     }
 
-    const hasPermission = await this.permissionService.hasPermission(
-      user.id,
-      requiredEntity,
-      requiredAction,
+    if (user.isOwner) {
+      return true;
+    }
+
+    const hasPermission = user.role?.permissions?.some(
+      (p) => p.entity === entity && p.action === action,
     );
 
     if (!hasPermission) {
       throw new ForbiddenException(
-        `You don't have permission to ${requiredAction.toLowerCase()} ${requiredEntity.toLowerCase()}`,
+        `You don't have permission to ${action.toLowerCase()} ${entity.toLowerCase()}`,
       );
     }
 

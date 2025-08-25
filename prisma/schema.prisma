@@ -54,6 +54,7 @@ model UserTenant {
   tenant      Tenant     @relation(fields: [tenantId], references: [id])
   user        User       @relation(fields: [userId], references: [id])
   warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  permissions UserPermission[]
 
   @@unique([userId, tenantId])
   @@index([tenantId])
@@ -86,6 +87,20 @@ model RolePermission {
 
   @@unique([roleId, entityType])
   @@index([roleId])
+}
+
+model UserPermission {
+  id         String       @id @default(uuid())
+  userTenantId String
+  entityType EntityType
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  actionType ActionType[] @default([])
+  
+  userTenant UserTenant   @relation(fields: [userTenantId], references: [id])
+
+  @@unique([userTenantId, entityType])
+  @@index([userTenantId])
 }
 
 model Warehouse {

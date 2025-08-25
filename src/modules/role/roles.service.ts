@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { RolesRepository } from './roles.repository';
-import { EntityType, ActionType } from '@prisma/client';
+import { EntityType, ActionType, RoleName } from '@prisma/client';
 
 @Injectable()
 export class RolesService {
   constructor(private readonly rolesRepo: RolesRepository) {}
+
+  async createRoleWithPermissions(
+    name: RoleName,
+    tenantId: string | null,
+    permissions: { entityType: EntityType; actionTypes: ActionType[] }[],
+  ) {
+    return this.rolesRepo.createRoleWithPermissions(name, tenantId, permissions);
+  }
 
   async addPermissionsToRole(
     roleId: string,
@@ -13,9 +21,13 @@ export class RolesService {
     return this.rolesRepo.addPermissionsToRole(roleId, permissions);
   }
 
-  async findAll() {
-    return this.rolesRepo.findAllRolesWithoutSuperAdmin();
+  async getPermissionsOfRole(roleId: string) {
+    return this.rolesRepo.getPermissionsOfRole(roleId);
   }
+
+  // async findAll() {
+  //   return this.rolesRepo.findAllRolesWithoutSuperAdmin();
+  // }
 
   async getRoleById(id: string) {
     return this.rolesRepo.findById(id);

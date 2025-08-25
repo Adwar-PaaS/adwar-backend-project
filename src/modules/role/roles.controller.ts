@@ -15,11 +15,31 @@ import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { UseGuards } from '@nestjs/common';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { AddPermissionsDto } from './dto/add-permissions.dto';
+import { CreateRoleDto } from './dto/create-role.dto';
+import { PermissionService } from 'src/shared/permission/permission.service';
 
 @Controller('roles')
 @UseGuards(SessionGuard, PermissionGuard)
 export class RolesController {
-  constructor(private readonly rolesService: RolesService) {}
+  constructor(
+    private readonly rolesService: RolesService,
+    private readonly permissionService: PermissionService,
+  ) {}
+
+  @Post()
+  @Permissions(EntityType.USER, ActionType.CREATE)
+  async createRole(@Body() body: CreateRoleDto) {
+    const role = await this.rolesService.createRoleWithPermissions(
+      body.name,
+      body.tenantId ?? null,
+      body.permissions,
+    );
+    return APIResponse.success(
+      { role },
+      'Role created successfully',
+      HttpStatus.CREATED,
+    );
+  }
 
   @Post(':roleId/permissions')
   @Permissions(EntityType.USER, ActionType.UPDATE)
@@ -40,8 +60,8 @@ export class RolesController {
 
   @Get()
   @Permissions(EntityType.USER, ActionType.READ)
-  async getAllRoles() {
-    const roles = await this.rolesService.findAll();
+  getAllRoles() {
+    const roles = this.permissionService.getAllRolesExcludingSuperAdmin();
     return APIResponse.success(
       { roles },
       'Roles retrieved successfully',
@@ -55,6 +75,17 @@ export class RolesController {
     return APIResponse.success(
       { role },
       'Role retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Get(':roleId/get-permissions')
+  @Permissions(EntityType.USER, ActionType.READ)
+  async getPermissionsOfRole(@Param('roleId') roleId: string) {
+    const permissions = await this.rolesService.getPermissionsOfRole(roleId);
+    return APIResponse.success(
+      { permissions },
+      'Permissions retrieved successfully',
       HttpStatus.OK,
     );
   }

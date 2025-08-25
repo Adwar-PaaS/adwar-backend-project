@@ -17,18 +17,3 @@ export function getEntityActionsMap() {
     actions: actions.map((action) => normalizeEnumName(action)),
   }));
 }
-
-// @Controller('permissions')
-// export class PermissionController {
-//   constructor(private readonly service: PermissionService) {}
-
-//   @Get('entities')
-//   getEntitiesWithActions() {
-//     const data = this.service.getEntitiesWithActions();
-//     return APIResponse.success(
-//       { permissions: data },
-//       'Permissions data retrieved successfully',
-//       HttpStatus.OK,
-//     );
-//   }
-// }

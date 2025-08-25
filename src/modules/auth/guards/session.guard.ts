@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma/prisma.service';
-import { AuthUser } from '../interfaces/auth-user.interface';
+import { mapPrismaUserToAuthUser } from '../mappers/auth.mapper';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -21,12 +21,11 @@ export class SessionGuard implements CanActivate {
     const user = await this.prisma.user.findUnique({
       where: { id: req.session.userId },
       include: {
-        role: {
-          include: { permissions: true },
-        },
+        role: true,
         memberships: {
           include: {
             tenant: true,
+            permissions: true,
           },
         },
       },
@@ -36,32 +35,7 @@ export class SessionGuard implements CanActivate {
       throw new UnauthorizedException('User not found');
     }
 
-    const membership = user.memberships?.[0];
-
-    const authUser: AuthUser = {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      isOwner: membership?.isOwner ?? false,
-      role: {
-        id: user.role.id,
-        name: user.role.name,
-        permissions: user.role.permissions.flatMap((p) =>
-          p.actionType.map((action) => ({
-            entity: p.entityType,
-            action: action,
-          })),
-        ),
-      },
-      tenant: membership
-        ? {
-            id: membership.tenantId,
-            slug: membership.tenant.slug,
-          }
-        : undefined,
-    };
-
-    req.user = authUser;
+    req.user = mapPrismaUserToAuthUser(user);
     return true;
   }
 }

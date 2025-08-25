@@ -2,36 +2,8 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { ApiError } from '../../common/exceptions/api-error.exception';
 import { hashPassword, comparePasswords } from '../../common/utils/crypto.util';
 import { RoleName } from '@prisma/client';
-import { AuthUser } from './interfaces/auth-user.interface';
 import { AuthRepository } from './auth.repository';
-
-function mapPrismaUserToAuthUser(user: any): AuthUser {
-  if (!user) {
-    throw new ApiError('User not found', HttpStatus.NOT_FOUND);
-  }
-
-  return {
-    id: user.id,
-    email: user.email,
-    fullName: user.fullName,
-    isOwner: user.memberships?.[0]?.isOwner ?? false,
-    role: {
-      id: user.role?.id,
-      name: user.role?.name,
-      permissions:
-        user.role?.permissions?.map((p: any) => ({
-          entity: p.entityType,
-          action: p.actionType,
-        })) ?? [],
-    },
-    tenant: user.memberships?.[0]
-      ? {
-          id: user.memberships[0].tenant.id,
-          slug: user.memberships[0].tenant.slug,
-        }
-      : undefined,
-  };
-}
+import { mapPrismaUserToAuthUser } from './mappers/auth.mapper';
 
 @Injectable()
 export class AuthService {
