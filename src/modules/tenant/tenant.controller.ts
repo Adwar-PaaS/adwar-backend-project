@@ -83,6 +83,17 @@ export class TenantController {
     return APIResponse.success({ roles }, 'Tenant roles fetched successfully');
   }
 
+  @Get(':id/warehouses')
+  async getTenantWarehouses(
+    @Param('id') id: string,
+  ): Promise<APIResponse<{ warehouses: any[] }>> {
+    const warehouses = await this.service.getWarehousesInTenant(id);
+    return APIResponse.success(
+      { warehouses },
+      'Tenant warehouses fetched successfully',
+    );
+  }
+
   @Put(':id')
   @UseInterceptors(FileInterceptor('logoUrl'))
   async update(

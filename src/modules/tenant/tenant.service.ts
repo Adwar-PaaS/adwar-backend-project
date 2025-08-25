@@ -43,6 +43,10 @@ export class TenantService {
     return this.tenantRepo.getById(id);
   }
 
+  async getWarehousesInTenant(tenantId: string) {
+    return this.tenantRepo.getTenantWarehouses(tenantId);
+  }
+
   async update(
     id: string,
     dto: UpdateTenantDto,

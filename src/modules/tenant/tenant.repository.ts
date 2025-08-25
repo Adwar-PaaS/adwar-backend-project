@@ -105,6 +105,15 @@ export class TenantRepository extends BaseRepository<Tenant> {
     };
   }
 
+  async getTenantWarehouses(tenantId: string) {
+    const tenant = await this.model.findUnique({
+      where: { id: tenantId },
+      include: { warehouses: true },
+    });
+    if (!tenant) throw new NotFoundException('Tenant not found');
+    return tenant.warehouses;
+  }
+
   async getById(id: string): Promise<any> {
     const tenant = await this.model.findUnique({
       where: { id },
