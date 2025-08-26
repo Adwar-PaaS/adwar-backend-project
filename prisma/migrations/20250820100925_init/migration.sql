@@ -13,6 +13,12 @@ CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'TENANT', 'WAREHOUSE', 'ORDER
 -- CreateEnum
 CREATE TYPE "public"."ActionType" AS ENUM ('ALL', 'CREATE', 'READ', 'UPDATE', 'DELETE', 'ACTIVATE', 'DEACTIVATE');
 
+-- CreateEnum
+CREATE TYPE "public"."OrderStatus" AS ENUM ('PENDING', 'PROCESSING', 'PICKED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURNED');
+
+-- CreateEnum
+CREATE TYPE "public"."FailedReason" AS ENUM ('OUT_OF_STOCK', 'DAMAGED_ITEM', 'WRONG_ITEM', 'CUSTOMER_NOT_AVAILABLE', 'ADDRESS_ISSUE', 'OTHER');
+
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
@@ -115,6 +121,27 @@ CREATE TABLE "public"."UserPermission" (
     CONSTRAINT "UserPermission_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "public"."Order" (
+    "id" TEXT NOT NULL,
+    "SKU" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "failedReason" "public"."FailedReason",
+    "deliveryLocation" TEXT,
+    "mirchantLocation" TEXT,
+    "description" TEXT,
+    "customerName" TEXT,
+    "customerPhone" TEXT,
+    "status" "public"."OrderStatus" NOT NULL DEFAULT 'PENDING',
+    "warehouseId" TEXT NOT NULL,
+    "deliveriedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
@@ -151,6 +178,18 @@ CREATE INDEX "UserPermission_userTenantId_idx" ON "public"."UserPermission"("use
 -- CreateIndex
 CREATE UNIQUE INDEX "UserPermission_userTenantId_entityType_key" ON "public"."UserPermission"("userTenantId", "entityType");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "Order_SKU_key" ON "public"."Order"("SKU");
+
+-- CreateIndex
+CREATE INDEX "Order_warehouseId_idx" ON "public"."Order"("warehouseId");
+
+-- CreateIndex
+CREATE INDEX "Order_status_idx" ON "public"."Order"("status");
+
+-- CreateIndex
+CREATE INDEX "Order_createdAt_idx" ON "public"."Order"("createdAt");
+
 -- AddForeignKey
 ALTER TABLE "public"."User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "public"."Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -177,3 +216,6 @@ ALTER TABLE "public"."Warehouse" ADD CONSTRAINT "Warehouse_tenantId_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "public"."UserPermission" ADD CONSTRAINT "UserPermission_userTenantId_fkey" FOREIGN KEY ("userTenantId") REFERENCES "public"."UserTenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Order" ADD CONSTRAINT "Order_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
