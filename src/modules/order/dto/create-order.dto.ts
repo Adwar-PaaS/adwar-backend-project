@@ -17,8 +17,9 @@ export class CreateOrderDto {
   @Min(1)
   quantity: number;
 
+  @IsOptional()
   @IsUUID()
-  warehouseId: string;
+  warehouseId?: string;
 
   @IsOptional()
   @IsString()

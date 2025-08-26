@@ -134,8 +134,9 @@ model Order {
 
   status           OrderStatus  @default(PENDING)
 
-  warehouseId      String
-  warehouse        Warehouse    @relation(fields: [warehouseId], references: [id])
+  warehouseId      String?
+  warehouse        Warehouse?    @relation(fields: [warehouseId], references: [id])
+
 
   deliveredAt      DateTime?
   createdAt        DateTime     @default(now())

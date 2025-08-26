@@ -157,7 +157,7 @@ CREATE TABLE "public"."Order" (
     "customerName" TEXT,
     "customerPhone" TEXT,
     "status" "public"."OrderStatus" NOT NULL DEFAULT 'PENDING',
-    "warehouseId" TEXT NOT NULL,
+    "warehouseId" TEXT,
     "deliveredAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -245,4 +245,5 @@ ALTER TABLE "public"."UserPermission" ADD CONSTRAINT "UserPermission_userTenantI
 ALTER TABLE "public"."Order"
 ADD CONSTRAINT "Order_warehouseId_fkey"
 FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id")
-ON DELETE RESTRICT ON UPDATE CASCADE;
+ON DELETE SET NULL
+ON UPDATE CASCADE;
