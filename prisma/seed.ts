@@ -1,59 +1,31 @@
-import { PrismaClient, RoleName, Status } from '@prisma/client';
-import { hashPassword } from '../src/common/utils/crypto.util';
-
-const prisma = new PrismaClient();
+import { readdirSync } from 'fs';
+import { join } from 'path';
 
 async function main() {
-  console.log('🚀 Starting seed...');
+  const seedsDir = join(__dirname, 'seeds');
 
-  let superAdminRole = await prisma.role.findFirst({
-    where: { name: RoleName.SUPER_ADMIN, tenantId: null },
-  });
+  const files = readdirSync(seedsDir).filter(
+    (file) => file.endsWith('.ts') || file.endsWith('.js'),
+  );
 
-  if (!superAdminRole) {
-    console.log('Creating SUPER_ADMIN role...');
-    superAdminRole = await prisma.role.create({
-      data: {
-        name: RoleName.SUPER_ADMIN,
-        tenantId: null,
-      },
-    });
+  for (const file of files) {
+    console.log(`Running seed: ${file}`);
+    const seedModule = await import(join(seedsDir, file));
+
+    if (typeof seedModule.default === 'function') {
+      await seedModule.default();
+    } else {
+      console.warn(`⚠️  ${file} does not export a default function`);
+    }
   }
-
-  console.log('Creating Super Admin user...');
-  const hashedPassword = await hashPassword('12341234');
-
-  const existingUser = await prisma.user.findUnique({
-    where: { email: 'superadmin@adwar.com' },
-  });
-
-  if (existingUser) {
-    console.log('Super Admin user already exists, updating role...');
-    await prisma.user.update({
-      where: { id: existingUser.id },
-      data: { roleId: superAdminRole.id },
-    });
-  } else {
-    await prisma.user.create({
-      data: {
-        email: 'superadmin@adwar.com',
-        password: hashedPassword,
-        fullName: 'Super Administrator',
-        status: Status.ACTIVE,
-        roleId: superAdminRole.id,
-      },
-    });
-    console.log('✅ Super Admin user created');
-  }
-
-  console.log('🌱 Seed completed');
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  .then(() => {
+    console.log('🌱 Seeding complete');
+    process.exit(0);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
+  .catch((e) => {
+    console.error('❌ Seeding failed', e);
+    process.exit(1);
   });

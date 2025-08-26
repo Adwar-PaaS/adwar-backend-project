@@ -7,25 +7,16 @@ export interface IUser {
   fullName: string;
   phone: string | null;
   status: Status;
-
-  roleId: string;
-
-  memberships?: {
-    tenantId: string;
-    isOwner: boolean;
-    warehouseId?: string | null;
-  }[];
+  isOwner?: boolean;
+  warehouseId?: string | null;
+  tenantId?: string;
 
   role?: {
     id: string;
     name: RoleName;
-    permissions?: {
+    permissions?: { // is is user permissions of user we don't need all role permissions
       entityType: EntityType;
       actionType: ActionType | ActionType[];
     }[];
   };
-
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date | null;
 }

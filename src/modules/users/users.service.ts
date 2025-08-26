@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersRepository } from './users.repository';
-import { IUser } from './interfaces/user.interface';
 import { hashPassword } from '../../common/utils/crypto.util';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { Status } from '@prisma/client';
@@ -12,7 +11,7 @@ import { AuthUser } from '../auth/interfaces/auth-user.interface';
 export class UsersService {
   constructor(private readonly usersRepo: UsersRepository) {}
 
-  async create(dto: CreateUserDto): Promise<IUser> {
+  async create(dto: CreateUserDto) {
     dto.password = await hashPassword(dto.password);
     return this.usersRepo.createUser(dto);
   }
@@ -35,7 +34,7 @@ export class UsersService {
   async createTenantUser(
     dto: CreateTenantUserDto,
     authUser: AuthUser,
-  ): Promise<IUser> {
+  ) {
     dto.password = await hashPassword(dto.password);
 
     if (authUser.role.name === 'SUPER_ADMIN') {

@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { Prisma, User, RoleName, Status } from '@prisma/client';
+import {
+  Prisma,
+  User,
+  RoleName,
+  Status,
+  EntityType,
+  ActionType,
+} from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -8,15 +15,12 @@ import { checkEmailUnique } from '../../common/utils/check-email.util';
 import { sanitizeUser } from '../../common/utils/sanitize-user.util';
 
 const userInclude = {
-  role: {
-    include: {
-      permissions: true,
-    },
-  },
+  role: true,
   memberships: {
     include: {
       tenant: true,
       warehouse: true,
+      permissions: true,
     },
   },
 } satisfies Prisma.UserInclude;
@@ -56,6 +60,7 @@ export class UsersRepository extends BaseRepository<User> {
     tenantId: string;
     isOwner?: boolean;
     warehouseId?: string | null;
+    permissions?: { entityType: EntityType; actionType: ActionType[] }[];
   }): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
 
@@ -71,6 +76,14 @@ export class UsersRepository extends BaseRepository<User> {
             tenantId: data.tenantId,
             isOwner: data.isOwner ?? false,
             ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+            permissions: data.permissions
+              ? {
+                  create: data.permissions.map((p) => ({
+                    entityType: p.entityType,
+                    actionType: p.actionType,
+                  })),
+                }
+              : undefined,
           },
         },
       },

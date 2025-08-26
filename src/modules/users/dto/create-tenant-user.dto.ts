@@ -6,7 +6,21 @@ import {
   MinLength,
   IsUUID,
   IsBoolean,
+  IsArray,
+  ValidateNested,
+  IsEnum,
 } from 'class-validator';
+import { EntityType, ActionType } from '@prisma/client';
+import { Type } from 'class-transformer';
+
+class PermissionDto {
+  @IsEnum(EntityType)
+  entityType: EntityType;
+
+  @IsArray()
+  @IsEnum(ActionType, { each: true })
+  actionType: ActionType[];
+}
 
 export class CreateTenantUserDto {
   @IsEmail()
@@ -37,4 +51,9 @@ export class CreateTenantUserDto {
   @IsOptional()
   @IsUUID()
   warehouseId?: string | null;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => PermissionDto)
+  permissions?: PermissionDto[];
 }

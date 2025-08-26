@@ -58,6 +58,16 @@ export class RolesController {
     );
   }
 
+  @Get('permissions')
+  getEntitiesWithActions() {
+    const data = this.permissionService.getEntitiesWithActions();
+    return APIResponse.success(
+      { permissions: data },
+      'Permissions data retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
+
   @Get()
   @Permissions(EntityType.USER, ActionType.READ)
   getAllRoles() {
@@ -83,7 +93,7 @@ export class RolesController {
   @Permissions(EntityType.USER, ActionType.READ)
   async getPermissionsOfRole(@Param('roleId') roleId: string) {
     const permissions = await this.rolesService.getPermissionsOfRole(roleId);
-    return APIResponse.success(
+    return APIResponse.success( 
       { permissions },
       'Permissions retrieved successfully',
       HttpStatus.OK,
