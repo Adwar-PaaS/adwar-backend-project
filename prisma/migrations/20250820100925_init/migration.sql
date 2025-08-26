@@ -14,10 +14,34 @@ CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'TENANT', 'WAREHOUSE', 'ORDER
 CREATE TYPE "public"."ActionType" AS ENUM ('ALL', 'CREATE', 'READ', 'UPDATE', 'DELETE', 'ACTIVATE', 'DEACTIVATE');
 
 -- CreateEnum
-CREATE TYPE "public"."OrderStatus" AS ENUM ('PENDING', 'PROCESSING', 'PICKED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURNED');
+CREATE TYPE "public"."OrderStatus" AS ENUM (
+    'PENDING',
+    'APPROVED',
+    'ASSIGNED_FOR_PICKUP',
+    'PICKED_UP',
+    'RECEIVED_IN_WAREHOUSE',
+    'STORED_ON_SHELVES',
+    'READY_FOR_DISPATCH',
+    'OUT_FOR_DELIVERY',
+    'DELIVERED',
+    'FAILED',
+    'RESCHEDULED',
+    'CANCELLED',
+    'RETURNED_TO_OPERATION',
+    'READY_TO_RETURN_TO_ORIGIN',
+    'RETURNED_TO_ORIGIN'
+);
 
 -- CreateEnum
-CREATE TYPE "public"."FailedReason" AS ENUM ('OUT_OF_STOCK', 'DAMAGED_ITEM', 'WRONG_ITEM', 'CUSTOMER_NOT_AVAILABLE', 'ADDRESS_ISSUE', 'OTHER');
+CREATE TYPE "public"."FailedReason" AS ENUM (
+    'CUSTOMER_NOT_AVAILABLE',
+    'WRONG_ADDRESS',
+    'NO_ANSWER',
+    'DAMAGED_PACKAGE',
+    'OUT_OF_COVERAGE_AREA',
+    'MOBILE_SWITCHED_OFF',
+    'OTHER'
+);
 
 -- CreateTable
 CREATE TABLE "public"."User" (
@@ -124,17 +148,17 @@ CREATE TABLE "public"."UserPermission" (
 -- CreateTable
 CREATE TABLE "public"."Order" (
     "id" TEXT NOT NULL,
-    "SKU" TEXT NOT NULL,
+    "sku" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
     "failedReason" "public"."FailedReason",
     "deliveryLocation" TEXT,
-    "mirchantLocation" TEXT,
+    "merchantLocation" TEXT,
     "description" TEXT,
     "customerName" TEXT,
     "customerPhone" TEXT,
     "status" "public"."OrderStatus" NOT NULL DEFAULT 'PENDING',
     "warehouseId" TEXT NOT NULL,
-    "deliveriedAt" TIMESTAMP(3),
+    "deliveredAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -179,7 +203,7 @@ CREATE INDEX "UserPermission_userTenantId_idx" ON "public"."UserPermission"("use
 CREATE UNIQUE INDEX "UserPermission_userTenantId_entityType_key" ON "public"."UserPermission"("userTenantId", "entityType");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Order_SKU_key" ON "public"."Order"("SKU");
+CREATE UNIQUE INDEX "Order_sku_key" ON "public"."Order"("sku");
 
 -- CreateIndex
 CREATE INDEX "Order_warehouseId_idx" ON "public"."Order"("warehouseId");
@@ -218,4 +242,7 @@ ALTER TABLE "public"."Warehouse" ADD CONSTRAINT "Warehouse_tenantId_fkey" FOREIG
 ALTER TABLE "public"."UserPermission" ADD CONSTRAINT "UserPermission_userTenantId_fkey" FOREIGN KEY ("userTenantId") REFERENCES "public"."UserTenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Order" ADD CONSTRAINT "Order_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Order"
+ADD CONSTRAINT "Order_warehouseId_fkey"
+FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id")
+ON DELETE RESTRICT ON UPDATE CASCADE;
