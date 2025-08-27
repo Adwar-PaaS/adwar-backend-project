@@ -4,9 +4,10 @@ import {
   IsInt,
   IsOptional,
   IsUUID,
-  IsPhoneNumber,
   Min,
+  IsEnum,
 } from 'class-validator';
+import { OrderStatus } from '@prisma/client';
 
 export class CreateOrderDto {
   @IsString()
@@ -16,6 +17,10 @@ export class CreateOrderDto {
   @IsInt()
   @Min(1)
   quantity: number;
+
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  status?: OrderStatus;
 
   @IsOptional()
   @IsUUID()
@@ -38,6 +43,6 @@ export class CreateOrderDto {
   customerName?: string;
 
   @IsOptional()
-  @IsPhoneNumber()
+  @IsString()
   customerPhone?: string;
 }
