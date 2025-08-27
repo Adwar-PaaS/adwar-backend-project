@@ -56,4 +56,17 @@ export class WarehouseService {
 
     return this.warehouseRepo.getWarehouseUsers(warehouseId);
   }
+
+  async getWarehouseUsersDrivers(warehouseId: string) {
+    const warehouse = await this.warehouseRepo.findOne({
+      id: warehouseId,
+      deletedAt: null,
+    });
+
+    if (!warehouse) {
+      throw new ApiError('Warehouse not found', HttpStatus.NOT_FOUND);
+    }
+
+    return this.warehouseRepo.getWarehouseUsersDrivers(warehouseId);
+  }
 }

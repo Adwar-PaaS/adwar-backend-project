@@ -93,4 +93,14 @@ export class WarehouseController {
       'Warehouse users retrieved successfully',
     );
   }
+
+  @Get(':id/drivers')
+  @Permissions(EntityType.WAREHOUSE, ActionType.READ)
+  async getWarehouseUsersDrivers(@Param('id') id: string) {
+    const drivers = await this.warehouseService.getWarehouseUsersDrivers(id);
+    return APIResponse.success(
+      { drivers },
+      'Warehouse drivers retrieved successfully',
+    );
+  }
 }

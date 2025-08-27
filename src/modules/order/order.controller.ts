@@ -54,6 +54,16 @@ export class OrderController {
     return APIResponse.success({ order }, 'Order retrieved successfully');
   }
 
+  @Get('driver/:driverId')
+  @Permissions(EntityType.ORDER, ActionType.READ)
+  async getOrdersByDriver(@Param('driverId') driverId: string) {
+    const orders = await this.orderService.getOrdersByDriver(driverId);
+    return APIResponse.success(
+      { orders },
+      'Driver orders retrieved successfully',
+    );
+  }
+
   @Put(':id')
   @Permissions(EntityType.ORDER, ActionType.UPDATE)
   async update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {

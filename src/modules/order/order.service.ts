@@ -6,9 +6,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Injectable()
 export class OrderService {
-  constructor(
-    private readonly orderRepo: OrderRepository,
-  ) {}
+  constructor(private readonly orderRepo: OrderRepository) {}
 
   async create(dto: CreateOrderDto): Promise<IOrder> {
     return this.orderRepo.create(dto);
@@ -24,6 +22,10 @@ export class OrderService {
 
   async findOne(id: string): Promise<IOrder | null> {
     return this.orderRepo.findOne({ id });
+  }
+
+  async getOrdersByDriver(driverId: string) {
+    return this.orderRepo.findByDriver(driverId);
   }
 
   async delete(id: string): Promise<void> {

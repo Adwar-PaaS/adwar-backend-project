@@ -32,4 +32,23 @@ export class WarehouseRepository extends BaseRepository<any> {
       },
     });
   }
+
+  async getWarehouseUsersDrivers(warehouseId: string) {
+    return this.prisma.userTenant.findMany({
+      where: {
+        warehouseId,
+        deletedAt: null,
+        user: {
+          role: {
+            name: 'DRIVER',
+          },
+        },
+      },
+      include: {
+        user: {
+          select: userWithRoleSelect,
+        },
+      },
+    });
+  }
 }

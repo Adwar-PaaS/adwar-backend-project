@@ -21,6 +21,7 @@ model User {
   createdTenants Tenant[]     @relation("UserCreatedTenants")
   role           Role         @relation(fields: [roleId], references: [id])
   memberships    UserTenant[]
+  orders         Order[]      @relation("DriverOrders")
 }
 
 model Tenant {
@@ -142,6 +143,12 @@ model Order {
 
   warehouseId String?
   warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+
+  driverId   String?
+  driver     User?       @relation("DriverOrders", fields: [driverId], references: [id])
+
+  assignedAt DateTime?
+  pickedAt  DateTime?
 
   deliveredAt DateTime?
   createdAt   DateTime  @default(now())

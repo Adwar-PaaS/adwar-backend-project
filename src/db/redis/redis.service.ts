@@ -69,14 +69,32 @@ export class RedisService
     return data ? JSON.parse(data) : null;
   }
 
-  async del(key: string) {
+  async del(key?: string) {
+    if (!key || typeof key !== 'string' || key.trim().length === 0) {
+      console.warn('[Redis] Skipping delete: invalid key', key);
+      return;
+    }
     await this.client.del(key);
   }
 
   async delByPattern(pattern: string) {
+    if (
+      !pattern ||
+      typeof pattern !== 'string' ||
+      pattern.trim().length === 0
+    ) {
+      console.warn(
+        '[Redis] Skipping delete by pattern: invalid pattern',
+        pattern,
+      );
+      return;
+    }
+
     const iter = this.client.scanIterator({ MATCH: pattern });
     for await (const key of iter) {
-      await this.client.del(key);
+      if (key && key.length > 0) {
+        await this.client.del(key);
+      }
     }
   }
 
