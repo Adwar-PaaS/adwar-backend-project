@@ -126,8 +126,8 @@ model Order {
   quantity         Int
   failedReason     FailedReason?
 
-  deliveryLocation String?
-  merchantLocation String?
+  deliveryLocation String? // client location
+  merchantLocation String? // vendor location (seller)
   description      String?
   customerName     String?
   customerPhone    String?
@@ -136,7 +136,6 @@ model Order {
 
   warehouseId      String?
   warehouse        Warehouse?    @relation(fields: [warehouseId], references: [id])
-
 
   deliveredAt      DateTime?
   createdAt        DateTime     @default(now())
