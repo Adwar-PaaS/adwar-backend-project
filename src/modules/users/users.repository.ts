@@ -39,16 +39,28 @@ export class UsersRepository extends BaseRepository<User> {
 
   async createUser(data: CreateUserDto): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
-    return this.prisma.user.create({
+
+    const role = await this.prisma.role.create({
+      data: {
+        name: data.roleName,
+        tenantId: data.tenantId ?? null,
+      },
+    });
+
+    const user = await this.prisma.user.create({
       data: {
         email: data.email,
-        password: (data as any).password,
+        password: data.password,
         fullName: data.fullName,
-        phone: data.phone ?? null,
-        roleId: data.roleId,
+        phone: data.phone,
+        role: {
+          connect: { id: role.id },
+        },
       },
       include: this.getUserInclude(),
     });
+
+    return sanitizeUser(user) as UserWithRelations;
   }
 
   async createUserViaSuperAdminWithRole(data: {

@@ -17,21 +17,11 @@ export class AuthService {
 
     const hashed = await hashPassword(dto.password);
 
-    const customerRole = await this.authRepo['usersRepo'].getRoleByName(
-      RoleName.CUSTOMER,
-    );
-    if (!customerRole) {
-      throw new ApiError(
-        'Default role not found',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
     const created = await this.authRepo.createUser({
       email: dto.email,
       password: hashed,
       fullName: dto.fullName,
-      roleId: customerRole.id,
+      roleName: RoleName.CUSTOMER,
     });
 
     return mapPrismaUserToAuthUser(created);
