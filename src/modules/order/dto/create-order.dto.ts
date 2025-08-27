@@ -7,7 +7,7 @@ import {
   Min,
   IsEnum,
 } from 'class-validator';
-import { OrderStatus } from '@prisma/client';
+import { FailedReason, OrderStatus } from '@prisma/client';
 
 export class CreateOrderDto {
   @IsString()
@@ -21,6 +21,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
+
+  @IsOptional()
+  @IsEnum(FailedReason)
+  failedReason?: FailedReason;
 
   @IsOptional()
   @IsUUID()

@@ -29,15 +29,4 @@ export class OrderService {
   async delete(id: string): Promise<void> {
     return this.orderRepo.delete(id);
   }
-
-  async changeStatus(
-    id: string,
-    status: IOrder['status'],
-    failedReason?: IOrder['failedReason'],
-  ): Promise<IOrder> {
-    return this.orderRepo.update(id, {
-      status,
-      failedReason: failedReason ?? null,
-    } as Partial<IOrder>);
-  }
 }

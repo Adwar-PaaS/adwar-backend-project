@@ -71,18 +71,4 @@ export class OrderController {
       HttpStatus.NO_CONTENT,
     );
   }
-
-  @Put(':id/status')
-  @Permissions(EntityType.ORDER, ActionType.UPDATE)
-  async changeStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateOrderStatusDto,
-  ) {
-    const order = await this.orderService.changeStatus(
-      id,
-      dto.status,
-      dto.failedReason,
-    );
-    return APIResponse.success({ order }, 'Order status updated successfully');
-  }
 }
