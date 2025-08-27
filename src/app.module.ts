@@ -6,6 +6,7 @@ import { UserModule } from './modules/users/users.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { RolesModule } from './modules/role/roles.module';
+import { OrderModule } from './modules/order/order.module';
 import validationSchema from './config/env.validation';
 import { DatabaseModule } from './db/db.module';
 import { AppController } from './app.controller';
@@ -35,6 +36,7 @@ import { AppService } from './app.service';
     TenantModule,
     RolesModule,
     WarehouseModule,
+    OrderModule,
     DatabaseModule,
   ],
   controllers: [AppController],
