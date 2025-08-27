@@ -94,6 +94,17 @@ export class TenantController {
     );
   }
 
+  @Get(':id/orders')
+  async getTenantOrders(
+    @Param('id') id: string,
+  ): Promise<APIResponse<{ orders: any[] }>> {
+    const orders = await this.service.getTenantOrders(id);
+    return APIResponse.success(
+      { orders },
+      'Tenant orders fetched successfully',
+    );
+  }
+
   @Put(':id')
   @UseInterceptors(FileInterceptor('logoUrl'))
   async update(

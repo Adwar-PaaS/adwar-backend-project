@@ -133,6 +133,37 @@ export class TenantRepository extends BaseRepository<Tenant> {
     return this.mapToCreator(tenant);
   }
 
+  async getTenantOrders(tenantId: string) {
+    const orders = await this.prismaService.order.findMany({
+      where: {
+        warehouse: {
+          tenantId,
+        },
+      },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            status: true,
+          },
+        },
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
+            location: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return orders;
+  }
+
   async updateStatus(id: string, status: Status): Promise<any> {
     const tenant = await this.model.update({
       where: { id },
