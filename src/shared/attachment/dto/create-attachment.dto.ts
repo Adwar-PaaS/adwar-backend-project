@@ -1,20 +1,20 @@
-// import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
-// import { AttachmentType, EntityType } from '@prisma/client';
+import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import { AttachmentType, RelatedType } from '@prisma/client';
 
-// export class CreateAttachmentDto {
-//   @IsString()
-//   @IsNotEmpty()
-//   url: string;
+export class CreateAttachmentDto {
+  @IsString()
+  @IsNotEmpty()
+  url: string;
 
-//   @IsEnum(AttachmentType)
-//   type: AttachmentType;
+  @IsEnum(AttachmentType)
+  type: AttachmentType;
 
-//   @IsString()
-//   entityId: string;
+  @IsString()
+  relatedId: string;
 
-//   @IsEnum(EntityType)
-//   entityType: EntityType;
+  @IsEnum(RelatedType)
+  relatedType: RelatedType;
 
-//   @IsOptional()
-//   metadata?: Record<string, any>;
-// }
+  @IsOptional()
+  metadata?: Record<string, any>;
+}

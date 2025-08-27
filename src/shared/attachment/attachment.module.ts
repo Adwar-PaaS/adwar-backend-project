@@ -1,12 +1,12 @@
-// import { Module } from '@nestjs/common';
-// import { AttachmentService } from './attachment.service';
-// import { PrismaClient } from '@prisma/client';
+import { Module } from '@nestjs/common';
+import { AttachmentService } from './attachment.service';
+import { PrismaClient } from '@prisma/client';
 
-// @Module({
-//   providers: [AttachmentService, PrismaClient],
-//   exports: [AttachmentService],
-// })
-// export class AttachmentModule {}
+@Module({
+  providers: [AttachmentService, PrismaClient],
+  exports: [AttachmentService],
+})
+export class AttachmentModule {}
 
 
 // Example Usage in OrderService
