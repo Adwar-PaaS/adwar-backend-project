@@ -8,7 +8,7 @@ CREATE TYPE "public"."Status" AS ENUM ('ACTIVE', 'INACTIVE');
 CREATE TYPE "public"."WarehouseStatus" AS ENUM ('OPEN', 'EMPTY', 'FULL', 'CLOSED', 'UNDER_MAINTENANCE');
 
 -- CreateEnum
-CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'TENANT', 'WAREHOUSE', 'ORDER', 'DRIVER', 'DRIVER_ORDER', 'TENANT_ORDER', 'TENANT_CUSTOMER', 'CUSTOMER_ORDER', 'TENANT_WAREHOUSE');
+CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'ROLE', 'TENANT', 'WAREHOUSE', 'ORDER', 'DRIVER', 'DRIVER_ORDER', 'TENANT_ORDER', 'TENANT_CUSTOMER', 'CUSTOMER_ORDER', 'TENANT_WAREHOUSE');
 
 -- CreateEnum
 CREATE TYPE "public"."ActionType" AS ENUM ('ALL', 'CREATE', 'READ', 'UPDATE', 'DELETE', 'ACTIVATE', 'DEACTIVATE');
@@ -31,6 +31,12 @@ CREATE TYPE "public"."OrderStatus" AS ENUM (
     'READY_TO_RETURN_TO_ORIGIN',
     'RETURNED_TO_ORIGIN'
 );
+
+-- CreateEnum
+CREATE TYPE "public"."AttachmentType" AS ENUM ('IMAGE', 'DOCUMENT', 'VIDEO', 'AUDIO', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "public"."RelatedType" AS ENUM ('USER', 'TENANT', 'WAREHOUSE', 'ORDER', 'DRIVER', 'ROLE');
 
 -- CreateEnum
 CREATE TYPE "public"."FailedReason" AS ENUM (
@@ -149,10 +155,15 @@ CREATE TABLE "public"."UserPermission" (
 CREATE TABLE "public"."Order" (
     "id" TEXT NOT NULL,
     "sku" TEXT NOT NULL,
+    "totalPrice" DOUBLE PRECISION,
     "quantity" INTEGER NOT NULL,
     "failedReason" "public"."FailedReason",
     "deliveryLocation" TEXT,
     "merchantLocation" TEXT,
+    "paymentType" TEXT,
+    "COD_Collection_Method" TEXT,
+    "COD_Amount" DOUBLE PRECISION,
+    "notes" TEXT,
     "description" TEXT,
     "customerName" TEXT,
     "customerPhone" TEXT,
@@ -164,6 +175,21 @@ CREATE TABLE "public"."Order" (
     "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."Attachment" (
+    "id" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "type" "public"."AttachmentType" NOT NULL,
+    "relatedId" TEXT,
+    "relatedType" TEXT,
+    "metadata" JSON,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Attachment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -213,6 +239,9 @@ CREATE INDEX "Order_status_idx" ON "public"."Order"("status");
 
 -- CreateIndex
 CREATE INDEX "Order_createdAt_idx" ON "public"."Order"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Attachment_relatedId_relatedType_idx" ON "public"."Attachment"("relatedId", "relatedType");
 
 -- AddForeignKey
 ALTER TABLE "public"."User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "public"."Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -6,6 +6,7 @@ import {
   IsUUID,
   Min,
   IsEnum,
+  IsNumber,
 } from 'class-validator';
 import { FailedReason, OrderStatus } from '@prisma/client';
 
@@ -49,4 +50,24 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   customerPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentType?: string;
+
+  @IsOptional()
+  @IsNumber()
+  totalPrice?: number;
+
+  @IsOptional()
+  @IsString()
+  COD_Collection_Method?: string;
+
+  @IsOptional()
+  @IsNumber()
+  COD_Amount?: number;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

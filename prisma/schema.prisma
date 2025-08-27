@@ -43,17 +43,17 @@ model Tenant {
 }
 
 model UserTenant {
-  id          String     @id @default(uuid())
-  isOwner     Boolean    @default(false)
+  id          String           @id @default(uuid())
+  isOwner     Boolean          @default(false)
   userId      String
   tenantId    String
   warehouseId String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   deletedAt   DateTime?
-  tenant      Tenant     @relation(fields: [tenantId], references: [id])
-  user        User       @relation(fields: [userId], references: [id])
-  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+  user        User             @relation(fields: [userId], references: [id])
+  warehouse   Warehouse?       @relation(fields: [warehouseId], references: [id])
   permissions UserPermission[]
 
   @@unique([userId, tenantId])
@@ -89,14 +89,14 @@ model RolePermission {
 }
 
 model UserPermission {
-  id         String       @id @default(uuid())
+  id           String       @id @default(uuid())
   userTenantId String
-  entityType EntityType
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  actionType ActionType[] @default([])
-  
-  userTenant UserTenant   @relation(fields: [userTenantId], references: [id])
+  entityType   EntityType
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  actionType   ActionType[] @default([])
+
+  userTenant UserTenant @relation(fields: [userTenantId], references: [id])
 
   @@unique([userTenantId, entityType])
   @@index([userTenantId])
@@ -121,10 +121,11 @@ model Warehouse {
 }
 
 model Order {
-  id               String       @id @default(uuid())
-  sku              String       @unique
-  quantity         Int
-  failedReason     FailedReason?
+  id           String        @id @default(uuid())
+  sku          String        @unique
+  totalPrice   Float?
+  quantity     Int
+  failedReason FailedReason?
 
   deliveryLocation String? // client location
   merchantLocation String? // vendor location (seller)
@@ -132,19 +133,55 @@ model Order {
   customerName     String?
   customerPhone    String?
 
-  status           OrderStatus  @default(PENDING)
+  status OrderStatus @default(PENDING)
 
-  warehouseId      String?
-  warehouse        Warehouse?    @relation(fields: [warehouseId], references: [id])
+  paymentType           String?
+  COD_Collection_Method String?
+  COD_Amount            Float?
+  notes                 String?
 
-  deliveredAt      DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  deletedAt        DateTime?
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+
+  deliveredAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
   @@index([warehouseId])
   @@index([status])
   @@index([createdAt])
+}
+
+model Attachment {
+  id          String         @id @default(uuid())
+  url         String
+  type        AttachmentType @default(IMAGE)
+  relatedId   String
+  relatedType RelatedType
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  @@index([relatedId, relatedType])
+}
+
+enum RelatedType {
+  USER
+  TENANT
+  WAREHOUSE
+  ORDER
+  DRIVER
+  ROLE
+}
+
+enum AttachmentType {
+  IMAGE
+  DOCUMENT
+  VIDEO
+  AUDIO
+  OTHER
 }
 
 enum OrderStatus {
@@ -205,6 +242,7 @@ enum EntityType {
   WAREHOUSE
   ORDER
   DRIVER
+  ROLE
   DRIVER_ORDER
   TENANT_ORDER
   TENANT_CUSTOMER

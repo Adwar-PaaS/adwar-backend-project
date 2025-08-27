@@ -31,16 +31,29 @@ export class WarehouseService {
     return this.warehouseRepo.delete(id);
   }
 
-  async assignUserToWarehouse(userTenantId: string, warehouseId: string) {
-    const userTenant = await this.prisma.userTenant.update({
-      where: { id: userTenantId },
-      data: { warehouseId },
+  async getWarehouseOrders(warehouseId: string) {
+    const warehouse = await this.warehouseRepo.findOne({
+      id: warehouseId,
+      deletedAt: null,
     });
 
-    if (!userTenant) {
-      throw new ApiError('UserTenant not found', HttpStatus.NOT_FOUND);
+    if (!warehouse) {
+      throw new ApiError('Warehouse not found', HttpStatus.NOT_FOUND);
     }
 
-    return userTenant;
+    return this.warehouseRepo.getWarehouseOrders(warehouseId);
+  }
+
+  async getWarehouseUsers(warehouseId: string) {
+    const warehouse = await this.warehouseRepo.findOne({
+      id: warehouseId,
+      deletedAt: null,
+    });
+
+    if (!warehouse) {
+      throw new ApiError('Warehouse not found', HttpStatus.NOT_FOUND);
+    }
+
+    return this.warehouseRepo.getWarehouseUsers(warehouseId);
   }
 }

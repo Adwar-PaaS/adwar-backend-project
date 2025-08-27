@@ -74,18 +74,23 @@ export class WarehouseController {
     );
   }
 
-  @Post('assign-user')
-  @Permissions(EntityType.WAREHOUSE, ActionType.UPDATE)
-  async assignUser(
-    @Body() body: { userTenantId: string; warehouseId: string },
-  ) {
-    const userTenant = await this.warehouseService.assignUserToWarehouse(
-      body.userTenantId,
-      body.warehouseId,
-    );
+  @Get(':id/orders')
+  @Permissions(EntityType.WAREHOUSE, ActionType.READ)
+  async getOrders(@Param('id') id: string) {
+    const orders = await this.warehouseService.getWarehouseOrders(id);
     return APIResponse.success(
-      { userTenant },
-      'User assigned to warehouse successfully',
+      { orders },
+      'Warehouse orders retrieved successfully',
+    );
+  }
+
+  @Get(':id/users')
+  @Permissions(EntityType.WAREHOUSE, ActionType.READ)
+  async getWarehouseUsers(@Param('id') id: string) {
+    const users = await this.warehouseService.getWarehouseUsers(id);
+    return APIResponse.success(
+      { users },
+      'Warehouse users retrieved successfully',
     );
   }
 }

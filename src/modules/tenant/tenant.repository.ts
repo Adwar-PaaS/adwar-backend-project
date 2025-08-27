@@ -5,6 +5,7 @@ import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { checkEmailUnique } from '../../common/utils/check-email.util';
+import { userWithRoleSelect } from '../../common/utils/helpers.util';
 import slugify from 'slugify';
 
 type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
@@ -55,17 +56,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
       include: {
         memberships: {
           include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                fullName: true,
-                phone: true,
-                status: true,
-                role: true,
-                createdAt: true,
-              },
-            },
+            user: { select: userWithRoleSelect },
             warehouse: {
               select: {
                 id: true,
