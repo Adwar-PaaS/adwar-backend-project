@@ -3,8 +3,8 @@ import { hashPassword } from '../../src/common/utils/crypto.util';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🚀 Starting seed...');
+async function seed() {
+  console.log('🚀 Starting create-user seed...');
 
   let superAdminRole = await prisma.role.findFirst({
     where: { name: RoleName.SUPER_ADMIN, tenantId: null },
@@ -46,14 +46,7 @@ async function main() {
     console.log('✅ Super Admin user created');
   }
 
-  console.log('🌱 Seed completed');
+  console.log('🌱 create-user seed completed');
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+export default seed;
