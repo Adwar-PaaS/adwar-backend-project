@@ -20,10 +20,11 @@ import { APIResponse } from '../../common/utils/api-response.util';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { Permissions } from '../../common/decorators/permission.decorator';
 import { PermissionGuard } from '../../common/guards/permission.guard';
-import { EntityType, ActionType } from '@prisma/client';
+import { EntityType, ActionType, RoleName } from '@prisma/client';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { CreateUserViaSuperAdminDto } from './dto/create-user-via-super-admin.dto';
 import {
   Cacheable,
   InvalidateCache,
@@ -44,6 +45,21 @@ export class UsersController {
   @Permissions(EntityType.USER, ActionType.CREATE)
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
+    return APIResponse.success(
+      { user },
+      'User created successfully',
+      HttpStatus.CREATED,
+    );
+  }
+
+  @Post('super-admin/create-user')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*')
+  @Permissions(EntityType.USER, ActionType.CREATE)
+  async createAdminUserViaSuperAdminWithRole(
+    @Body() dto: CreateUserViaSuperAdminDto,
+  ) {
+    const user = await this.usersService.createUserViaSuperAdminWithRole(dto);
     return APIResponse.success(
       { user },
       'User created successfully',

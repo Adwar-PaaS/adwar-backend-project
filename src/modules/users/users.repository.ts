@@ -51,6 +51,48 @@ export class UsersRepository extends BaseRepository<User> {
     });
   }
 
+  async createUserViaSuperAdminWithRole(data: {
+    email: string;
+    password: string;
+    fullName: string;
+    phone?: string;
+    tenantId: string;
+    roleName: RoleName;
+    isOwner?: boolean;
+    warehouseId?: string | null;
+  }): Promise<UserWithRelations> {
+    await checkEmailUnique(this.prisma, 'user', data.email);
+
+    const role = await this.prisma.role.create({
+      data: {
+        name: data.roleName,
+        tenantId: data.tenantId,
+      },
+    });
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+        phone: data.phone,
+        role: {
+          connect: { id: role.id },
+        },
+        memberships: {
+          create: {
+            tenantId: data.tenantId,
+            isOwner: data.isOwner ?? false,
+            ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+          },
+        },
+      },
+      include: this.getUserInclude(),
+    });
+
+    return sanitizeUser(user) as UserWithRelations;
+  }
+
   async createTenantUser(data: {
     email: string;
     password: string;
