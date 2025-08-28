@@ -147,6 +147,9 @@ model Order {
   driverId   String?
   driver     User?       @relation("DriverOrders", fields: [driverId], references: [id])
 
+  // customerId String?
+  // customer   User?     @relation("CustomerOrders", fields: [customerId], references: [id])
+
   assignedAt DateTime?
   pickedAt  DateTime?
 
@@ -192,6 +195,7 @@ enum AttachmentType {
 }
 
 enum OrderStatus {
+  // CREATED // FOR CUSTOMER WHEN CREATED ORDER BUT NOT SEND IT TO TENANT TO ARRPEOVED ON IT
   PENDING
   APPROVED
   ASSIGNED_FOR_PICKUP

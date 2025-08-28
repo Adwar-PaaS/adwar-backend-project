@@ -17,18 +17,18 @@ export class AttachmentModule {}
 //     private readonly attachmentService: AttachmentService,
 //   ) {}
 
-//   async createProduct(dto: CreateProductDto, fileUrl: string) {
-//     const product = await this.prisma.product.create({
+//   async createOrder(dto: CreateOrderDto, fileUrl: string) {
+//     const order = await this.prisma.order.create({
 //       data: { name: dto.name, price: dto.price },
 //     });
 
 //     await this.attachmentService.create({
 //       url: fileUrl,
 //       type: 'IMAGE',
-//       entityId: product.id,
-//       entityType: 'PRODUCT',
+//       relatedId: product.id,
+//       relatedType: 'PRODUCT',
 //     });
 
-//     return product;
+//     return order;
 //   }
 // }
