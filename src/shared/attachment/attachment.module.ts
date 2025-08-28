@@ -8,7 +8,6 @@ import { PrismaClient } from '@prisma/client';
 })
 export class AttachmentModule {}
 
-
 // Example Usage in OrderService
 
 // @Injectable()

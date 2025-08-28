@@ -64,6 +64,16 @@ export class OrderController {
     );
   }
 
+  @Put(':id/status')
+  @Permissions(EntityType.ORDER, ActionType.UPDATE)
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderStatusDto,
+  ) {
+    const order = await this.orderService.updateStatus(id, dto);
+    return APIResponse.success({ order }, 'Order status updated successfully');
+  }
+
   @Put(':id')
   @Permissions(EntityType.ORDER, ActionType.UPDATE)
   async update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
