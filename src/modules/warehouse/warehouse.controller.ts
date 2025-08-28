@@ -94,6 +94,17 @@ export class WarehouseController {
     );
   }
 
+  @Get(':id/drivers/available')
+  @Permissions(EntityType.WAREHOUSE, ActionType.READ)
+  async getAvaliableDriversInWarehouse(@Param('id') id: string) {
+    const drivers =
+      await this.warehouseService.getAvaliableDriversInWarehouse(id);
+    return APIResponse.success(
+      { drivers },
+      'Avaliable drivers retrieved successfully',
+    );
+  }
+
   @Get(':id/drivers')
   @Permissions(EntityType.WAREHOUSE, ActionType.READ)
   async getWarehouseUsersDrivers(@Param('id') id: string) {

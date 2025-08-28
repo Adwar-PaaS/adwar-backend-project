@@ -31,6 +31,10 @@ export class WarehouseService {
     return this.warehouseRepo.delete(id);
   }
 
+  async getAvaliableDriversInWarehouse(warehouseId: string) {
+    return this.warehouseRepo.getAvaliableDriversInWarehouse(warehouseId);
+  }
+
   async getWarehouseOrders(warehouseId: string) {
     const warehouse = await this.warehouseRepo.findOne({
       id: warehouseId,
