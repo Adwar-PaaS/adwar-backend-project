@@ -19,14 +19,14 @@ export class AttachmentModule {}
 
 //   async createOrder(dto: CreateOrderDto, fileUrl: string) {
 //     const order = await this.prisma.order.create({
-//       data: { name: dto.name, price: dto.price },
+//       data: { sku: dto.sku, totalPrice: dto.totalPrice },
 //     });
 
 //     await this.attachmentService.create({
 //       url: fileUrl,
 //       type: 'IMAGE',
-//       relatedId: product.id,
-//       relatedType: 'PRODUCT',
+//       relatedId: order.id,
+//       relatedType: 'ORDER',
 //     });
 
 //     return order;
