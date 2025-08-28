@@ -81,6 +81,14 @@ export class TenantRepository extends BaseRepository<Tenant> {
   async getRolesForTenant(tenantId: string) {
     const roles = await this.prismaService.role.findMany({
       where: { tenantId },
+      include: {
+        permissions: {
+          select: {
+            entityType: true,
+            actionType: true,
+          },
+        },
+      },
     });
     return roles;
   }

@@ -73,6 +73,7 @@ model Role {
   permissions RolePermission[]
   users       User[]
 
+  @@unique([tenantId, name])
   @@index([tenantId])
 }
 

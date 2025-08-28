@@ -196,6 +196,9 @@ CREATE TABLE "public"."Attachment" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Role_name_tenantId_key" ON "public"."Role"("name", "tenantId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
 -- CreateIndex
