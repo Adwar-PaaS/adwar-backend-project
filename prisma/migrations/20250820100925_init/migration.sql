@@ -277,5 +277,4 @@ ALTER TABLE "public"."UserPermission" ADD CONSTRAINT "UserPermission_userTenantI
 ALTER TABLE "public"."Order"
 ADD CONSTRAINT "Order_warehouseId_fkey"
 FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id")
-ON DELETE SET NULL
-ON UPDATE CASCADE;
+ON DELETE RESTRICT ON UPDATE CASCADE;

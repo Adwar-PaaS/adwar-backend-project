@@ -6,6 +6,7 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { checkEmailUnique } from '../../common/utils/check-email.util';
 import { userWithRoleSelect } from '../../common/utils/helpers.util';
+import { ApiFeatures } from '../../common/utils/api-features.util';
 import slugify from 'slugify';
 
 type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
@@ -133,35 +134,45 @@ export class TenantRepository extends BaseRepository<Tenant> {
     return this.mapToCreator(tenant);
   }
 
-  async getTenantOrders(tenantId: string) {
-    const orders = await this.prismaService.order.findMany({
-      where: {
-        warehouse: {
-          tenantId,
+  async getTenantOrders(
+    tenantId: string,
+    queryString: Record<string, any> = {},
+  ) {
+    const apiFeatures = new ApiFeatures(this.prismaService.order, queryString);
+
+    apiFeatures
+      .mergeFilter({
+        warehouse: { tenantId },
+      })
+      .sort();
+
+    await apiFeatures.paginate();
+
+    apiFeatures.include({
+      driver: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          status: true,
         },
       },
-      include: {
-        driver: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-            status: true,
-          },
-        },
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-            location: true,
-          },
+      warehouse: {
+        select: {
+          id: true,
+          name: true,
+          location: true,
         },
       },
-      orderBy: { createdAt: 'desc' },
     });
 
-    return orders;
+    const { data, pagination } = await apiFeatures.query();
+
+    return {
+      orders: data,
+      ...pagination,
+    };
   }
 
   async updateStatus(id: string, status: Status): Promise<any> {

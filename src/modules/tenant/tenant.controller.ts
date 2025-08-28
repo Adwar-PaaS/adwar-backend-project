@@ -20,6 +20,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { ITenant } from './interfaces/tenant.interface';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { APIResponse } from '../../common/utils/api-response.util';
+import { PaginationResult } from '../../common/utils/api-features.util';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PermissionGuard } from '../../common/guards/permission.guard';
@@ -97,12 +98,11 @@ export class TenantController {
   @Get(':id/orders')
   async getTenantOrders(
     @Param('id') id: string,
-  ): Promise<APIResponse<{ orders: any[] }>> {
-    const orders = await this.service.getTenantOrders(id);
-    return APIResponse.success(
-      { orders },
-      'Tenant orders fetched successfully',
-    );
+    @Query() query: Record<string, any>,
+  ): Promise<APIResponse<{ orders: any[] } & Partial<PaginationResult>>> {
+    const result = await this.service.getTenantOrders(id, query);
+
+    return APIResponse.success(result, 'Tenant orders fetched successfully');
   }
 
   @Put(':id')

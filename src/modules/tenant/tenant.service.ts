@@ -43,8 +43,8 @@ export class TenantService {
     return this.tenantRepo.getById(id);
   }
 
-  async getTenantOrders(tenantId: string) {
-    return this.tenantRepo.getTenantOrders(tenantId);
+  async getTenantOrders(tenantId: string, query?: Record<string, any>) {
+    return this.tenantRepo.getTenantOrders(tenantId, query);
   }
 
   async getWarehousesInTenant(tenantId: string) {
