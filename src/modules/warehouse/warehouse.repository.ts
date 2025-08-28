@@ -67,7 +67,7 @@ export class WarehouseRepository extends BaseRepository<any> {
         deletedAt: null,
         user: {
           role: {
-            name: 'DRIVER',
+            name: RoleName.DRIVER,
           },
         },
       },
