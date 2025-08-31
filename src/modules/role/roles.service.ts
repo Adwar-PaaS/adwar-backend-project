@@ -18,13 +18,6 @@ export class RolesService {
     );
   }
 
-  async addPermissionsToRole(
-    roleId: string,
-    permissions: { entityType: EntityType; actionTypes: ActionType[] }[],
-  ) {
-    return this.rolesRepo.addPermissionsToRole(roleId, permissions);
-  }
-
   async getRoleById(id: string) {
     return this.rolesRepo.findById(id);
   }

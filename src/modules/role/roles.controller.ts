@@ -41,23 +41,6 @@ export class RolesController {
     );
   }
 
-  @Post(':roleId/permissions')
-  @Permissions(EntityType.USER, ActionType.UPDATE)
-  async addPermissionsToRole(
-    @Param('roleId') roleId: string,
-    @Body() body: AddPermissionsDto,
-  ) {
-    const role = await this.rolesService.addPermissionsToRole(
-      roleId,
-      body.permissions,
-    );
-    return APIResponse.success(
-      { role },
-      'Permissions added to role successfully',
-      HttpStatus.OK,
-    );
-  }
-
   @Get('permissions')
   getEntitiesWithActions() {
     const data = this.permissionService.getEntitiesWithActions();
