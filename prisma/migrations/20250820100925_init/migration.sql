@@ -170,6 +170,7 @@ CREATE TABLE "public"."Order" (
     "status" "public"."OrderStatus" NOT NULL DEFAULT 'PENDING',
     "warehouseId" TEXT,
     "driverId" TEXT,
+    "customerId" TEXT,
     "assignedAt" TIMESTAMP(3),
     "pickedAt" TIMESTAMP(3),
     "deliveredAt" TIMESTAMP(3),
@@ -306,6 +307,17 @@ ADD CONSTRAINT "Order_warehouseId_fkey"
 FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id")
 ON DELETE RESTRICT ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "public"."Order"
+ADD CONSTRAINT "Order_driverId_fkey"
+FOREIGN KEY ("driverId") REFERENCES "public"."User"("id")
+ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Order"
+ADD CONSTRAINT "Order_customerId_fkey"
+FOREIGN KEY ("customerId") REFERENCES "public"."User"("id")
+ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."AuditLog"

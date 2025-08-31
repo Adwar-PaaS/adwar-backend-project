@@ -48,8 +48,12 @@ export class OrderService {
     return this.orderRepo.update(id, updates);
   }
 
-  async getOrdersByDriver(driverId: string) {
-    return this.orderRepo.getAllOrdersThatAssiagnedToDriver(driverId);
+  async getOrdersOfDriver(driverId: string) {
+    return this.orderRepo.getAllOrdersForDriver(driverId);
+  }
+
+  async getOrdersOfCustomer(customerId: string) {
+    return this.orderRepo.getAllOrdersForCustomer(customerId)
   }
 
   async delete(id: string): Promise<void> {

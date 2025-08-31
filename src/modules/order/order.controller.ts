@@ -62,8 +62,18 @@ export class OrderController {
 
   @Get('driver/:driverId')
   @Permissions(EntityType.ORDER, ActionType.READ)
-  async getOrdersByDriver(@Param('driverId') driverId: string) {
-    const orders = await this.orderService.getOrdersByDriver(driverId);
+  async getOrdersOfDriver(@Param('driverId') driverId: string) {
+    const orders = await this.orderService.getOrdersOfDriver(driverId);
+    return APIResponse.success(
+      { orders },
+      'Driver orders retrieved successfully',
+    );
+  }
+
+  @Get('customer/:customerId')
+  @Permissions(EntityType.ORDER, ActionType.READ)
+  async getOrdersOfCustomer(@Param('customerId') customerId: string) {
+    const orders = await this.orderService.getOrdersOfCustomer(customerId);
     return APIResponse.success(
       { orders },
       'Driver orders retrieved successfully',

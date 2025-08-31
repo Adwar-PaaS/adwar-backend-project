@@ -10,7 +10,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
     super(prisma, prisma.order, ['sku', 'customerName', 'customerPhone']);
   }
 
-  async getAllOrdersThatAssiagnedToDriver(driverId: string) {
+  async getAllOrdersForDriver(driverId: string) {
     return this.model.findMany({
       where: {
         driverId,
@@ -32,6 +32,22 @@ export class OrderRepository extends BaseRepository<IOrder> {
             name: true,
             location: true,
           },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getAllOrdersForCustomer(customerId: string) {
+    return this.model.findMany({
+      where: { customerId },
+      include: {
+        customer: { select: userWithRoleSelect },
+        warehouse: {
+          select: { id: true, name: true, location: true },
+        },
+        driver: {
+          select: userWithRoleSelect,
         },
       },
       orderBy: { createdAt: 'desc' },
