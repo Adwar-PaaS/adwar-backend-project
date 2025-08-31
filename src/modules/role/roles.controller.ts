@@ -89,17 +89,6 @@ export class RolesController {
     );
   }
 
-  @Get(':roleId/get-permissions')
-  @Permissions(EntityType.USER, ActionType.READ)
-  async getPermissionsOfRole(@Param('roleId') roleId: string) {
-    const permissions = await this.rolesService.getPermissionsOfRole(roleId);
-    return APIResponse.success( 
-      { permissions },
-      'Permissions retrieved successfully',
-      HttpStatus.OK,
-    );
-  }
-
   @Delete(':id')
   async deleteRole(@Param('id') id: string) {
     await this.rolesService.deleteRole(id);

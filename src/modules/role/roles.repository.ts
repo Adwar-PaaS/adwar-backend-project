@@ -50,30 +50,26 @@ export class RolesRepository extends BaseRepository<Role> {
     });
   }
 
-  async getPermissionsOfRole(roleId: string) {
-    const role = await this.prisma.role.findUnique({
-      where: { id: roleId },
-      include: { permissions: true },
-    });
-    if (!role) return null;
-    role.permissions = role.permissions.map((p: any) => ({
-      ...p,
-      actionType: p.actionType.map((a: string) => a as ActionType),
-    }));
-    return role.permissions;
-  }
-
   async findById(id: string) {
     const role = await this.prisma.role.findUnique({
       where: { id },
-      include: { permissions: true },
+      include: {
+        permissions: {
+          select: {
+            entityType: true,
+            actionType: true,
+          },
+        },
+      },
     });
 
     if (!role) return null;
 
-    role.permissions = role.permissions.map((p: any) => ({
+    role.permissions = role.permissions.map((p) => ({
       ...p,
-      actionType: p.actionType.map((a: string) => a as ActionType),
+      actionType: Array.isArray(p.actionType)
+        ? (p.actionType as ActionType[])
+        : [p.actionType as ActionType],
     }));
 
     return role;
