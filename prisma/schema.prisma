@@ -8,21 +8,23 @@ datasource db {
 }
 
 model User {
-  id             String       @id @default(uuid())
-  email          String       @unique
-  password       String
-  fullName       String
-  phone          String?
-  status         Status       @default(ACTIVE)
-  roleId         String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
-  createdTenants Tenant[]     @relation("UserCreatedTenants")
-  role           Role         @relation(fields: [roleId], references: [id])
-  memberships    UserTenant[]
-  orders         Order[]      @relation("DriverOrders")
-  auditLogs      AuditLog[]   @relation("UserAuditLogs")
+  id               String       @id @default(uuid())
+  email            String       @unique
+  password         String
+  fullName         String
+  phone            String?
+  status           Status       @default(ACTIVE)
+  roleId           String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
+  createdTenants   Tenant[]     @relation("UserCreatedTenants")
+  role             Role         @relation(fields: [roleId], references: [id])
+  memberships      UserTenant[]
+  orders           Order[]      @relation("DriverOrders")
+  auditLogs        AuditLog[]   @relation("UserAuditLogs")
+  sentRequests     Request[]    @relation("RequestSender")
+  approvedRequests Request[]    @relation("RequestApprover")
 }
 
 model Tenant {
@@ -146,14 +148,14 @@ model Order {
   warehouseId String?
   warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
 
-  driverId   String?
-  driver     User?       @relation("DriverOrders", fields: [driverId], references: [id])
+  driverId String?
+  driver   User?   @relation("DriverOrders", fields: [driverId], references: [id])
 
   // customerId String?
   // customer   User?     @relation("CustomerOrders", fields: [customerId], references: [id])
 
   assignedAt DateTime?
-  pickedAt  DateTime?
+  pickedAt   DateTime?
 
   deliveredAt DateTime?
   createdAt   DateTime  @default(now())
@@ -180,7 +182,7 @@ model Attachment {
 }
 
 model AuditLog {
-  id          String       @id @default(uuid())
+  id          String     @id @default(uuid())
   userId      String?
   entityType  EntityType
   entityId    String?
@@ -188,13 +190,35 @@ model AuditLog {
   oldValues   Json?
   newValues   Json?
   description String?
-  createdAt   DateTime     @default(now())
+  createdAt   DateTime   @default(now())
 
-  user   User?   @relation("UserAuditLogs", fields: [userId], references: [id])
+  user User? @relation("UserAuditLogs", fields: [userId], references: [id])
 
   @@index([userId])
   @@index([entityType])
   @@index([actionType])
+}
+
+model Request {
+  id          String        @id @default(uuid())
+  entityType  EntityType
+  entityId    String?
+  actionType  ActionType
+  status      RequestStatus @default(PENDING)
+  reason      String?
+  responseMsg String?
+
+  senderId   String
+  approverId String?
+  sender     User    @relation("RequestSender", fields: [senderId], references: [id])
+  approver   User?   @relation("RequestApprover", fields: [approverId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([senderId])
+  @@index([approverId])
 }
 
 enum RelatedType {
@@ -204,6 +228,12 @@ enum RelatedType {
   ORDER
   DRIVER
   ROLE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum AttachmentType {

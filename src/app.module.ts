@@ -11,6 +11,7 @@ import validationSchema from './config/env.validation';
 import { DatabaseModule } from './db/db.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { WebsocketModule } from './shared/websocket/websocket.module';
 
 @Module({
   imports: [
@@ -24,8 +25,8 @@ import { AppService } from './app.service';
       useFactory: (config: ConfigService) => ({
         throttlers: [
           {
-            ttl: config.get<number>('THROTTLE_TTL') || 60,
-            limit: config.get<number>('THROTTLE_LIMIT') || 100,
+            ttl: config.get<number>('THROTTLE_TTL') ?? 60,
+            limit: config.get<number>('THROTTLE_LIMIT') ?? 100,
           },
         ],
       }),
@@ -38,6 +39,7 @@ import { AppService } from './app.service';
     WarehouseModule,
     OrderModule,
     DatabaseModule,
+    WebsocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],
