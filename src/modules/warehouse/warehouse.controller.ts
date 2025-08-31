@@ -18,6 +18,7 @@ import { UseGuards } from '@nestjs/common';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
+import { Audit } from 'src/common/decorators/audit.decorator';
 
 @Controller('warehouses')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -26,6 +27,11 @@ export class WarehouseController {
 
   @Post()
   @Permissions(EntityType.WAREHOUSE, ActionType.CREATE)
+  @Audit({
+    entityType: EntityType.WAREHOUSE,
+    actionType: ActionType.CREATE,
+    description: 'Created a new warehouse',
+  })
   async create(@Body() dto: CreateWarehouseDto) {
     const warehouse = await this.warehouseService.create(dto);
     return APIResponse.success(

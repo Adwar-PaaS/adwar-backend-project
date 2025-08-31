@@ -19,6 +19,7 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { Audit } from '../../common/decorators/audit.decorator';
 
 @Controller('orders')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -26,6 +27,11 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
+  @Audit({
+    entityType: EntityType.ORDER,
+    actionType: ActionType.CREATE,
+    description: 'Created a new order',
+  })
   @Permissions(EntityType.ORDER, ActionType.CREATE)
   async create(@Body() dto: CreateOrderDto) {
     const order = await this.orderService.create(dto);
@@ -75,6 +81,12 @@ export class OrderController {
   }
 
   @Put(':id')
+  @Audit({
+    entityType: EntityType.ORDER,
+    actionType: ActionType.UPDATE,
+    entityIdParam: 'id',
+    description: 'Updated order status',
+  })
   @Permissions(EntityType.ORDER, ActionType.UPDATE)
   async update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
     const order = await this.orderService.update(id, dto);

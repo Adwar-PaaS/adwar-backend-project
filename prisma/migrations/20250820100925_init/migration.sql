@@ -186,7 +186,7 @@ CREATE TABLE "public"."Attachment" (
     "url" TEXT NOT NULL,
     "type" "public"."AttachmentType" NOT NULL,
     "relatedId" TEXT,
-    "relatedType" TEXT,
+    "relatedType" "public"."RelatedType" NOT NULL,
     "metadata" JSON,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -194,6 +194,30 @@ CREATE TABLE "public"."Attachment" (
 
     CONSTRAINT "Attachment_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateTable
+CREATE TABLE "public"."AuditLog" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT,
+    "entityType" "public"."EntityType" NOT NULL,
+    "entityId" TEXT,
+    "actionType" "public"."ActionType" NOT NULL,
+    "oldValues" JSON,
+    "newValues" JSON,
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id"),
+);
+
+-- CreateIndex
+CREATE INDEX "AuditLog_userId_idx" ON "public"."AuditLog" ("userId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_entityType_idx" ON "public"."AuditLog" ("entityType");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_actionType_idx" ON "public"."AuditLog" ("actionType");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Role_name_tenantId_key" ON "public"."Role"("name", "tenantId");
@@ -281,3 +305,10 @@ ALTER TABLE "public"."Order"
 ADD CONSTRAINT "Order_warehouseId_fkey"
 FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id")
 ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+-- AddForeignKey
+ALTER TABLE "public"."AuditLog"
+ADD CONSTRAINT "AuditLog_userId_fkey"
+FOREIGN KEY ("userId") REFERENCES "public"."User"("id")
+ON DELETE SET NULL ON UPDATE CASCADE;

@@ -27,11 +27,9 @@ export function mapPrismaUserToAuthUser(user: any): AuthUser {
       name: user.role?.name,
       permissions: membershipPermissions,
     },
-    tenant: membership
-      ? {
-          id: membership.tenant.id,
-          slug: membership.tenant.slug,
-        }
-      : undefined,
+    tenant: {
+      id: membership?.tenant?.id ?? null,
+      slug: membership?.tenant?.slug ?? null,
+    },
   };
 }

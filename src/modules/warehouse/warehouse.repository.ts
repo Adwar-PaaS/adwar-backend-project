@@ -61,7 +61,7 @@ export class WarehouseRepository extends BaseRepository<any> {
   }
 
   async getWarehouseUsersDrivers(warehouseId: string) {
-    return this.prisma.userTenant.findMany({
+    const memberships = await this.prisma.userTenant.findMany({
       where: {
         warehouseId,
         deletedAt: null,
@@ -77,5 +77,11 @@ export class WarehouseRepository extends BaseRepository<any> {
         },
       },
     });
+
+    return memberships.map((m) => ({
+      ...m.user,
+      tenantId: m.tenantId,
+      warehouseId: m.warehouseId,
+    }));
   }
 }

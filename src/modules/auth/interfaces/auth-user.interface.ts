@@ -13,8 +13,8 @@ export interface AuthUser {
       action: ActionType;
     }[];
   };
-  tenant?: {
-    id: string;
-    slug: string;
+  tenant: {
+    id: string | null;
+    slug: string | null;
   };
 }
