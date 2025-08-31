@@ -64,6 +64,12 @@ export class WarehouseController {
 
   @Put(':id')
   @Permissions(EntityType.WAREHOUSE, ActionType.UPDATE)
+  @Audit({
+    entityType: EntityType.WAREHOUSE,
+    actionType: ActionType.UPDATE,
+    entityIdParam: 'id',
+    description: 'Updated a warehouse',
+  })
   async update(@Param('id') id: string, @Body() dto: UpdateWarehouseDto) {
     const warehouse = await this.warehouseService.update(id, dto);
     return APIResponse.success({ warehouse }, 'Warehouse updated successfully');

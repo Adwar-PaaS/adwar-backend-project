@@ -42,13 +42,16 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(async (response) => {
         try {
-          const entityId =
-            options.entityIdParam && req.params[options.entityIdParam]
-              ? req.params[options.entityIdParam]
-              : (response?.order?.id ?? response?.id ?? null);
+          let entityId =
+            (options.entityIdParam && req.params?.[options.entityIdParam]) ||
+            null;
+
+          if (!entityId && response) {
+            entityId = this.extractEntityId(response);
+          }
 
           const oldValues = req._oldEntity ?? null;
-          const newValues = response?.order ?? response ?? null;
+          const newValues = this.unwrapResponse(response);
 
           await this.prisma.auditLog.create({
             data: {
@@ -66,5 +69,32 @@ export class AuditInterceptor implements NestInterceptor {
         }
       }),
     );
+  }
+
+  private unwrapResponse(response: any): any {
+    if (!response) return null;
+
+    if (response.data) {
+      return response.data;
+    }
+    return response;
+  }
+
+  private extractEntityId(response: any): string | null {
+    if (!response) return null;
+
+    const data = response.data ?? response;
+
+    if (typeof data === 'object') {
+      if (data.id) return data.id;
+
+      for (const key of Object.keys(data)) {
+        if (data[key]?.id) {
+          return data[key].id;
+        }
+      }
+    }
+
+    return null;
   }
 }
