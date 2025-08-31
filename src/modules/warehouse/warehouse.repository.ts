@@ -42,22 +42,31 @@ export class WarehouseRepository extends BaseRepository<any> {
           status: Status.ACTIVE,
           role: { name: RoleName.DRIVER },
           orders: { none: { status: OrderStatus.OUT_FOR_DELIVERY } },
+          // orders: {
+          //   none: {
+          //     status: {
+          //       in: [
+          //         OrderStatus.ASSIGNED_FOR_PICKUP,
+          //         OrderStatus.PICKED_UP,
+          //         OrderStatus.OUT_FOR_DELIVERY,
+          //       ],
+          //     },
+          //   },
+          // },
         },
       },
       include: {
         user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-            status: true,
-          },
+          select: userWithRoleSelect,
         },
       },
     });
 
-    return memberships.map((m) => m.user);
+    return memberships.map((m) => ({
+      ...m.user,
+      tenantId: m.tenantId,
+      warehouseId: m.warehouseId,
+    }));
   }
 
   async getWarehouseUsersDrivers(warehouseId: string) {
