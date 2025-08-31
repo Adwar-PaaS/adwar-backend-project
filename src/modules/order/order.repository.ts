@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { OrderStatus, PrismaClient } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { IOrder } from './interfaces/order.interface';
+import { userWithRoleSelect } from 'src/common/utils/helpers.util';
 
 @Injectable()
 export class OrderRepository extends BaseRepository<IOrder> {
@@ -9,18 +10,21 @@ export class OrderRepository extends BaseRepository<IOrder> {
     super(prisma, prisma.order, ['sku', 'customerName', 'customerPhone']);
   }
 
-  async findByDriver(driverId: string) {
+  async getAllOrdersThatAssiagnedToDriver(driverId: string) {
     return this.model.findMany({
-      where: { driverId },
+      where: {
+        driverId,
+        status: {
+          in: [
+            OrderStatus.ASSIGNED_FOR_PICKUP,
+            OrderStatus.PICKED_UP,
+            OrderStatus.OUT_FOR_DELIVERY,
+          ],
+        },
+      },
       include: {
         driver: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-            status: true,
-          },
+          select: userWithRoleSelect,
         },
         warehouse: {
           select: {

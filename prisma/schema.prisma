@@ -8,23 +8,26 @@ datasource db {
 }
 
 model User {
-  id               String       @id @default(uuid())
-  email            String       @unique
-  password         String
-  fullName         String
-  phone            String?
-  status           Status       @default(ACTIVE)
-  roleId           String
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  deletedAt        DateTime?
-  createdTenants   Tenant[]     @relation("UserCreatedTenants")
-  role             Role         @relation(fields: [roleId], references: [id])
-  memberships      UserTenant[]
-  orders           Order[]      @relation("DriverOrders")
-  auditLogs        AuditLog[]   @relation("UserAuditLogs")
-  sentRequests     Request[]    @relation("RequestSender")
-  approvedRequests Request[]    @relation("RequestApprover")
+  id                      String          @id @default(uuid())
+  email                   String          @unique
+  password                String
+  fullName                String
+  phone                   String?
+  status                  Status          @default(ACTIVE)
+  roleId                  String
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  deletedAt               DateTime?
+  createdTenants          Tenant[]        @relation("UserCreatedTenants")
+  role                    Role            @relation(fields: [roleId], references: [id])
+  memberships             UserTenant[]
+  driverOrders            Order[]         @relation("DriverOrders")
+  customerOrders          Order[]         @relation("CustomerOrders")
+  auditLogs               AuditLog[]      @relation("UserAuditLogs")
+  sentPickUpRequests      PickUpRequest[] @relation("PickUpRequester")
+  responsedPickUpRequests PickUpRequest[] @relation("PickUpResponder")
+  sentRequests            Request[]       @relation("RequestSender")
+  approvedRequests        Request[]       @relation("RequestApprover")
 }
 
 model Tenant {
@@ -151,8 +154,10 @@ model Order {
   driverId String?
   driver   User?   @relation("DriverOrders", fields: [driverId], references: [id])
 
-  // customerId String?
-  // customer   User?     @relation("CustomerOrders", fields: [customerId], references: [id])
+  customerId String?
+  customer   User?   @relation("CustomerOrders", fields: [customerId], references: [id])
+
+  pickUpOrders PickUpOrder[]
 
   assignedAt DateTime?
   pickedAt   DateTime?
@@ -179,6 +184,38 @@ model Attachment {
   deletedAt   DateTime?
 
   @@index([relatedId, relatedType])
+}
+
+model PickUpRequest {
+  id          String  @id @default(uuid())
+  requestedBy String
+  responsedBy String?
+
+  status RequestStatus @default(PENDING)
+
+  requester User  @relation("PickUpRequester", fields: [requestedBy], references: [id])
+  responder User? @relation("PickUpResponder", fields: [responsedBy], references: [id])
+
+  orders PickUpOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([requestedBy])
+  @@index([responsedBy])
+}
+
+model PickUpOrder {
+  id              String @id @default(uuid())
+  pickUpRequestId String
+  orderId         String
+
+  pickUpRequest PickUpRequest @relation(fields: [pickUpRequestId], references: [id])
+  order         Order         @relation(fields: [orderId], references: [id])
+
+  @@unique([pickUpRequestId, orderId])
+  @@index([orderId])
+  @@index([pickUpRequestId])
 }
 
 model AuditLog {

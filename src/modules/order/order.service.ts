@@ -49,7 +49,7 @@ export class OrderService {
   }
 
   async getOrdersByDriver(driverId: string) {
-    return this.orderRepo.findByDriver(driverId);
+    return this.orderRepo.getAllOrdersThatAssiagnedToDriver(driverId);
   }
 
   async delete(id: string): Promise<void> {

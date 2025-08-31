@@ -41,8 +41,8 @@ export class WarehouseRepository extends BaseRepository<any> {
         user: {
           status: Status.ACTIVE,
           role: { name: RoleName.DRIVER },
-          orders: { none: { status: OrderStatus.OUT_FOR_DELIVERY } },
-          // orders: {
+          driverOrders: { none: { status: OrderStatus.OUT_FOR_DELIVERY } },
+          // driverOrders: {
           //   none: {
           //     status: {
           //       in: [
