@@ -23,6 +23,7 @@ model User {
   memberships             UserTenant[]
   driverOrders            Order[]         @relation("DriverOrders")
   customerOrders          Order[]         @relation("CustomerOrders")
+  customerBranches        Branch[]        @relation("CustomerBranch")
   auditLogs               AuditLog[]      @relation("UserAuditLogs")
   sentPickUpRequests      PickUpRequest[] @relation("PickUpRequester")
   responsedPickUpRequests PickUpRequest[] @relation("PickUpResponder")
@@ -157,6 +158,9 @@ model Order {
   customerId String?
   customer   User?   @relation("CustomerOrders", fields: [customerId], references: [id])
 
+  branchId String?
+  branch   Branch? @relation("BranchOrders", fields: [branchId], references: [id])
+
   pickUpOrders PickUpOrder[]
 
   assignedAt DateTime?
@@ -256,6 +260,21 @@ model Request {
   @@index([entityType, entityId])
   @@index([senderId])
   @@index([responderId])
+}
+
+model Branch {
+  id       String @id @default(uuid())
+  name     String
+  location String
+
+  customerId String?
+  customer   User?   @relation("CustomerBranch", fields: [customerId], references: [id])
+
+  branchOrders Order[] @relation("BranchOrders")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 enum RelatedType {
