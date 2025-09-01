@@ -24,9 +24,6 @@ export class CreateUserViaSuperAdminDto {
   roleName: RoleName;
 
   @IsOptional()
-  isOwner?: boolean;
-
-  @IsOptional()
   @IsUUID()
   warehouseId?: string | null;
 }

@@ -75,7 +75,7 @@ export class UsersController {
     @Body() dto: CreateTenantUserDto,
     @CurrentUser() authUser: AuthUser,
   ) {
-    const user = await this.usersService.createTenantUser(dto, authUser);
+    const user = await this.usersService.createTenantUser(dto);
     return APIResponse.success(
       { user },
       'Tenant user created successfully',

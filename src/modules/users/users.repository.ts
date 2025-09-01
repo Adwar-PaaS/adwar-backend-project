@@ -70,7 +70,6 @@ export class UsersRepository extends BaseRepository<User> {
     phone?: string;
     tenantId: string;
     roleName: RoleName;
-    isOwner?: boolean;
     warehouseId?: string | null;
   }): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
@@ -94,7 +93,6 @@ export class UsersRepository extends BaseRepository<User> {
         memberships: {
           create: {
             tenantId: data.tenantId,
-            isOwner: data.isOwner ?? false,
             ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
           },
         },
@@ -112,11 +110,13 @@ export class UsersRepository extends BaseRepository<User> {
     phone?: string;
     roleId: string;
     tenantId: string;
-    isOwner?: boolean;
     warehouseId?: string | null;
     permissions?: { entityType: EntityType; actionType: ActionType[] }[];
   }): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
+
+    const hasCustomPermissions =
+      data.permissions && data.permissions.length > 0;
 
     const user = await this.prisma.user.create({
       data: {
@@ -128,11 +128,10 @@ export class UsersRepository extends BaseRepository<User> {
         memberships: {
           create: {
             tenantId: data.tenantId,
-            isOwner: data.isOwner ?? false,
             ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
-            permissions: data.permissions
+            permissions: hasCustomPermissions
               ? {
-                  create: data.permissions.map((p) => ({
+                  create: data.permissions!.map((p) => ({
                     entityType: p.entityType,
                     actionType: p.actionType,
                   })),

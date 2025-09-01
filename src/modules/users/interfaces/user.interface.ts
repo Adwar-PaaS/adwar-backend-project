@@ -7,7 +7,6 @@ export interface IUser {
   fullName: string;
   phone: string | null;
   status: Status;
-  isOwner?: boolean;
   warehouseId?: string | null;
   tenantId?: string;
 

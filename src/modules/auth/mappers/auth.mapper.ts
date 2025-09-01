@@ -21,7 +21,6 @@ export function mapPrismaUserToAuthUser(user: any): AuthUser {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
-    isOwner: membership?.isOwner ?? false,
     role: {
       id: user.role?.id,
       name: user.role?.name,

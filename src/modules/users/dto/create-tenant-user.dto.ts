@@ -5,7 +5,6 @@ import {
   IsString,
   MinLength,
   IsUUID,
-  IsBoolean,
   IsArray,
   ValidateNested,
   IsEnum,
@@ -43,10 +42,6 @@ export class CreateTenantUserDto {
 
   @IsUUID()
   tenantId: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isOwner?: boolean = false;
 
   @IsOptional()
   @IsUUID()

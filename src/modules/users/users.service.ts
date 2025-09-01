@@ -5,7 +5,6 @@ import { UsersRepository } from './users.repository';
 import { hashPassword } from '../../common/utils/crypto.util';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { Status } from '@prisma/client';
-import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { RoleName } from '@prisma/client';
 import { CreateUserViaSuperAdminDto } from './dto/create-user-via-super-admin.dto';
 
@@ -36,19 +35,11 @@ export class UsersService {
   async createUserViaSuperAdminWithRole(dto: CreateUserViaSuperAdminDto) {
     dto.password = await hashPassword(dto.password);
 
-    if (dto.roleName === RoleName.ADMIN) {
-      dto.isOwner = true;
-    }
-
     return this.usersRepo.createUserViaSuperAdminWithRole(dto);
   }
 
-  async createTenantUser(dto: CreateTenantUserDto, authUser: AuthUser) {
+  async createTenantUser(dto: CreateTenantUserDto) {
     dto.password = await hashPassword(dto.password);
-
-    if (authUser.role.name === 'SUPER_ADMIN') {
-      dto.isOwner = true;
-    }
 
     return this.usersRepo.createTenantUser(dto);
   }

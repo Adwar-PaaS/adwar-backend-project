@@ -4,7 +4,6 @@ export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
-  isOwner?: boolean;
   role: {
     id: string;
     name: RoleName;
