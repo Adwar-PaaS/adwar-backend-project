@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
 import { EntityType, ActionType, RoleName, Role } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
-import { PermissionService } from 'src/shared/permission/permission.service';
 
 @Injectable()
 export class RolesRepository extends BaseRepository<Role> {
@@ -15,6 +14,22 @@ export class RolesRepository extends BaseRepository<Role> {
     tenantId: string | null,
     permissions: { entityType: EntityType; actionTypes: ActionType[] }[],
   ) {
+    if (name !== RoleName.CUSTOMER) {
+      const existingRole = await this.prisma.role.findFirst({
+        where: {
+          name,
+          tenantId,
+          deletedAt: null,
+        },
+      });
+
+      if (existingRole) {
+        throw new BadRequestException(
+          `Role "${name}" already exists for this tenant.`,
+        );
+      }
+    }
+
     return this.prisma.role.create({
       data: {
         name,

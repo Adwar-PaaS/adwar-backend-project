@@ -26,8 +26,8 @@ model User {
   auditLogs               AuditLog[]      @relation("UserAuditLogs")
   sentPickUpRequests      PickUpRequest[] @relation("PickUpRequester")
   responsedPickUpRequests PickUpRequest[] @relation("PickUpResponder")
-  sentRequests            Request[]       @relation("RequestSender")
-  approvedRequests        Request[]       @relation("RequestApprover")
+  requestSenders          Request[]       @relation("RequestSender")
+  requestResponses        Request[]       @relation("RequestResponder")
 }
 
 model Tenant {
@@ -79,7 +79,7 @@ model Role {
   permissions RolePermission[]
   users       User[]
 
-  @@unique([tenantId, name])
+  // @@unique([tenantId, name])
   @@index([tenantId])
 }
 
@@ -245,17 +245,17 @@ model Request {
   reason      String?
   responseMsg String?
 
-  senderId   String
-  approverId String?
-  sender     User    @relation("RequestSender", fields: [senderId], references: [id])
-  approver   User?   @relation("RequestApprover", fields: [approverId], references: [id])
+  senderId    String
+  responderId String?
+  sender      User    @relation("RequestSender", fields: [senderId], references: [id])
+  responder   User?   @relation("RequestResponder", fields: [responderId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([entityType, entityId])
   @@index([senderId])
-  @@index([approverId])
+  @@index([responderId])
 }
 
 enum RelatedType {
@@ -282,7 +282,7 @@ enum AttachmentType {
 }
 
 enum OrderStatus {
-  // CREATED // FOR CUSTOMER WHEN CREATED ORDER BUT NOT SEND IT TO TENANT TO ARRPEOVED ON IT
+  CREATED // FOR CUSTOMER WHEN CREATED ORDER BUT NOT SEND IT TO TENANT TO ARRPEOVED ON IT
   PENDING
   APPROVED
   ASSIGNED_FOR_PICKUP

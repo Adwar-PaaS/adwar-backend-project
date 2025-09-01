@@ -18,6 +18,8 @@ import { LoginDto } from './dto/login.dto';
 import type { Session } from 'express-session';
 import { clearCookieConfig } from '../../config/cookie.config';
 import { AuthUser } from './interfaces/auth-user.interface';
+import { AttachUserToTenantDto } from '../users/dto/attach-user-to-tenant.dto';
+import { UsersService } from '../users/users.service';
 
 export interface AuthenticatedRequest extends Request {
   session: Session & {
@@ -32,7 +34,10 @@ export interface AuthenticatedRequest extends Request {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {
@@ -40,6 +45,17 @@ export class AuthController {
     return APIResponse.success(
       { user },
       'Registration successful',
+      HttpStatus.CREATED,
+    );
+  }
+
+  @Post('attach-to-tenant')
+  async attachUserToTenant(@Body() dto: AttachUserToTenantDto) {
+    const user = await this.auth.attachUserToTenant(dto);
+
+    return APIResponse.success(
+      { user },
+      'User attached to tenant successfully',
       HttpStatus.CREATED,
     );
   }

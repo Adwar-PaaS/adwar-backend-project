@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
 import {
   Prisma,
@@ -63,6 +63,20 @@ export class UsersRepository extends BaseRepository<User> {
     return sanitizeUser(user) as UserWithRelations;
   }
 
+  async attachUserToTenant(data: {
+    userId: string;
+    tenantId: string;
+    warehouseId?: string | null;
+  }): Promise<void> {
+    await this.prisma.userTenant.create({
+      data: {
+        userId: data.userId,
+        tenantId: data.tenantId,
+        ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+      },
+    });
+  }
+
   async createUserViaSuperAdminWithRole(data: {
     email: string;
     password: string;
@@ -73,6 +87,22 @@ export class UsersRepository extends BaseRepository<User> {
     warehouseId?: string | null;
   }): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
+
+    if (data.roleName !== RoleName.CUSTOMER) {
+      const existingRole = await this.prisma.role.findFirst({
+        where: {
+          name: data.roleName,
+          tenantId: data.tenantId,
+          deletedAt: null,
+        },
+      });
+
+      if (existingRole) {
+        throw new BadRequestException(
+          `Role "${data.roleName}" already exists for this tenant.`,
+        );
+      }
+    }
 
     const role = await this.prisma.role.create({
       data: {

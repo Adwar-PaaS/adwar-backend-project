@@ -4,12 +4,18 @@ import { hashPassword, comparePasswords } from '../../common/utils/crypto.util';
 import { RoleName } from '@prisma/client';
 import { AuthRepository } from './auth.repository';
 import { mapPrismaUserToAuthUser } from './mappers/auth.mapper';
+import { AttachUserToTenantDto } from '../users/dto/attach-user-to-tenant.dto';
 
 @Injectable()
 export class AuthService {
   constructor(private readonly authRepo: AuthRepository) {}
 
-  async register(dto: { email: string; password: string; fullName?: string }) {
+  async register(dto: {
+    email: string;
+    password: string;
+    fullName?: string;
+    phone?: string;
+  }) {
     const existing = await this.authRepo.findUserByEmail(dto.email);
     if (existing) {
       throw new ApiError('Email already in use', HttpStatus.CONFLICT);
@@ -21,10 +27,16 @@ export class AuthService {
       email: dto.email,
       password: hashed,
       fullName: dto.fullName,
+      phone: dto.phone,
       roleName: RoleName.CUSTOMER,
     });
 
     return mapPrismaUserToAuthUser(created);
+  }
+
+  async attachUserToTenant(dto: AttachUserToTenantDto) {
+    const user = await this.authRepo.attachUserToTenant(dto);
+    return mapPrismaUserToAuthUser(user);
   }
 
   async login(email: string, password: string) {

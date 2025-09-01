@@ -5,7 +5,6 @@ import { UsersRepository } from './users.repository';
 import { hashPassword } from '../../common/utils/crypto.util';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { Status } from '@prisma/client';
-import { RoleName } from '@prisma/client';
 import { CreateUserViaSuperAdminDto } from './dto/create-user-via-super-admin.dto';
 
 @Injectable()

@@ -20,6 +20,8 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { Audit } from '../../common/decorators/audit.decorator';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Controller('orders')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -33,8 +35,9 @@ export class OrderController {
     description: 'Created a new order',
   })
   @Permissions(EntityType.ORDER, ActionType.CREATE)
-  async create(@Body() dto: CreateOrderDto) {
-    const order = await this.orderService.create(dto);
+  async create(@CurrentUser() user: AuthUser, @Body() dto: CreateOrderDto) {
+    const order = await this.orderService.create(user, dto);
+
     return APIResponse.success(
       { order },
       'Order created successfully',

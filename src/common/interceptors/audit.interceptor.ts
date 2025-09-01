@@ -17,6 +17,7 @@ interface AuditOptions {
   actionType: ActionType;
   entityIdParam?: string;
   description?: string;
+  snapshotFields?: string[];
 }
 
 @Injectable()
@@ -50,8 +51,15 @@ export class AuditInterceptor implements NestInterceptor {
             entityId = this.extractEntityId(response);
           }
 
-          const oldValues = req._oldEntity ?? null;
-          const newValues = this.unwrapResponse(response);
+          const oldValues = this.filterSnapshot(
+            req._oldEntity ?? null,
+            options.snapshotFields,
+          );
+
+          const newValues = this.filterSnapshot(
+            this.unwrapResponse(response),
+            options.snapshotFields,
+          );
 
           await this.prisma.auditLog.create({
             data: {
@@ -71,9 +79,21 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
+  private filterSnapshot(data: any, fields?: string[]): any {
+    if (!data) return null;
+    if (!fields || fields.length === 0) return data;
+
+    const filtered: Record<string, any> = {};
+    for (const field of fields) {
+      if (data[field] !== undefined) {
+        filtered[field] = data[field];
+      }
+    }
+    return filtered;
+  }
+
   private unwrapResponse(response: any): any {
     if (!response) return null;
-
     if (response.data) {
       return response.data;
     }

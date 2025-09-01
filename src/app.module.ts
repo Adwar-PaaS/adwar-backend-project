@@ -7,6 +7,9 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { RolesModule } from './modules/role/roles.module';
 import { OrderModule } from './modules/order/order.module';
+import { PickupOrderModule } from './modules/pickup-order/pickup-order.module';
+import { PickupRequestModule } from './modules/pickup-request/pickup-request.module';
+import { RequestModule } from './modules/request/request.module';
 import validationSchema from './config/env.validation';
 import { DatabaseModule } from './db/db.module';
 import { AppController } from './app.controller';
@@ -38,6 +41,9 @@ import { WebsocketModule } from './shared/websocket/websocket.module';
     RolesModule,
     WarehouseModule,
     OrderModule,
+    PickupOrderModule,
+    PickupRequestModule,
+    RequestModule,
     DatabaseModule,
     WebsocketModule,
   ],

@@ -36,6 +36,10 @@ export class CreateOrderDto {
   driverId?: string;
 
   @IsOptional()
+  @IsUUID()
+  customerId?: string;
+
+  @IsOptional()
   @IsString()
   deliveryLocation?: string;
 

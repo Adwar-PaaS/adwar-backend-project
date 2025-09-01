@@ -15,6 +15,7 @@ CREATE TYPE "public"."ActionType" AS ENUM ('ALL', 'CREATE', 'READ', 'UPDATE', 'D
 
 -- CreateEnum
 CREATE TYPE "public"."OrderStatus" AS ENUM (
+    'CREATED',
     'PENDING',
     'APPROVED',
     'ASSIGNED_FOR_PICKUP',
@@ -37,6 +38,9 @@ CREATE TYPE "public"."AttachmentType" AS ENUM ('IMAGE', 'DOCUMENT', 'VIDEO', 'AU
 
 -- CreateEnum
 CREATE TYPE "public"."RelatedType" AS ENUM ('USER', 'TENANT', 'WAREHOUSE', 'ORDER', 'DRIVER', 'ROLE');
+
+-- CreateEnum
+CREATE TYPE "public"."RequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
 -- CreateEnum
 CREATE TYPE "public"."FailedReason" AS ENUM (
@@ -211,6 +215,68 @@ CREATE TABLE "public"."AuditLog" (
     CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id"),
 );
 
+-- CreateTable
+CREATE TABLE "public"."PickUpRequest" (
+    "id" TEXT NOT NULL,
+    "requestedBy" TEXT NOT NULL,
+    "responsedBy" TEXT,
+    "status" "public"."RequestStatus" NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PickUpRequest_pkey" PRIMARY KEY ("id"),
+);
+
+-- CreateTable
+CREATE TABLE "public"."PickUpOrder" (
+    "id" TEXT NOT NULL,
+    "pickUpRequestId" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+
+    CONSTRAINT "PickUpOrder_pkey" PRIMARY KEY ("id"),
+);
+
+-- CreateTable
+CREATE TABLE "public"."Request" (
+    "id" TEXT NOT NULL,
+    "entityType" "public"."EntityType" NOT NULL,
+    "entityId" TEXT,
+    "actionType" "public"."ActionType" NOT NULL,
+    "status" "public"."RequestStatus" NOT NULL DEFAULT 'PENDING',
+    "reason" TEXT,
+    "responseMsg" TEXT,
+    "senderId" TEXT NOT NULL,
+    "responderId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Request_pkey" PRIMARY KEY ("id"),
+);
+
+-- CreateIndex
+CREATE INDEX "Request_entityType_entityId_idx" ON "public"."Request"("entityType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "Request_senderId_idx" ON "public"."Request"("senderId");
+
+-- CreateIndex
+CREATE INDEX "Request_responderId_idx" ON "public"."Request"("responderId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PickUpOrder_pickUpRequestId_orderId_key" ON "public"."PickUpOrder"("pickUpRequestId", "orderId");
+
+-- CreateIndex
+CREATE INDEX "PickUpOrder_orderId_idx" ON "public"."PickUpOrder"("orderId");
+
+-- CreateIndex
+CREATE INDEX "PickUpOrder_pickUpRequestId_idx" ON "public"."PickUpOrder"("pickUpRequestId");
+
+-- CreateIndex
+CREATE INDEX "PickUpRequest_requestedBy_idx" ON "public"."PickUpRequest"("requestedBy");
+
+-- CreateIndex
+CREATE INDEX "PickUpRequest_responsedBy_idx" ON "public"."PickUpRequest"("responsedBy");
+
 -- CreateIndex
 CREATE INDEX "AuditLog_userId_idx" ON "public"."AuditLog" ("userId");
 
@@ -221,7 +287,7 @@ CREATE INDEX "AuditLog_entityType_idx" ON "public"."AuditLog" ("entityType");
 CREATE INDEX "AuditLog_actionType_idx" ON "public"."AuditLog" ("actionType");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Role_name_tenantId_key" ON "public"."Role"("name", "tenantId");
+-- CREATE UNIQUE INDEX "Role_name_tenantId_key" ON "public"."Role"("name", "tenantId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
@@ -323,4 +389,40 @@ ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "public"."AuditLog"
 ADD CONSTRAINT "AuditLog_userId_fkey"
 FOREIGN KEY ("userId") REFERENCES "public"."User"("id")
+ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PickUpRequest"
+ADD CONSTRAINT "PickUpRequest_requestedBy_fkey"
+FOREIGN KEY ("requestedBy") REFERENCES "public"."User"("id")
+ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PickUpRequest"
+ADD CONSTRAINT "PickUpRequest_responsedBy_fkey"
+FOREIGN KEY ("responsedBy") REFERENCES "public"."User"("id")
+ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PickUpOrder"
+ADD CONSTRAINT "PickUpOrder_pickUpRequestId_fkey"
+FOREIGN KEY ("pickUpRequestId") REFERENCES "public"."PickUpRequest"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PickUpOrder"
+ADD CONSTRAINT "PickUpOrder_orderId_fkey"
+FOREIGN KEY ("orderId") REFERENCES "public"."Order"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Request"
+ADD CONSTRAINT "Request_senderId_fkey"
+FOREIGN KEY ("senderId") REFERENCES "public"."User"("id")
+ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Request"
+ADD CONSTRAINT "Request_responderId_fkey"
+FOREIGN KEY ("responderId") REFERENCES "public"."User"("id")
 ON DELETE SET NULL ON UPDATE CASCADE;

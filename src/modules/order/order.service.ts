@@ -4,12 +4,19 @@ import { IOrder } from './interfaces/order.interface';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { OrderStatus } from '@prisma/client';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Injectable()
 export class OrderService {
   constructor(private readonly orderRepo: OrderRepository) {}
 
-  async create(dto: CreateOrderDto): Promise<IOrder> {
+  async create(user: AuthUser, dto: CreateOrderDto): Promise<IOrder> {
+    if (user?.role?.name === 'CUSTOMER') {
+      dto.status = OrderStatus.CREATED;
+      dto.customerId = user.id;
+    }
+
     return this.orderRepo.create(dto);
   }
 
@@ -53,7 +60,7 @@ export class OrderService {
   }
 
   async getOrdersOfCustomer(customerId: string) {
-    return this.orderRepo.getAllOrdersForCustomer(customerId)
+    return this.orderRepo.getAllOrdersForCustomer(customerId);
   }
 
   async delete(id: string): Promise<void> {

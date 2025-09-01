@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { UsersRepository } from '../users/users.repository';
 import { Prisma } from '@prisma/client';
+import { AttachUserToTenantDto } from '../users/dto/attach-user-to-tenant.dto';
 
 @Injectable()
 export class AuthRepository {
@@ -8,6 +9,10 @@ export class AuthRepository {
 
   async createUser(dto: any) {
     return this.usersRepo.createUser(dto);
+  }
+
+  async attachUserToTenant(dto: AttachUserToTenantDto) {
+    return this.usersRepo.attachUserToTenant(dto);
   }
 
   async findUserByEmail(email: string) {
