@@ -24,16 +24,22 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   phone?: string;
-
-  @IsString()
-  roleId: string;
-
+  
+  @IsOptional()
   @IsEnum(RoleName)
-  roleName: RoleName;
+  roleName?: RoleName;
+
+  @IsOptional()
+  @IsUUID()
+  roleId?: string;
 
   @IsOptional()
   @IsUUID()
   tenantId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string | null;
 }
 
 // import {
@@ -384,7 +390,7 @@ export class CreateUserDto {
 
 //   findByEmail(email: string) {
 //     return this.usersRepo.getByEmail(email);
-//   }  
+//   }
 
 //   async updateStatus(id: string, status: Status) {
 //     return this.usersRepo.updateStatus(id, status);

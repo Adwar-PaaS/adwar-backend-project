@@ -42,7 +42,7 @@ export class UsersRepository extends BaseRepository<User> {
 
     const role = await this.prisma.role.create({
       data: {
-        name: data.roleName,
+        name: data.roleName ?? RoleName.CUSTOMER,
         tenantId: data.tenantId ?? null,
       },
     });
@@ -183,10 +183,33 @@ export class UsersRepository extends BaseRepository<User> {
     if (data.email) {
       await checkEmailUnique(this.prisma, 'user', data.email, id);
     }
-    return this.prisma.user.update({
-      where: { id },
-      data,
-      include: this.getUserInclude(),
+
+    return this.prisma.$transaction(async (tx) => {
+      const { tenantId, warehouseId, ...userData } = data;
+
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: userData,
+        include: this.getUserInclude(),
+      });
+
+      if (tenantId) {
+        await tx.userTenant.upsert({
+          where: {
+            userId_tenantId: { userId: id, tenantId },
+          },
+          update: {
+            ...(warehouseId ? { warehouseId } : {}),
+          },
+          create: {
+            userId: id,
+            tenantId,
+            ...(warehouseId ? { warehouseId } : {}),
+          },
+        });
+      }
+
+      return sanitizeUser(updatedUser) as UserWithRelations;
     });
   }
 
