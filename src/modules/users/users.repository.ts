@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
 import {
   Prisma,
@@ -67,14 +67,34 @@ export class UsersRepository extends BaseRepository<User> {
     userId: string;
     tenantId: string;
     warehouseId?: string | null;
-  }): Promise<void> {
-    await this.prisma.userTenant.create({
-      data: {
+  }): Promise<UserWithRelations> {
+    await this.prisma.userTenant.upsert({
+      where: {
+        userId_tenantId: {
+          userId: data.userId,
+          tenantId: data.tenantId,
+        },
+      },
+      update: {
+        ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+      },
+      create: {
         userId: data.userId,
         tenantId: data.tenantId,
         ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
       },
     });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: data.userId },
+      include: this.getUserInclude(),
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User ${data.userId} not found`);
+    }
+
+    return sanitizeUser(user) as UserWithRelations;
   }
 
   async createUserViaSuperAdminWithRole(data: {
