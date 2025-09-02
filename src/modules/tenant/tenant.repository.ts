@@ -101,7 +101,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
     );
     return {
       ...result,
-      data: result.data.map((tenant: any) => this.mapToCreator(tenant)),
+      items: result.items.map((tenant: any) => this.mapToCreator(tenant)),
     };
   }
 

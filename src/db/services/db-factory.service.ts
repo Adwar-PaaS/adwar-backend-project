@@ -6,24 +6,24 @@ import { DATABASE_TOKEN } from '../constants/db-token.constant';
 @Injectable()
 export class DatabaseFactoryService {
   constructor(
-    @Inject(DATABASE_TOKEN.PRISMA)
-    @Optional()
+    @Inject(DATABASE_TOKEN.PRISMA) @Optional()
     private readonly prisma?: IDatabase,
-    @Inject(DATABASE_TOKEN.REDIS)
-    @Optional()
+    @Inject(DATABASE_TOKEN.REDIS) @Optional()
     private readonly redis?: IDatabase,
   ) {}
 
   create(type: DatabaseType): IDatabase {
     switch (type) {
       case DatabaseType.PRISMA:
-        if (!this.prisma) throw new Error('Prisma not available');
+        if (!this.prisma) throw new Error('[Factory] Prisma not available');
         return this.prisma;
+
       case DatabaseType.REDIS:
-        if (!this.redis) throw new Error('Redis not available');
+        if (!this.redis) throw new Error('[Factory] Redis not available');
         return this.redis;
+
       default:
-        throw new Error(`Unsupported database type: ${String(type)}`);
+        throw new Error(`[Factory] Unsupported database type: ${type}`);
     }
   }
 }

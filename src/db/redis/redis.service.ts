@@ -8,7 +8,7 @@ export class RedisService
   implements IDatabase<RedisClientType>, OnModuleInit, OnModuleDestroy
 {
   readonly name = 'Redis';
-  private client: RedisClientType;
+  private readonly client: RedisClientType;
 
   constructor(private readonly config: ConfigService) {
     const host = this.config.get<string>('REDIS_HOST');
@@ -17,7 +17,7 @@ export class RedisService
     const password = this.config.get<string>('REDIS_PASSWORD');
 
     if (!host || !port) {
-      throw new Error('[Redis] Config error: host/port missing');
+      throw new Error('[Redis] Missing REDIS_HOST/REDIS_PORT configuration');
     }
 
     this.client = createClient({
@@ -27,8 +27,8 @@ export class RedisService
         host,
         port,
         reconnectStrategy: (retries) => {
-          console.warn(`[Redis] Reconnecting attempt #${retries}`);
-          return Math.min(retries * 50, 2000);
+          console.warn(`[Redis] Reconnect attempt #${retries}`);
+          return Math.min(retries * 100, 3000);
         },
       },
     });
@@ -44,9 +44,7 @@ export class RedisService
   }
 
   async onModuleInit() {
-    if (!this.client.isOpen) {
-      await this.client.connect();
-    }
+    await this.connect();
   }
 
   async connect() {
@@ -55,18 +53,41 @@ export class RedisService
     }
   }
 
-  async set(key: string, value: any, ttl?: number) {
-    const val = JSON.stringify(value);
-    if (ttl) {
-      await this.client.set(key, val, { EX: ttl });
-    } else {
-      await this.client.set(key, val);
+  async disconnect() {
+    if (this.client.isOpen) {
+      await this.client.quit();
     }
   }
 
-  async get<T = any>(key: string): Promise<T | null> {
+  async onModuleDestroy() {
+    await this.disconnect();
+  }
+
+  async isHealthy(): Promise<boolean> {
+    try {
+      return (await this.client.ping()) === 'PONG';
+    } catch (err) {
+      console.error('[Redis] Health check failed:', err);
+      return false;
+    }
+  }
+
+  async set(key: string, value: unknown, ttl?: number) {
+    const serialized = JSON.stringify(value);
+    ttl
+      ? await this.client.set(key, serialized, { EX: ttl })
+      : await this.client.set(key, serialized);
+  }
+
+  async get<T = unknown>(key: string): Promise<T | null> {
     const data = await this.client.get(key);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+
+    try {
+      return JSON.parse(data) as T;
+    } catch {
+      return data as unknown as T;
+    }
   }
 
   async del(key?: string) {
@@ -98,26 +119,7 @@ export class RedisService
     }
   }
 
-  async disconnect() {
-    if (this.client.isOpen) {
-      await this.client.quit();
-    }
-  }
-
-  async isHealthy(): Promise<boolean> {
-    try {
-      return (await this.client.ping()) === 'PONG';
-    } catch (e) {
-      console.error('[Redis] Health check failed:', e);
-      return false;
-    }
-  }
-
-  getConnection() {
+  getConnection(): RedisClientType {
     return this.client;
-  }
-
-  async onModuleDestroy() {
-    await this.disconnect();
   }
 }

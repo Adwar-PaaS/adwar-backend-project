@@ -19,6 +19,7 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
 import { Audit } from 'src/common/decorators/audit.decorator';
+import { PaginationResult } from '../../common/utils/api-features.util';
 
 @Controller('warehouses')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -43,12 +44,14 @@ export class WarehouseController {
 
   @Get()
   @Permissions(EntityType.WAREHOUSE, ActionType.READ)
-  async findAll(@Query() query: Record<string, any>) {
-    const { data, total, page, limit, hasNext, hasPrev } =
-      await this.warehouseService.findAll(query);
+  async findAll(
+    @Query() query: Record<string, any>,
+  ): Promise<APIResponse<{ warehouses: any[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } = await this.warehouseService.findAll(query);
     return APIResponse.success(
-      { warehouses: data, total, page, limit, hasNext, hasPrev },
-      'Warehouses retrieved successfully',
+      { warehouses: items, ...pagination },
+      'Fetched tenants successfully',
+      HttpStatus.OK,
     );
   }
 

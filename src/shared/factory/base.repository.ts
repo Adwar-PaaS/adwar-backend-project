@@ -1,11 +1,12 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { ApiError } from '../../common/exceptions/api-error.exception';
-import { ApiFeatures } from '../../common/utils/api-features.util';
+import { ApiFeatures, PaginationResult } from '../../common/utils/api-features.util';
 import {
   sanitizeUsers,
   sanitizeUser,
 } from '../../common/utils/sanitize-user.util';
+import { PrismaService } from 'src/db/prisma/prisma.service';
 
 type PrismaDelegate = {
   create: (args: any) => Promise<any>;
@@ -21,7 +22,7 @@ export class BaseRepository<T extends { id: string; password?: string }> {
   protected readonly logger = new Logger(BaseRepository.name);
 
   constructor(
-    protected readonly prisma: PrismaClient,
+    protected readonly prisma: PrismaService,
     protected readonly model: PrismaDelegate,
     protected readonly searchableFields: string[] = [],
   ) {}
@@ -93,7 +94,7 @@ export class BaseRepository<T extends { id: string; password?: string }> {
     queryString: Record<string, any> = {},
     baseFilter: Record<string, any> = {},
     include?: Prisma.SelectSubset<any, any>['include'],
-  ) {
+  ): Promise<{ items: T[] } & Partial<PaginationResult>> {
     try {
       const apiFeatures = new ApiFeatures<
         typeof this.model,
@@ -114,12 +115,8 @@ export class BaseRepository<T extends { id: string; password?: string }> {
       const { data, pagination } = await apiFeatures.query();
 
       return {
-        data: sanitizeUsers(data) as T[],
-        total: pagination?.totalRecords ?? 0,
-        page: pagination?.currentPage ?? 1,
-        limit: pagination?.limit ?? 0,
-        hasNext: pagination?.hasNext ?? false,
-        hasPrev: pagination?.hasPrev ?? false,
+        items: sanitizeUsers(data) as T[],
+        ...(pagination ?? {}),
       };
     } catch (error) {
       this.handleError('find all resources', error);

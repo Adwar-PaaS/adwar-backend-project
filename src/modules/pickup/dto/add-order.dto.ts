@@ -1,9 +1,6 @@
 import { IsUUID } from 'class-validator';
 
-export class CreatePickupOrderDto {
-  @IsUUID()
-  pickUpRequestId: string;
-
+export class AddOrderDto {
   @IsUUID()
   orderId: string;
 }

@@ -1,15 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { WarehouseRepository } from './warehouse.repository';
-import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../../common/exceptions/api-error.exception';
 import { HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class WarehouseService {
-  constructor(
-    private readonly warehouseRepo: WarehouseRepository,
-    private readonly prisma: PrismaClient,
-  ) {}
+  constructor(private readonly warehouseRepo: WarehouseRepository) {}
 
   async create(dto: any) {
     return this.warehouseRepo.create(dto);

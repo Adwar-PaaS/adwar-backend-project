@@ -20,6 +20,7 @@ import { APIResponse } from '../../common/utils/api-response.util';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { Permissions } from '../../common/decorators/permission.decorator';
 import { PermissionGuard } from '../../common/guards/permission.guard';
+import { PaginationResult } from '../../common/utils/api-features.util';
 import { EntityType, ActionType, RoleName } from '@prisma/client';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
@@ -87,12 +88,13 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @Cacheable((req) => `users:page:${req.query.page || 1}`, 60)
   @Permissions(EntityType.USER, ActionType.READ)
-  async findAll(@Query() query: Record<string, any>) {
-    const { data, total, page, limit, hasNext, hasPrev } =
-      await this.usersService.findAll(query);
-
+  @Get()
+  async findAll(
+    @Query() query: Record<string, any>,
+  ): Promise<APIResponse<{ users: any[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } = await this.usersService.findAll(query);
     return APIResponse.success(
-      { users: data, total, page, limit, hasNext, hasPrev },
+      { users: items, ...pagination },
       'Fetched users successfully',
       HttpStatus.OK,
     );

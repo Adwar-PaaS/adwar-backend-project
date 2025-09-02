@@ -3,7 +3,10 @@ import { PrismaClient } from '@prisma/client';
 import { IDatabase } from '../interfaces/db.interface';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements IDatabase {
+export class PrismaService
+  extends PrismaClient
+  implements IDatabase<PrismaClient>
+{
   readonly name = 'Prisma';
   private connected = false;
 
@@ -14,8 +17,8 @@ export class PrismaService extends PrismaClient implements IDatabase {
         this.connected = true;
         console.log('[Prisma] Connected');
       } catch (err) {
-        console.error('[Prisma] Connection error:', err);
-        throw err;
+        console.error('[Prisma] Connection failed:', err);
+        throw new Error('Failed to connect to Prisma');
       }
     }
   }
@@ -32,7 +35,8 @@ export class PrismaService extends PrismaClient implements IDatabase {
     try {
       await this.$queryRaw`SELECT 1`;
       return true;
-    } catch {
+    } catch (err) {
+      console.error('[Prisma] Health check failed:', err);
       return false;
     }
   }

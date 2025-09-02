@@ -11,8 +11,7 @@ export class DatabaseManagerService {
 
   register(type: DatabaseType): void {
     if (!this.databases.has(type)) {
-      const db = this.factory.create(type);
-      this.databases.set(type, db);
+      this.databases.set(type, this.factory.create(type));
     }
   }
 
@@ -20,11 +19,14 @@ export class DatabaseManagerService {
     for (const [type, db] of this.databases) {
       try {
         await db.connect();
-        const healthy = await db.isHealthy();
-        if (!healthy) throw new Error(`${db.name} is unhealthy`);
-        console.log(`[DatabaseManager] ${type} connected and healthy`);
+        if (!(await db.isHealthy())) {
+          throw new Error(`${db.name} is unhealthy`);
+        }
+        console.log(
+          `[DatabaseManager] ${db.name} (${type}) connected & healthy`,
+        );
       } catch (err) {
-        console.error(`[DatabaseManager] Error connecting ${type}:`, err);
+        console.error(`[DatabaseManager] Failed to connect ${type}:`, err);
       }
     }
   }
@@ -33,9 +35,9 @@ export class DatabaseManagerService {
     for (const [type, db] of this.databases) {
       try {
         await db.disconnect();
-        console.log(`[DatabaseManager] ${type} disconnected`);
+        console.log(`[DatabaseManager] ${db.name} (${type}) disconnected`);
       } catch (err) {
-        console.error(`[DatabaseManager] Error disconnecting ${type}:`, err);
+        console.error(`[DatabaseManager] Failed to disconnect ${type}:`, err);
       }
     }
   }

@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient, Status, OrderStatus, RoleName } from '@prisma/client';
+import { Status, OrderStatus, RoleName } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { userWithRoleSelect } from '../../common/utils/helpers.util';
+import { PrismaService } from 'src/db/prisma/prisma.service';
 
 @Injectable()
 export class WarehouseRepository extends BaseRepository<any> {
-  constructor(prisma: PrismaClient) {
+  constructor(protected readonly prisma: PrismaService) {
     super(prisma, prisma.warehouse, ['location', 'name']);
   }
 

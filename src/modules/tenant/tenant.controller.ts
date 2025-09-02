@@ -42,22 +42,15 @@ export class TenantController {
   }
 
   @Get()
-  async findAll(@Query() query: Record<string, any>) {
-    const { data, total, page, limit, hasNext, hasPrev } =
-      await this.service.findAll(query);
-
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Fetched tenants successfully',
-      data: {
-        tenants: data,
-        total,
-        page,
-        limit,
-        hasNext,
-        hasPrev,
-      },
-    };
+  async findAll(
+    @Query() query: Record<string, any>,
+  ): Promise<APIResponse<{ tenants: any[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } = await this.service.findAll(query);
+    return APIResponse.success(
+      { tenants: items, ...pagination },
+      'Fetched tenants successfully',
+      HttpStatus.OK,
+    );
   }
 
   @Get(':id')

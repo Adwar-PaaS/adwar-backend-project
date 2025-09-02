@@ -7,11 +7,10 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { RolesModule } from './modules/role/roles.module';
 import { OrderModule } from './modules/order/order.module';
-import { PickupOrderModule } from './modules/pickup-order/pickup-order.module';
-import { PickupRequestModule } from './modules/pickup-request/pickup-request.module';
+import { PickUpModule } from './modules/pickup/pickup.module';
 import { RequestModule } from './modules/request/request.module';
 import validationSchema from './config/env.validation';
-import { DatabaseModule } from './db/db.module';
+import { DbModule } from './db/db.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WebsocketModule } from './shared/websocket/websocket.module';
@@ -28,8 +27,8 @@ import { WebsocketModule } from './shared/websocket/websocket.module';
       useFactory: (config: ConfigService) => ({
         throttlers: [
           {
-            ttl: config.get<number>('THROTTLE_TTL') ?? 60,
-            limit: config.get<number>('THROTTLE_LIMIT') ?? 100,
+            ttl: config.get<number>('THROTTLE_TTL', 60),
+            limit: config.get<number>('THROTTLE_LIMIT', 100),
           },
         ],
       }),
@@ -41,10 +40,9 @@ import { WebsocketModule } from './shared/websocket/websocket.module';
     RolesModule,
     WarehouseModule,
     OrderModule,
-    PickupOrderModule,
-    PickupRequestModule,
+    PickUpModule,
     RequestModule,
-    DatabaseModule,
+    DbModule,
     WebsocketModule,
   ],
   controllers: [AppController],

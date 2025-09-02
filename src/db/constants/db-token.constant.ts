@@ -1,6 +1,6 @@
 export const DATABASE_TOKEN = {
-  PRISMA: 'PRISMA_DATABASE',
-  REDIS: 'REDIS_DATABASE',
+  PRISMA: 'DATABASE_PRISMA',
+  REDIS: 'DATABASE_REDIS',
 } as const;
 
 export type DatabaseToken =

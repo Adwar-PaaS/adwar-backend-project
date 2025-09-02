@@ -22,6 +22,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { Audit } from '../../common/decorators/audit.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
+import { PaginationResult } from '../../common/utils/api-features.util';
 
 @Controller('orders')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -47,11 +48,13 @@ export class OrderController {
 
   @Get()
   @Permissions(EntityType.ORDER, ActionType.READ)
-  async findAll(@Query() query: Record<string, any>) {
-    const { data, total, page, limit, hasNext, hasPrev } =
-      await this.orderService.findAll(query);
+  @Get()
+  async findAll(
+    @Query() query: Record<string, any>,
+  ): Promise<APIResponse<{ orders: any[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } = await this.orderService.findAll(query);
     return APIResponse.success(
-      { orders: data, total, page, limit, hasNext, hasPrev },
+      { orders: items, ...pagination },
       'Orders retrieved successfully',
     );
   }

@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
@@ -14,6 +14,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+  const logger = new Logger('Bootstrap');
 
   app.use(helmet());
 
@@ -31,15 +32,24 @@ async function bootstrap() {
 
   app.set('trust proxy', 1);
 
+  const allowedOrigins = configService.get<string[]>('CORS_ORIGINS') || [
+    'http://localhost:5173',
+  ];
+
   app.enableCors({
-    origin: configService.get<string[]>('CORS_ORIGINS') || [
-      'http://localhost:5173',
-    ],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked for origin: ${origin}`), false);
+      }
+    },
     credentials: true,
   });
 
   const redisService = app.get(RedisService);
   const redisClient = redisService.getConnection();
+
   const store = new RedisStore({
     client: redisClient,
     prefix: 'sess:',
@@ -48,20 +58,22 @@ async function bootstrap() {
   app.use(
     session({
       store,
-      name: configService.get<string>('SESSION_COOKIE_NAME') as string,
-      secret: configService.get<string>('SESSION_SECRET') as string,
+      name: configService.get<string>('SESSION_COOKIE_NAME', 'sid'),
+      secret: configService.get<string>('SESSION_SECRET', 'changeme'),
       resave: false,
       saveUninitialized: false,
       rolling: false,
-      cookie: sessionCookieConfig,
+      cookie: {
+        ...sessionCookieConfig,
+        secure: configService.get<string>('NODE_ENV') === 'production',
+      },
     }),
   );
 
-  const port =
-    Number(process.env.PORT) || configService.get<number>('PORT') || 3000;
+  const port = configService.get<number>('PORT', 3000);
 
   await app.listen(port, '0.0.0.0');
-  console.log(`🚀 App running on http://localhost:${port}`);
+  logger.log(`🚀 App running on http://localhost:${port}`);
 }
 
 void bootstrap();

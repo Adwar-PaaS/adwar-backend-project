@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+
 export class APIResponse<T = any> {
   readonly statusCode: HttpStatus;
   readonly message: string;
@@ -17,7 +18,7 @@ export class APIResponse<T = any> {
     this.meta = meta;
   }
 
-  static success<T = any>(
+  static success<T>(
     data: T,
     message = 'Success',
     statusCode: HttpStatus = HttpStatus.OK,
@@ -26,7 +27,7 @@ export class APIResponse<T = any> {
     return new APIResponse(statusCode, message, data, meta);
   }
 
-  static error<T = any>(
+  static error<T>(
     message = 'Something went wrong',
     statusCode: HttpStatus = HttpStatus.BAD_REQUEST,
     data?: T,
@@ -35,7 +36,7 @@ export class APIResponse<T = any> {
     return new APIResponse(statusCode, message, data ?? null, meta);
   }
 
-  static paginated<T = any>(
+  static paginated<T>(
     data: T[],
     pagination: {
       total: number;
