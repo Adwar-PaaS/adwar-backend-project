@@ -91,7 +91,7 @@ export class WebsocketGateway
     // this.wsService.joinTenantRoom(client);
   }
 
-  handleDisconnect(client: Socket) {  
+  handleDisconnect(client: Socket) {
     this.wsService.removeClient(client.id);
   }
 

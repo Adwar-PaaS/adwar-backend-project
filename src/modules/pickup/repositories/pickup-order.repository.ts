@@ -11,9 +11,26 @@ export class PickUpOrderRepository {
     });
   }
 
+  async removeOrder(pickupId: string, orderId: string) {
+    return this.prisma.pickUpOrder.delete({
+      where: { pickupId_orderId: { pickupId, orderId } },
+    });
+  }
+
   async exists(pickupId: string, orderId: string) {
     return this.prisma.pickUpOrder.findUnique({
       where: { pickupId_orderId: { pickupId, orderId } },
+    });
+  }
+
+  async findOrderById(orderId: string) {
+    return this.prisma.order.findUnique({ where: { id: orderId } });
+  }
+
+  async findOrdersByPickup(pickupId: string) {
+    return this.prisma.pickUpOrder.findMany({
+      where: { pickupId },
+      include: { order: true },
     });
   }
 }

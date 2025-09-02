@@ -32,9 +32,9 @@ async function bootstrap() {
 
   app.set('trust proxy', 1);
 
-  const allowedOrigins = configService.get<string[]>('CORS_ORIGINS') || [
-    'http://localhost:5173',
-  ];
+  const allowedOrigins = configService
+    .get<string>('CORS_ORIGINS')
+    ?.split(',') || ['http://localhost:5173'];
 
   app.enableCors({
     origin: (origin, callback) => {
