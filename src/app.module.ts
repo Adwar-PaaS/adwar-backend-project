@@ -14,6 +14,7 @@ import { DbModule } from './db/db.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WebsocketModule } from './shared/websocket/websocket.module';
+import { BranchModule } from './modules/branch/branch.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { WebsocketModule } from './shared/websocket/websocket.module';
     OrderModule,
     PickUpModule,
     RequestModule,
+    BranchModule,
     DbModule,
     WebsocketModule,
   ],
