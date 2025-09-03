@@ -29,6 +29,8 @@ model User {
   responsedPickUpRequests PickUpRequest[] @relation("PickUpResponder")
   requestSenders          Request[]       @relation("RequestSender")
   requestResponses        Request[]       @relation("RequestResponder")
+  sentNotifications       Notification[]  @relation("SentNotifications")
+  receivedNotifications   Notification[]  @relation("ReceivedNotifications")
 }
 
 model Tenant {
@@ -176,6 +178,38 @@ model Order {
   @@index([createdAt])
 }
 
+model Notification {
+  id          String  @id @default(uuid())
+  senderId    String?
+  recipientId String?
+
+  title   String
+  message String
+
+  relatedId   String? // reference entity (orderId, requestId, tenantId)
+  relatedType EntityType? // which entity this is about
+
+  category NotificationCategory @default(INFO) // semantic classification
+  isRead   Boolean              @default(false)
+
+  channels     NotificationChannel[] @default([])
+  deliveryMeta Json?
+  priority     NotificationPriority  @default(MEDIUM)
+
+  metadata  Json?
+  broadcast Boolean   @default(false)
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sender    User? @relation("SentNotifications", fields: [senderId], references: [id])
+  recipient User? @relation("ReceivedNotifications", fields: [recipientId], references: [id])
+
+  @@index([recipientId])
+  @@index([relatedId, relatedType])
+}
+
 model Attachment {
   id          String         @id @default(uuid())
   url         String
@@ -191,9 +225,9 @@ model Attachment {
 }
 
 model PickUp {
-  id        String       @id @default(uuid())
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   orders PickUpOrder[]
 
@@ -208,9 +242,9 @@ model PickUpRequest {
 
   status RequestStatus @default(PENDING)
 
-  pickup     PickUp @relation(fields: [pickupId], references: [id])
-  requester  User   @relation("PickUpRequester", fields: [requestedBy], references: [id])
-  responder  User?  @relation("PickUpResponder", fields: [respondedBy], references: [id])
+  pickup    PickUp @relation(fields: [pickupId], references: [id])
+  requester User   @relation("PickUpRequester", fields: [requestedBy], references: [id])
+  responder User?  @relation("PickUpResponder", fields: [respondedBy], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -221,9 +255,9 @@ model PickUpRequest {
 }
 
 model PickUpOrder {
-  id        String @id @default(uuid())
-  pickupId  String
-  orderId   String
+  id       String @id @default(uuid())
+  pickupId String
+  orderId  String
 
   pickup PickUp @relation(fields: [pickupId], references: [id])
   order  Order  @relation(fields: [orderId], references: [id])
@@ -286,6 +320,28 @@ model Branch {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+}
+
+enum NotificationCategory {
+  SYSTEM // technical/system-generated
+  INFO // informational
+  ACTION // requires user action
+  WARNING // potential issue
+  ERROR // failure or critical issue
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum RelatedType {

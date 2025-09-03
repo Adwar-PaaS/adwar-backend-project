@@ -14,6 +14,7 @@ import { DbModule } from './db/db.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WebsocketModule } from './shared/websocket/websocket.module';
+// import { NotificationModule } from './modules/notification/notification.module';
 import { BranchModule } from './modules/branch/branch.module';
 
 @Module({
@@ -46,6 +47,7 @@ import { BranchModule } from './modules/branch/branch.module';
     BranchModule,
     DbModule,
     WebsocketModule,
+    // NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
