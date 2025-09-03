@@ -19,6 +19,21 @@ export class PickUpRequestRepository {
     });
   }
 
+  async findRequestsByCustomer(customerId: string) {
+    return this.prisma.pickUpRequest.findMany({
+      where: {
+        pickup: {
+          orders: {
+            some: {
+              order: { customerId },
+            },
+          },
+        },
+      },
+      include: { pickup: true, requester: true, responder: true },
+    });
+  }
+
   async findRequestsByPickup(pickupId: string) {
     return this.prisma.pickUpRequest.findMany({
       where: { pickupId },

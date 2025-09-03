@@ -14,7 +14,6 @@ import { EntityType, ActionType } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { UseGuards } from '@nestjs/common';
 import { PermissionGuard } from '../../common/guards/permission.guard';
-import { AddPermissionsDto } from './dto/add-permissions.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { PermissionService } from 'src/shared/permission/permission.service';
 

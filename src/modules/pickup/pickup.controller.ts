@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Get } from '@nestjs/common';
+import { Body, Controller, Param, Post, Get, HttpStatus } from '@nestjs/common';
 import { PickUpService } from './pickup.service';
 import { CreatePickupDto } from './dto/create-pickup.dto';
 import { AddOrderDto } from './dto/add-order.dto';
@@ -6,6 +6,7 @@ import { RespondRequestDto } from './dto/respond-request.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { RemoveOrderDto } from './dto/remove-order.dto';
+import { APIResponse } from '../../common/utils/api-response.util';
 
 @Controller('pickups')
 export class PickUpController {
@@ -13,17 +14,32 @@ export class PickUpController {
 
   @Post()
   async create(@Body() dto: CreatePickupDto) {
-    return this.pickupService.createPickup(dto.orderIds);
+    const pickup = await this.pickupService.createPickup(dto.orderIds);
+    return APIResponse.success(
+      { pickup },
+      'Pickup created successfully',
+      HttpStatus.CREATED,
+    );
   }
 
   @Post(':id/add-orders')
   async addOrder(@Param('id') id: string, @Body() dto: AddOrderDto) {
-    return this.pickupService.addOrder(id, dto.orderId);
+    const pickup = await this.pickupService.addOrder(id, dto.orderId);
+    return APIResponse.success(
+      { pickup },
+      'Order added to pickup successfully',
+      HttpStatus.OK,
+    );
   }
 
   @Post(':id/remove-orders')
   async removeOrder(@Param('id') id: string, @Body() dto: RemoveOrderDto) {
-    return this.pickupService.removeOrder(id, dto.orderId);
+    const pickup = await this.pickupService.removeOrder(id, dto.orderId);
+    return APIResponse.success(
+      { pickup },
+      'Order removed from pickup successfully',
+      HttpStatus.OK,
+    );
   }
 
   @Post(':id/requests')
@@ -31,17 +47,56 @@ export class PickUpController {
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.pickupService.requestApproval(id, user.id);
+    const request = await this.pickupService.requestApproval(id, user.id);
+    return APIResponse.success(
+      { request },
+      'Pickup request submitted successfully',
+      HttpStatus.CREATED,
+    );
   }
 
   @Get(':id/pickup-orders')
   async getPickupOrdersOfCustomer(@Param('id') id: string) {
-    return this.pickupService.getPickupOrders(id);
+    const orders = await this.pickupService.getPickupOrders(id);
+    return APIResponse.success(
+      { orders },
+      'Pickup orders retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Get(':customerId/pickup-orders')
+  async getAllPickupOrdersForCustomer(@Param('customerId') customerId: string) {
+    const orders =
+      await this.pickupService.getAllPickupOrdersForCustomer(customerId);
+    return APIResponse.success(
+      { orders },
+      'Pickup orders retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Get(':customerId/pickup-requests')
+  async getAllPickupRequestsForCustomer(
+    @Param('customerId') customerId: string,
+  ) {
+    const requests =
+      await this.pickupService.getAllPickupRequestsForCustomer(customerId);
+    return APIResponse.success(
+      { requests },
+      'Pickup requests retrieved successfully',
+      HttpStatus.OK,
+    );
   }
 
   @Get(':id/pickup-requests')
   async getPickupRequestsOfCustomer(@Param('id') id: string) {
-    return this.pickupService.getPickupRequests(id);
+    const requests = await this.pickupService.getPickupRequests(id);
+    return APIResponse.success(
+      { requests },
+      'Pickup requests retrieved successfully',
+      HttpStatus.OK,
+    );
   }
 
   @Post('requests/:requestId/respond')
@@ -50,6 +105,15 @@ export class PickUpController {
     @Body() dto: RespondRequestDto,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.pickupService.respondToRequest(requestId, user.id, dto.status);
+    const response = await this.pickupService.respondToRequest(
+      requestId,
+      user.id,
+      dto.status,
+    );
+    return APIResponse.success(
+      { response },
+      'Pickup request response submitted successfully',
+      HttpStatus.OK,
+    );
   }
 }

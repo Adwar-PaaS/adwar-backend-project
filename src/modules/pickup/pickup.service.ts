@@ -18,8 +18,17 @@ export class PickUpService {
     for (const orderId of orderIds) {
       const order = await this.pickupOrderRepo.findOrderById(orderId);
       if (!order) throw new BadRequestException(`Order ${orderId} not found`);
+
       if (order.status === 'PENDING') {
         throw new BadRequestException(`Order ${orderId} is still pending`);
+      }
+
+      const inOtherPickup =
+        await this.pickupOrderRepo.existsInAnyPickup(orderId);
+      if (inOtherPickup) {
+        throw new BadRequestException(
+          `Order ${orderId} is already assigned to another pickup`,
+        );
       }
 
       await this.pickupOrderRepo.addOrder(pickup.id, orderId);
@@ -63,5 +72,13 @@ export class PickUpService {
 
   async getPickupRequests(pickupId: string) {
     return this.pickupRequestRepo.findRequestsByPickup(pickupId);
+  }
+
+  async getAllPickupOrdersForCustomer(customerId: string) {
+    return this.pickupOrderRepo.findOrdersByCustomer(customerId);
+  }
+
+  async getAllPickupRequestsForCustomer(customerId: string) {
+    return this.pickupRequestRepo.findRequestsByCustomer(customerId);
   }
 }

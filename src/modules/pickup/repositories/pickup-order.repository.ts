@@ -27,6 +27,21 @@ export class PickUpOrderRepository {
     return this.prisma.order.findUnique({ where: { id: orderId } });
   }
 
+  async existsInAnyPickup(orderId: string) {
+    return this.prisma.pickUpOrder.findFirst({
+      where: { orderId },
+    });
+  }
+
+  async findOrdersByCustomer(customerId: string) {
+    return this.prisma.pickUpOrder.findMany({
+      where: {
+        order: { customerId },
+      },
+      include: { order: true, pickup: true },
+    });
+  }
+
   async findOrdersByPickup(pickupId: string) {
     return this.prisma.pickUpOrder.findMany({
       where: { pickupId },
