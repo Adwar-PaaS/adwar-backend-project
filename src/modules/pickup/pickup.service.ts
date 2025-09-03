@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PickUpRepository } from './repositories/pickup.repository';
 import { PickUpOrderRepository } from './repositories/pickup-order.repository';
 import { PickUpRequestRepository } from './repositories/pickup-request.repository';
-import { RequestStatus } from '@prisma/client';
+import { RequestStatus, OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class PickUpService {
@@ -19,7 +19,7 @@ export class PickUpService {
       const order = await this.pickupOrderRepo.findOrderById(orderId);
       if (!order) throw new BadRequestException(`Order ${orderId} not found`);
 
-      if (order.status === 'PENDING') {
+      if (order.status === OrderStatus.PENDING) {
         throw new BadRequestException(`Order ${orderId} is still pending`);
       }
 
@@ -40,7 +40,7 @@ export class PickUpService {
   async addOrder(pickupId: string, orderId: string) {
     const order = await this.pickupOrderRepo.findOrderById(orderId);
     if (!order) throw new BadRequestException('Order not found');
-    if (order.status === 'PENDING') {
+    if (order.status === OrderStatus.PENDING) {
       throw new BadRequestException('Cannot add a pending order');
     }
 
@@ -55,7 +55,22 @@ export class PickUpService {
   }
 
   async requestApproval(pickupId: string, userId: string) {
-    return this.pickupRequestRepo.create(pickupId, userId);
+    const request = this.pickupRequestRepo.create(pickupId, userId);
+
+    const pickup = await this.pickupRepo.findById(pickupId);
+
+    if (!pickup) {
+      throw new BadRequestException('Pickup not found');
+    }
+
+    for (const pickupOrder of pickup.orders) {
+      await this.pickupOrderRepo.updateOrderStatus(
+        pickupOrder.orderId,
+        OrderStatus.PENDING,
+      );
+    }
+
+    return request;
   }
 
   async respondToRequest(
