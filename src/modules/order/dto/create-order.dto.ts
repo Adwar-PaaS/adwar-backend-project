@@ -33,6 +33,10 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsUUID()
+  branchId?: string;
+
+  @IsOptional()
+  @IsUUID()
   driverId?: string;
 
   @IsOptional()
