@@ -93,7 +93,32 @@ export class PickUpService {
   }
 
   async getAllPickupOrdersForCustomer(customerId: string) {
-    return this.pickupOrderRepo.findOrdersByCustomer(customerId);
+    const pickupsWithOrders =
+      await this.pickupOrderRepo.findOrdersByCustomer(customerId);
+
+    const pickupMap = new Map<
+      string,
+      { pickupId: string; status: string; orderIds: string[] }
+    >();
+
+    for (const p of pickupsWithOrders) {
+      const pickupId = p.pickup.id;
+
+      if (!pickupMap.has(pickupId)) {
+        const request = p.pickup.requests?.[0];
+        const status = request?.status || 'CREATED';
+
+        pickupMap.set(pickupId, {
+          pickupId,
+          status,
+          orderIds: [],
+        });
+      }
+
+      pickupMap.get(pickupId)!.orderIds.push(p.order.id);
+    }
+
+    return Array.from(pickupMap.values());
   }
 
   async getAllPickupRequestsForCustomer(customerId: string) {

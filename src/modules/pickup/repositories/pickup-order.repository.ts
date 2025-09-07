@@ -33,13 +33,18 @@ export class PickUpOrderRepository {
       where: { orderId },
     });
   }
-  
+
   async findOrdersByCustomer(customerId: string) {
     return this.prisma.pickUpOrder.findMany({
       where: {
         order: { customerId },
       },
-      include: { order: true, pickup: true },
+      include: {
+        order: true,
+        pickup: {
+          include: { requests: true },
+        },
+      },
     });
   }
 

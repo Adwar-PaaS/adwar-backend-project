@@ -67,10 +67,10 @@ export class PickUpController {
 
   @Get(':customerId/customer-pickups')
   async getAllPickupOrdersForCustomer(@Param('customerId') customerId: string) {
-    const orders =
+    const pickups =
       await this.pickupService.getAllPickupOrdersForCustomer(customerId);
     return APIResponse.success(
-      { orders },
+      { pickups },
       'Customer Pickup orders retrieved successfully',
       HttpStatus.OK,
     );
