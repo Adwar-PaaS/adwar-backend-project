@@ -65,18 +65,18 @@ export class PickUpController {
     );
   }
 
-  @Get(':customerId/pickup-orders')
+  @Get(':customerId/customer-pickups')
   async getAllPickupOrdersForCustomer(@Param('customerId') customerId: string) {
     const orders =
       await this.pickupService.getAllPickupOrdersForCustomer(customerId);
     return APIResponse.success(
       { orders },
-      'Customer Pickups orders retrieved successfully',
+      'Customer Pickup orders retrieved successfully',
       HttpStatus.OK,
     );
   }
 
-  @Get(':customerId/pickup-requests')
+  @Get(':customerId/customer-pickup-requests')
   async getAllPickupRequestsForCustomer(
     @Param('customerId') customerId: string,
   ) {
