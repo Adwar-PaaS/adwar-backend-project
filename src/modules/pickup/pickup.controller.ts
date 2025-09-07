@@ -1,4 +1,12 @@
-import { Body, Controller, Param, Post, Get, HttpStatus } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  Post,
+  Get,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { PickUpService } from './pickup.service';
 import { CreatePickupDto } from './dto/create-pickup.dto';
 import { AddOrderDto } from './dto/add-order.dto';
@@ -7,8 +15,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { RemoveOrderDto } from './dto/remove-order.dto';
 import { APIResponse } from '../../common/utils/api-response.util';
+import { SessionGuard } from '../auth/guards/session.guard';
 
 @Controller('pickups')
+@UseGuards(SessionGuard)
 export class PickUpController {
   constructor(private readonly pickupService: PickUpService) {}
 

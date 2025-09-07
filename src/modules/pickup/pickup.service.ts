@@ -55,10 +55,9 @@ export class PickUpService {
   }
 
   async requestApproval(pickupId: string, userId: string) {
-    const request = this.pickupRequestRepo.create(pickupId, userId);
+    const request = await this.pickupRequestRepo.create(pickupId, userId);
 
     const pickup = await this.pickupRepo.findById(pickupId);
-
     if (!pickup) {
       throw new BadRequestException('Pickup not found');
     }
