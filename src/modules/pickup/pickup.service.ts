@@ -82,7 +82,10 @@ export class PickUpService {
   }
 
   async getPickupOrders(pickupId: string) {
-    return this.pickupOrderRepo.findOrdersByPickup(pickupId);
+    const pickupOrders =
+      await this.pickupOrderRepo.findOrdersByPickup(pickupId);
+
+    return pickupOrders.map((po) => po.order);
   }
 
   async getPickupRequests(pickupId: string) {

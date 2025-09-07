@@ -82,7 +82,7 @@ export class OrderController {
     const orders = await this.orderService.getOrdersOfCustomer(customerId);
     return APIResponse.success(
       { orders },
-      'Driver orders retrieved successfully',
+      'Customer orders retrieved successfully',
     );
   }
 
