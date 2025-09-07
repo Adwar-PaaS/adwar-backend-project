@@ -71,7 +71,7 @@ export class PickUpController {
       await this.pickupService.getAllPickupOrdersForCustomer(customerId);
     return APIResponse.success(
       { orders },
-      'Pickup orders retrieved successfully',
+      'Customer Pickups orders retrieved successfully',
       HttpStatus.OK,
     );
   }
@@ -84,7 +84,7 @@ export class PickUpController {
       await this.pickupService.getAllPickupRequestsForCustomer(customerId);
     return APIResponse.success(
       { requests },
-      'Pickup requests retrieved successfully',
+      'Customer Pickup requests retrieved successfully',
       HttpStatus.OK,
     );
   }
