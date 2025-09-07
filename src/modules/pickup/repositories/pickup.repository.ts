@@ -9,6 +9,10 @@ export class PickUpRepository {
     return this.prisma.pickUp.create({ data: {} });
   }
 
+  async delete(id: string) {
+    return this.prisma.pickUp.delete({ where: { id } });
+  }
+
   async findById(id: string) {
     return this.prisma.pickUp.findUnique({
       where: { id },

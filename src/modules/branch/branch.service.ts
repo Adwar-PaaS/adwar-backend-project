@@ -21,6 +21,10 @@ export class BranchService {
     return this.branchRepo.findOne({ id });
   }
 
+  async getCustomerBranches(customerId: string) {
+    return this.branchRepo.getCustomerBranches(customerId);
+  }
+
   async delete(id: string) {
     return this.branchRepo.delete(id);
   }

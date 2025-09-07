@@ -6,6 +6,7 @@ import {
   Get,
   HttpStatus,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { PickUpService } from './pickup.service';
 import { CreatePickupDto } from './dto/create-pickup.dto';
@@ -123,6 +124,16 @@ export class PickUpController {
     return APIResponse.success(
       { response },
       'Pickup request response submitted successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    await this.pickupService.deletePickup(id);
+    return APIResponse.success(
+      null,
+      'Pickup deleted successfully',
       HttpStatus.OK,
     );
   }

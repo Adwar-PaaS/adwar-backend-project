@@ -123,4 +123,8 @@ export class PickUpService {
   async getAllPickupRequestsForCustomer(customerId: string) {
     return this.pickupRequestRepo.findRequestsByCustomer(customerId);
   }
+
+  async deletePickup(pickupId: string) {
+    return this.pickupRepo.delete(pickupId);
+  }
 }

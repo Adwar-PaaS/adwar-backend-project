@@ -8,83 +8,90 @@ import {
   Param,
   Query,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { BranchService } from './branch.service';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { Permissions } from '../../common/decorators/permission.decorator';
 import { EntityType, ActionType } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
-import { UseGuards } from '@nestjs/common';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 import { Audit } from 'src/common/decorators/audit.decorator';
 import { PaginationResult } from '../../common/utils/api-features.util';
 
-@Controller('warehouses')
+@Controller('branches')
 @UseGuards(SessionGuard, PermissionGuard)
 export class BranchController {
   constructor(private readonly branchService: BranchService) {}
 
   @Post()
-  @Permissions(EntityType.WAREHOUSE, ActionType.CREATE)
+  @Permissions(EntityType.BRANCH, ActionType.CREATE)
   @Audit({
-    entityType: EntityType.WAREHOUSE,
+    entityType: EntityType.BRANCH,
     actionType: ActionType.CREATE,
-    description: 'Created a new warehouse',
+    description: 'Created a new branch',
   })
   async create(@Body() dto: CreateBranchDto) {
-    const warehouse = await this.branchService.create(dto);
+    const branch = await this.branchService.create(dto);
     return APIResponse.success(
-      { warehouse },
-      'Warehouse created successfully',
+      { branch },
+      'Branch created successfully',
       HttpStatus.CREATED,
     );
   }
 
   @Get()
-  @Permissions(EntityType.WAREHOUSE, ActionType.READ)
+  @Permissions(EntityType.BRANCH, ActionType.READ)
   async findAll(
     @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ warehouses: any[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ branches: any[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.branchService.findAll(query);
     return APIResponse.success(
-      { warehouses: items, ...pagination },
-      'Fetched tenants successfully',
+      { branches: items, ...pagination },
+      'Branches fetched successfully',
       HttpStatus.OK,
     );
   }
 
   @Get(':id')
-  @Permissions(EntityType.WAREHOUSE, ActionType.READ)
+  @Permissions(EntityType.BRANCH, ActionType.READ)
   async findOne(@Param('id') id: string) {
-    const warehouse = await this.branchService.findOne(id);
+    const branch = await this.branchService.findOne(id);
+    return APIResponse.success({ branch }, 'Branch retrieved successfully');
+  }
+
+  @Get('customer/:customerId')
+  @Permissions(EntityType.BRANCH, ActionType.READ)
+  async getCustomerBranches(@Param('customerId') customerId: string) {
+    const branches = await this.branchService.getCustomerBranches(customerId);
     return APIResponse.success(
-      { warehouse },
-      'Warehouse retrieved successfully',
+      { branches },
+      'Customer branches fetched successfully',
     );
   }
 
   @Put(':id')
-  @Permissions(EntityType.WAREHOUSE, ActionType.UPDATE)
+  @Permissions(EntityType.BRANCH, ActionType.UPDATE)
   @Audit({
-    entityType: EntityType.WAREHOUSE,
+    entityType: EntityType.BRANCH,
     actionType: ActionType.UPDATE,
     entityIdParam: 'id',
-    description: 'Updated a warehouse',
+    description: 'Updated a branch',
   })
   async update(@Param('id') id: string, @Body() dto: UpdateBranchDto) {
-    const warehouse = await this.branchService.update(id, dto);
-    return APIResponse.success({ warehouse }, 'Warehouse updated successfully');
+    const branch = await this.branchService.update(id, dto);
+    return APIResponse.success({ branch }, 'Branch updated successfully');
   }
 
   @Delete(':id')
-  @Permissions(EntityType.WAREHOUSE, ActionType.DELETE)
+  @Permissions(EntityType.BRANCH, ActionType.DELETE)
   async delete(@Param('id') id: string) {
     await this.branchService.delete(id);
     return APIResponse.success(
       null,
-      'Warehouse deleted successfully',
+      'Branch deleted successfully',
       HttpStatus.NO_CONTENT,
     );
   }

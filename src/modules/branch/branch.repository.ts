@@ -7,4 +7,11 @@ export class BranchRepository extends BaseRepository<any> {
   constructor(protected readonly prisma: PrismaService) {
     super(prisma, prisma.branch, ['location', 'name']);
   }
+
+
+  getCustomerBranches(customerId: string) {
+    return this.prisma.branch.findMany({
+      where: { customerId },
+    });
+  }
 }
