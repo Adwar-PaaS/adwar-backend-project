@@ -8,10 +8,9 @@ export class BranchRepository extends BaseRepository<any> {
     super(prisma, prisma.branch, ['location', 'name']);
   }
 
-
   getCustomerBranches(customerId: string) {
     return this.prisma.branch.findMany({
-      where: { customerId },
+      where: { customerId, deletedAt: null },
     });
   }
 }
