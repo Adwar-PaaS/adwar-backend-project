@@ -131,6 +131,7 @@ export class PickUpController {
       user.id,
       dto.status,
     );
+
     return APIResponse.success(
       { response },
       'Pickup request response submitted successfully',
