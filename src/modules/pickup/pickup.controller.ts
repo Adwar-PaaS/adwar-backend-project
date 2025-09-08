@@ -53,6 +53,16 @@ export class PickUpController {
     );
   }
 
+  @Get('get-all-requests')
+  async findAllRequests() {
+    const requests = await this.pickupService.findAllRequests();
+    return APIResponse.success(
+      { requests },
+      'Requests retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
+
   @Post(':id/requests')
   async requestApproval(
     @Param('id') id: string,

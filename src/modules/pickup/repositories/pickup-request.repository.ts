@@ -19,6 +19,18 @@ export class PickUpRequestRepository {
     });
   }
 
+  async findAll() {
+    return this.prisma.pickUpRequest.findMany();
+  }
+
+  // async findAll() {
+  //   return this.prisma.pickUpRequest.findMany({
+  //     where: {
+  //       deletedAt: null,
+  //     },
+  //   });
+  // }
+
   async findRequestsByCustomer(customerId: string) {
     return this.prisma.pickUpRequest.findMany({
       where: {

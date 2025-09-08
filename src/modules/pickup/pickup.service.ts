@@ -72,6 +72,10 @@ export class PickUpService {
     return request;
   }
 
+  async findAllRequests() {
+    return this.pickupRequestRepo.findAll();
+  }
+
   async respondToRequest(
     requestId: string,
     userId: string,
