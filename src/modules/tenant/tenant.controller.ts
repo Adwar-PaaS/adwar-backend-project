@@ -36,10 +36,7 @@ export class TenantController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateTenantDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<APIResponse<{ tenant: ITenant }>> {
-    if (dto.addresses && typeof dto.addresses === 'string') {
-      dto.addresses = JSON.parse(dto.addresses);
-    }
+  ) {
     const tenant = await this.service.create(dto, user.id, file);
     return APIResponse.success({ tenant }, 'Tenant created successfully');
   }
@@ -108,9 +105,6 @@ export class TenantController {
     @Body() dto: UpdateTenantDto,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<APIResponse<{ tenant: ITenant }>> {
-    if (dto.addresses && typeof dto.addresses === 'string') {
-      dto.addresses = JSON.parse(dto.addresses);
-    }
     const tenant = await this.service.update(id, dto, file);
     return APIResponse.success({ tenant }, 'Tenant updated successfully');
   }

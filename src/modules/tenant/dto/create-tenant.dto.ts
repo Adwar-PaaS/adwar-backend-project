@@ -7,7 +7,7 @@ import {
 } from 'class-validator';
 
 import { Status } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { CreateAddressDto } from 'src/shared/address/dto/create-address.dto';
 
 export class CreateTenantDto {
@@ -29,6 +29,16 @@ export class CreateTenantDto {
   logoUrl?: string;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return value;
+      }
+    }
+    return value;
+  })
   @ValidateNested({ each: true })
   @Type(() => CreateAddressDto)
   addresses?: CreateAddressDto[];
