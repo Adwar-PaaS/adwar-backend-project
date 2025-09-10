@@ -29,3 +29,14 @@ export class BranchService {
     return this.branchRepo.delete(id);
   }
 }
+
+// function getGoogleMapsLink(lat: number, lng: number): string {
+//   return `https://www.google.com/maps?q=${lat},${lng}`;
+// }
+
+// return {
+//   ...branch,
+//   mapUrl: branch.address?.latitude && branch.address?.longitude
+//     ? getGoogleMapsLink(branch.address.latitude.toNumber(), branch.address.longitude.toNumber())
+//     : null,
+// };

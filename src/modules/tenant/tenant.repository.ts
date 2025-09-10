@@ -11,7 +11,7 @@ import slugify from 'slugify';
 
 type CreateTenantInput = Omit<CreateTenantDto, 'logo'> & {
   logoUrl?: string;
-  createdBy: string;
+  creatorId: string;
 };
 type UpdateTenantInput = UpdateTenantDto & {
   logoUrl?: string;
@@ -26,24 +26,24 @@ export class TenantRepository extends BaseRepository<Tenant> {
 
   private mapToCreator(tenant: any) {
     if (!tenant) return null;
-    const { creatorId, ...rest } = tenant;
+    const { creator, ...rest } = tenant;
     return {
       ...rest,
-      creator: creatorId ? { fullName: creatorId.fullName } : null,
+      creator: creator ? { fullName: creator.fullName } : null,
     };
   }
 
   async createTenant(data: CreateTenantInput): Promise<any> {
     await checkEmailUnique(this.prismaService, 'tenant', data.email);
 
-    const { createdBy, ...rest } = data;
+    const { creatorId, ...rest } = data;
 
     const tenant = await this.model.create({
       data: {
         ...rest,
         slug: slugify(data.name, { lower: true, strict: true }),
         status: data.status ?? Status.ACTIVE,
-        creator: { connect: { id: createdBy } },
+        creator: { connect: { id: creatorId } },
       },
       include: { creator: { select: { fullName: true } } },
     });
@@ -96,7 +96,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const result = await this.findAll(
       queryString,
       {},
-      { createdBy: { select: { fullName: true } } },
+      { creator: { select: { fullName: true } } },
     );
     return {
       ...result,
@@ -116,7 +116,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
   async getById(id: string): Promise<any> {
     const tenant = await this.model.findUnique({
       where: { id },
-      include: { createdBy: { select: { fullName: true } } },
+      include: { creator: { select: { fullName: true } } },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
     return this.mapToCreator(tenant);
@@ -135,7 +135,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
           slug: slugify(data.name, { lower: true, strict: true }),
         }),
       },
-      include: { createdBy: { select: { fullName: true } } },
+      include: { creator: { select: { fullName: true } } },
     });
 
     return this.mapToCreator(tenant);
@@ -185,7 +185,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const tenant = await this.model.update({
       where: { id },
       data: { status },
-      include: { createdBy: { select: { fullName: true } } },
+      include: { creator: { select: { fullName: true } } },
     });
 
     return this.mapToCreator(tenant);

@@ -165,7 +165,26 @@ export class ApiFeatures<
       Math.max(Number(this.queryString.limit) || 50, 1),
       200,
     );
-    const totalPages = Math.max(Math.ceil(totalRecords / limit), 1);
+
+    if (totalRecords === 0) {
+      this.queryOptions.take = limit;
+      this.queryOptions.skip = 0;
+
+      this.paginationResult = {
+        totalRecords: 0,
+        totalPages: 0,
+        currentPage: 1,
+        limit,
+        hasNext: false,
+        hasPrev: false,
+        nextPage: null,
+        prevPage: null,
+      };
+
+      return this;
+    }
+
+    const totalPages = Math.ceil(totalRecords / limit);
     const safePage = Math.min(page, totalPages);
 
     this.queryOptions.take = limit;

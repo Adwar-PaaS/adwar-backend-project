@@ -1,4 +1,4 @@
-import { Status } from '@prisma/client';
+import { Status, Address } from '@prisma/client';
 
 export interface ITenant {
   id: string;
@@ -6,12 +6,12 @@ export interface ITenant {
   slug: string;
   status: Status;
   logoUrl: string | null;
-  address: string | null;
   email: string | null;
   phone: string | null;
   creator?: {
     fullName: string;
   } | null;
+  addresses?: Address[];
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;

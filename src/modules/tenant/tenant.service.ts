@@ -12,25 +12,38 @@ export class TenantService {
   constructor(
     private readonly tenantRepo: TenantRepository,
     private readonly uploadService: UploadService,
-    private readonly addressService: AddressService
+    private readonly addressService: AddressService,
   ) {}
 
   async create(
     dto: CreateTenantDto,
-    createdBy: string,
+    creatorId: string,
     file?: Express.Multer.File,
   ): Promise<ITenant> {
     const logoUrl = file
       ? await this.uploadService.uploadImage(file)
       : dto.logoUrl;
 
-    const { logoUrl: _, ...cleanDto } = dto;
+    const { logoUrl: _, addresses, ...cleanDto } = dto;
 
-    return this.tenantRepo.createTenant({
+    const tenant = await this.tenantRepo.createTenant({
       ...cleanDto,
       logoUrl,
-      createdBy,
+      creatorId,
     });
+
+    if (addresses?.length) {
+      await Promise.all(
+        addresses.map((addr) =>
+          this.addressService.create({
+            ...addr,
+            tenantId: tenant.id,
+          }),
+        ),
+      );
+    }
+
+    return tenant;
   }
 
   async getRolesForTenant(tenantId: string) {
@@ -68,12 +81,29 @@ export class TenantService {
       logoUrl = await this.uploadService.uploadImage(file);
     }
 
-    const { logoUrl: _, ...cleanDto } = dto;
+    const { logoUrl: _, addresses, ...cleanDto } = dto;
 
-    return this.tenantRepo.updateTenant(id, {
+    const tenant = await this.tenantRepo.updateTenant(id, {
       ...cleanDto,
       logoUrl,
     });
+
+    if (addresses?.length) {
+      await Promise.all(
+        addresses.map(async (addr) => {
+          if (addr.id) {
+            return this.addressService.update(addr.id, addr);
+          } else {
+            return this.addressService.create({
+              ...addr,
+              tenantId: tenant.id,
+            });
+          }
+        }),
+      );
+    }
+
+    return tenant;
   }
 
   async toggleStatus(id: string): Promise<ITenant> {

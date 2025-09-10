@@ -25,11 +25,11 @@ export const sessionCookieConfig: SessionCookieOptions = {
 
 export const clearCookieConfig: ExpressCookieOptions = {
   ...baseCookieConfig,
-  expires: new Date(0), // Immediately invalidates the cookie
+  expires: new Date(0),
 };
 
 export const csrfCookieConfig: ExpressCookieOptions = {
   ...baseCookieConfig,
-  httpOnly: false, // must be readable by client JS
+  httpOnly: false,
   maxAge: ONE_DAY_MS,
 };
