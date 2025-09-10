@@ -25,7 +25,7 @@ export class PickUpController {
 
   @Post()
   async create(@Body() dto: CreatePickupDto) {
-    const pickup = await this.pickupService.createPickup(dto.orderIds);
+    const pickup = await this.pickupService.createPickup(dto);
     return APIResponse.success(
       { pickup },
       'Pickup created successfully',

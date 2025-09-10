@@ -7,8 +7,16 @@ export class PickUpOrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async addOrder(pickupId: string, orderId: string) {
+    const count = await this.prisma.pickUpOrder.count({
+      where: { pickupId },
+    });
+
     return this.prisma.pickUpOrder.create({
-      data: { pickupId, orderId },
+      data: {
+        pickupId,
+        orderId,
+        sequence: count + 1,
+      },
     });
   }
 

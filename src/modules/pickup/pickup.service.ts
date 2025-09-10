@@ -5,11 +5,12 @@ import { PickUpRequestRepository } from './repositories/pickup-request.repositor
 import {
   RequestStatus,
   OrderStatus,
+  PickUpStatus,
   EntityType,
   NotificationCategory,
-  RoleName,
 } from '@prisma/client';
 import { NotificationService } from 'src/shared/notification/notification.service';
+import { CreatePickupDto } from './dto/create-pickup.dto';
 
 @Injectable()
 export class PickUpService {
@@ -20,10 +21,15 @@ export class PickUpService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async createPickup(orderIds: string[]) {
-    const pickup = await this.pickupRepo.create();
+  async createPickup(dto: CreatePickupDto) {
+    const pickup = await this.pickupRepo.create({
+      scheduledFor: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
+      driverId: dto.driverId,
+      branchId: dto.branchId,
+      notes: dto.notes,
+    });
 
-    for (const orderId of orderIds) {
+    for (const orderId of dto.orderIds) {
       const order = await this.pickupOrderRepo.findOrderById(orderId);
       if (!order) throw new BadRequestException(`Order ${orderId} not found`);
 
@@ -107,7 +113,7 @@ export class PickUpService {
     //   category: 'REQUEST',
     //   channels: ['IN_APP'],
     //   priority: 'HIGH',
-    //   broadcast: true, // 👈 broadcast to all if needed
+    //   broadcast: true, // roadcast to all if needed
     // });
 
     return request;
@@ -122,7 +128,29 @@ export class PickUpService {
     userId: string,
     status: RequestStatus,
   ) {
-    return this.pickupRequestRepo.respond(requestId, userId, status);
+    const request = await this.pickupRequestRepo.respond(
+      requestId,
+      userId,
+      status,
+    );
+
+    const pickup = await this.pickupRepo.findById(request.pickupId);
+    if (!pickup) {
+      throw new BadRequestException('Pickup not found');
+    }
+
+    let newStatus: PickUpStatus | undefined;
+    if (status === RequestStatus.APPROVED) {
+      newStatus = PickUpStatus.SCHEDULED;
+    } else if (status === RequestStatus.REJECTED) {
+      newStatus = PickUpStatus.CANCELLED;
+    }
+
+    if (newStatus) {
+      await this.pickupRepo.updateStatus(pickup.id, newStatus);
+    }
+
+    return { request, pickupStatus: newStatus ?? pickup.status };
   }
 
   async getPickupOrders(pickupId: string) {
@@ -150,7 +178,7 @@ export class PickUpService {
 
       if (!pickupMap.has(pickupId)) {
         const request = p.pickup.requests?.[0];
-        const status = request?.status || 'CREATED';
+        const status = p.pickup.status || 'CREATED';
 
         pickupMap.set(pickupId, {
           pickupId,
