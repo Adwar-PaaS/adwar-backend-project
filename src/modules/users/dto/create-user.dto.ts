@@ -24,7 +24,7 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   phone?: string;
-  
+
   @IsOptional()
   @IsEnum(RoleName)
   roleName?: RoleName;
@@ -39,7 +39,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsUUID()
-  warehouseId?: string | null;
+  branchId?: string | null;
 }
 
 // import {

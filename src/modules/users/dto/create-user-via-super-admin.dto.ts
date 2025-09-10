@@ -1,4 +1,12 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
 import { RoleName } from '@prisma/client';
 
 export class CreateUserViaSuperAdminDto {
@@ -25,5 +33,5 @@ export class CreateUserViaSuperAdminDto {
 
   @IsOptional()
   @IsUUID()
-  warehouseId?: string | null;
+  branchId?: string | null;
 }

@@ -1,4 +1,4 @@
-import { PrismaClient, RoleName, Status } from '@prisma/client';
+import { PrismaClient, RoleName, Status, AddressType } from '@prisma/client';
 import { hashPassword } from '../../src/common/utils/crypto.util';
 
 const prisma = new PrismaClient();
@@ -23,18 +23,18 @@ async function seed() {
   console.log('Creating Super Admin user...');
   const hashedPassword = await hashPassword('12341234');
 
-  const existingUser = await prisma.user.findUnique({
+  let superAdmin = await prisma.user.findUnique({
     where: { email: 'superadmin@adwar.com' },
   });
 
-  if (existingUser) {
+  if (superAdmin) {
     console.log('Super Admin user already exists, updating role...');
-    await prisma.user.update({
-      where: { id: existingUser.id },
+    superAdmin = await prisma.user.update({
+      where: { id: superAdmin.id },
       data: { roleId: superAdminRole.id },
     });
   } else {
-    await prisma.user.create({
+    superAdmin = await prisma.user.create({
       data: {
         email: 'superadmin@adwar.com',
         password: hashedPassword,
@@ -46,6 +46,26 @@ async function seed() {
     console.log('✅ Super Admin user created');
   }
 
+  console.log('Creating Super Admin address...');
+  const address = await prisma.address.create({
+    data: {
+      label: 'Head Office',
+      address1: '123 Main Street',
+      city: 'Cairo',
+      country: 'Egypt',
+    },
+  });
+
+  await prisma.userAddress.create({
+    data: {
+      userId: superAdmin.id,
+      addressId: address.id,
+      type: AddressType.OFFICE,
+      isPrimary: true,
+    },
+  });
+
+  console.log('✅ Address assigned to Super Admin');
   console.log('🌱 create-user seed completed');
 }
 

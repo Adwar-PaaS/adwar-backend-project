@@ -5,12 +5,14 @@ import { TenantRepository } from './tenant.repository';
 import { ITenant } from './interfaces/tenant.interface';
 import { UploadService } from '../../shared/upload/upload.service';
 import { Status } from '@prisma/client';
+import { AddressService } from 'src/shared/address/address.service';
 
 @Injectable()
 export class TenantService {
   constructor(
     private readonly tenantRepo: TenantRepository,
     private readonly uploadService: UploadService,
+    private readonly addressService: AddressService
   ) {}
 
   async create(
@@ -47,8 +49,8 @@ export class TenantService {
     return this.tenantRepo.getTenantOrders(tenantId, query);
   }
 
-  async getWarehousesInTenant(tenantId: string) {
-    return this.tenantRepo.getTenantWarehouses(tenantId);
+  async getBranchesOfTenant(tenantId: string) {
+    return this.tenantRepo.getTenantBranches(tenantId);
   }
 
   async update(
@@ -87,7 +89,7 @@ export class TenantService {
     return this.tenantRepo.getTenantUsers(tenantId);
   }
 
-  delete(id: string): Promise<ITenant> {
-    return this.tenantRepo.deleteTenant(id);
+  async delete(id: string): Promise<void> {
+    return this.tenantRepo.delete(id);
   }
 }

@@ -26,10 +26,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
 
   private mapToCreator(tenant: any) {
     if (!tenant) return null;
-    const { createdBy, ...rest } = tenant;
+    const { creatorId, ...rest } = tenant;
     return {
       ...rest,
-      creator: createdBy ? { fullName: createdBy.fullName } : null,
+      creator: creatorId ? { fullName: creatorId.fullName } : null,
     };
   }
 
@@ -43,9 +43,9 @@ export class TenantRepository extends BaseRepository<Tenant> {
         ...rest,
         slug: slugify(data.name, { lower: true, strict: true }),
         status: data.status ?? Status.ACTIVE,
-        createdBy: { connect: { id: createdBy } },
+        creator: { connect: { id: createdBy } },
       },
-      include: { createdBy: { select: { fullName: true } } },
+      include: { creator: { select: { fullName: true } } },
     });
 
     return this.mapToCreator(tenant);
@@ -58,11 +58,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
         memberships: {
           include: {
             user: { select: userWithRoleSelect },
-            warehouse: {
+            branch: {
               select: {
                 id: true,
                 name: true,
-                location: true,
               },
             },
           },
@@ -72,9 +71,9 @@ export class TenantRepository extends BaseRepository<Tenant> {
 
     if (!tenant) throw new NotFoundException('Tenant not found');
 
-    return tenant.memberships.map((m: { user: any; warehouse: any }) => ({
+    return tenant.memberships.map((m: { user: any; branch: any }) => ({
       user: m.user,
-      warehouse: m.warehouse,
+      branch: m.branch,
     }));
   }
 
@@ -85,7 +84,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
         permissions: {
           select: {
             entityType: true,
-            actionType: true,
+            actions: true,
           },
         },
       },
@@ -105,13 +104,13 @@ export class TenantRepository extends BaseRepository<Tenant> {
     };
   }
 
-  async getTenantWarehouses(tenantId: string) {
+  async getTenantBranches(tenantId: string) {
     const tenant = await this.model.findUnique({
       where: { id: tenantId },
-      include: { warehouses: true },
+      include: { branch: true },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
-    return tenant.warehouses;
+    return tenant.branches;
   }
 
   async getById(id: string): Promise<any> {
@@ -150,7 +149,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
 
     apiFeatures
       .mergeFilter({
-        warehouse: { tenantId },
+        branch: { tenantId },
       })
       .sort();
 
@@ -166,11 +165,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
           status: true,
         },
       },
-      warehouse: {
+      branch: {
         select: {
           id: true,
           name: true,
-          location: true,
         },
       },
     });
@@ -191,9 +189,5 @@ export class TenantRepository extends BaseRepository<Tenant> {
     });
 
     return this.mapToCreator(tenant);
-  }
-
-  async deleteTenant(id: string): Promise<Tenant> {
-    return this.model.delete({ where: { id } });
   }
 }

@@ -54,7 +54,7 @@ export class RolesRepository extends BaseRepository<Role> {
         permissions: {
           select: {
             entityType: true,
-            actionType: true,
+            actions: true,
           },
         },
       },
@@ -64,9 +64,9 @@ export class RolesRepository extends BaseRepository<Role> {
 
     role.permissions = role.permissions.map((p) => ({
       ...p,
-      actionType: Array.isArray(p.actionType)
-        ? (p.actionType as ActionType[])
-        : [p.actionType as ActionType],
+      actionType: Array.isArray(p.actions)
+        ? (p.actions as ActionType[])
+        : [p.actions as ActionType],
     }));
 
     return role;

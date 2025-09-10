@@ -1,10 +1,17 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import {
+  ThrottlerModule,
+  ThrottlerModuleOptions,
+  ThrottlerGuard,
+  seconds,
+} from '@nestjs/throttler';
+import { RedisThrottlerStorage } from '@nestjs-redis/throttler-storage';
+
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/users/users.module';
 import { TenantModule } from './modules/tenant/tenant.module';
-import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { RolesModule } from './modules/role/roles.module';
 import { OrderModule } from './modules/order/order.module';
 import { PickUpModule } from './modules/pickup/pickup.module';
@@ -13,9 +20,9 @@ import validationSchema from './config/env.validation';
 import { DbModule } from './db/db.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { WebsocketModule } from './shared/websocket/websocket.module';
-// import { NotificationModule } from './modules/notification/notification.module';
 import { BranchModule } from './modules/branch/branch.module';
+import { CsrfMiddleware } from './common/middleware/csrf.middleware';
+import { RedisService } from './db/redis/redis.service';
 
 @Module({
   imports: [
@@ -25,14 +32,19 @@ import { BranchModule } from './modules/branch/branch.module';
     }),
 
     ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
+      imports: [DbModule],
+      inject: [ConfigService, RedisService],
+      useFactory: async (
+        config: ConfigService,
+        redisService: RedisService,
+      ): Promise<ThrottlerModuleOptions> => ({
         throttlers: [
           {
-            ttl: config.get<number>('THROTTLE_TTL', 60),
             limit: config.get<number>('THROTTLE_LIMIT', 100),
+            ttl: seconds(config.get<number>('THROTTLE_TTL', 60)),
           },
         ],
+        storage: new RedisThrottlerStorage(redisService.getConnection() as any),
       }),
     }),
 
@@ -40,16 +52,25 @@ import { BranchModule } from './modules/branch/branch.module';
     UserModule,
     TenantModule,
     RolesModule,
-    WarehouseModule,
     OrderModule,
     PickUpModule,
     RequestModule,
     BranchModule,
     DbModule,
-    WebsocketModule,
-    // NotificationModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CsrfMiddleware).forRoutes('auth');
+  }
+}
+
+// .forRoutes('auth', 'orders');

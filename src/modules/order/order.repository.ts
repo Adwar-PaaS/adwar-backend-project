@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PickUpStatus } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { IOrder } from './interfaces/order.interface';
 import { userWithRoleSelect } from 'src/common/utils/helpers.util';
@@ -8,35 +8,81 @@ import { PrismaService } from 'src/db/prisma/prisma.service';
 @Injectable()
 export class OrderRepository extends BaseRepository<IOrder> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.order, ['sku', 'customerName', 'customerPhone']);
+    super(prisma, prisma.order, ['orderNumber']);
   }
 
   async getAllOrdersForDriver(driverId: string) {
-    return this.model.findMany({
+    const pickups = await this.prisma.pickUp.findMany({
       where: {
         driverId,
-        status: {
-          in: [
-            OrderStatus.ASSIGNED_FOR_PICKUP,
-            OrderStatus.PICKED_UP,
-            OrderStatus.OUT_FOR_DELIVERY,
-          ],
+        deletedAt: null,
+        status: { in: [PickUpStatus.CREATED, PickUpStatus.IN_PROGRESS] },
+        orders: {
+          some: {
+            order: {
+              deletedAt: null,
+              status: {
+                in: [
+                  OrderStatus.ASSIGNED_FOR_PICKUP,
+                  OrderStatus.PICKED_UP,
+                  OrderStatus.OUT_FOR_DELIVERY,
+                ],
+              },
+            },
+          },
         },
       },
       include: {
-        driver: {
-          select: userWithRoleSelect,
-        },
-        warehouse: {
+        branch: {
           select: {
             id: true,
             name: true,
-            location: true,
+            address: {
+              select: {
+                city: true,
+                country: true,
+                latitude: true,
+                longitude: true,
+              },
+            },
+          },
+        },
+        driver: {
+          select: userWithRoleSelect,
+        },
+        orders: {
+          where: {
+            deletedAt: null,
+            order: {
+              deletedAt: null,
+            },
+          },
+          include: {
+            order: {
+              include: {
+                customer: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    phone: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return pickups.flatMap((p) =>
+      p.orders.map((po) => ({
+        ...po.order,
+        pickupId: p.id,
+        driver: p.driver,
+        branch: p.branch,
+      })),
+    );
   }
 
   async getAllOrdersForCustomer(customerId: string) {
@@ -44,8 +90,8 @@ export class OrderRepository extends BaseRepository<IOrder> {
       where: { customerId },
       include: {
         customer: { select: userWithRoleSelect },
-        warehouse: {
-          select: { id: true, name: true, location: true },
+        branch: {
+          select: { id: true, name: true },
         },
         driver: {
           select: userWithRoleSelect,

@@ -5,4 +5,3 @@ export class RespondRequestDto {
   @IsEnum(RequestStatus)
   status: RequestStatus;
 }
-  

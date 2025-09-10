@@ -6,9 +6,11 @@ import { DATABASE_TOKEN } from '../constants/db-token.constant';
 @Injectable()
 export class DatabaseFactoryService {
   constructor(
-    @Inject(DATABASE_TOKEN.PRISMA) @Optional()
+    @Inject(DATABASE_TOKEN.PRISMA)
+    @Optional()
     private readonly prisma?: IDatabase,
-    @Inject(DATABASE_TOKEN.REDIS) @Optional()
+    @Inject(DATABASE_TOKEN.REDIS)
+    @Optional()
     private readonly redis?: IDatabase,
   ) {}
 

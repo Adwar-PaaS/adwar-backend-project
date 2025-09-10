@@ -45,7 +45,7 @@ export class CreateTenantUserDto {
 
   @IsOptional()
   @IsUUID()
-  warehouseId?: string | null;
+  branchId?: string | null;
 
   @IsOptional()
   @ValidateNested({ each: true })

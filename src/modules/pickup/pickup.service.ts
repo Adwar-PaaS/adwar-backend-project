@@ -2,7 +2,14 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PickUpRepository } from './repositories/pickup.repository';
 import { PickUpOrderRepository } from './repositories/pickup-order.repository';
 import { PickUpRequestRepository } from './repositories/pickup-request.repository';
-import { RequestStatus, OrderStatus } from '@prisma/client';
+import {
+  RequestStatus,
+  OrderStatus,
+  EntityType,
+  NotificationCategory,
+  RoleName,
+} from '@prisma/client';
+import { NotificationService } from 'src/shared/notification/notification.service';
 
 @Injectable()
 export class PickUpService {
@@ -10,6 +17,7 @@ export class PickUpService {
     private readonly pickupRepo: PickUpRepository,
     private readonly pickupOrderRepo: PickUpOrderRepository,
     private readonly pickupRequestRepo: PickUpRequestRepository,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createPickup(orderIds: string[]) {
@@ -68,6 +76,39 @@ export class PickUpService {
         OrderStatus.PENDING,
       );
     }
+
+    // const approvers = await this.usersService.findApprovalIdByRoleAndTenant(
+    //   request.requestedBy.tenantId,
+    //   RoleName.OPERATION
+    // );
+
+    // for (const approver of approvers) {
+    //   await this.notificationService.create({
+    //     senderId: userId,
+    //     recipientId: approver.id,
+    //     title: 'Pickup Approval Requested',
+    //     message: `Pickup ${pickupId} requires your approval.`,
+    //     relatedId: pickupId,
+    //     relatedType: EntityType.PICKUP,
+    //     category: NotificationCategory.ACTION, // REQUEST
+    //     channels: ['IN_APP'],
+    //     priority: 'HIGH',
+    //     broadcast: false,
+    //   });
+    // }
+
+    // await this.notificationService.create({
+    //   senderId: userId,
+    //   recipientId: null, // null → broadcast, or set specific admin userId
+    //   title: 'Pickup Approval Requested',
+    //   message: `Pickup ${pickupId} requires approval.`,
+    //   relatedId: pickupId,
+    //   relatedType: EntityType.PICKUP,
+    //   category: 'REQUEST',
+    //   channels: ['IN_APP'],
+    //   priority: 'HIGH',
+    //   broadcast: true, // 👈 broadcast to all if needed
+    // });
 
     return request;
   }

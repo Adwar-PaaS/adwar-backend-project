@@ -1,85 +1,64 @@
 import {
   IsString,
-  IsNotEmpty,
-  IsInt,
   IsOptional,
   IsUUID,
-  Min,
   IsEnum,
   IsNumber,
+  IsPositive,
+  ValidateNested,
+  Min,
 } from 'class-validator';
-import { FailedReason, OrderStatus } from '@prisma/client';
+import {
+  FailedReason,
+  OrderPriority,
+  OrderStatus,
+} from '@prisma/client';
+import { Type } from 'class-transformer';
+import { CreateOrderItemDto } from './order-item.dto';
 
 export class CreateOrderDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  sku: string;
+  orderNumber?: string;
 
-  @IsInt()
-  @Min(1)
-  quantity: number;
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @IsPositive()
+  totalWeight?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  totalValue?: number;
+
+  @IsOptional()
+  @IsString()
+  specialInstructions?: string;
 
   @IsOptional()
   @IsEnum(OrderStatus)
-  status?: OrderStatus;
+  status?: OrderStatus = OrderStatus.PENDING;
 
   @IsOptional()
   @IsEnum(FailedReason)
   failedReason?: FailedReason;
 
   @IsOptional()
-  @IsUUID()
-  warehouseId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  branchId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  driverId?: string;
+  @IsEnum(OrderPriority)
+  priority?: OrderPriority = OrderPriority.NORMAL;
 
   @IsOptional()
   @IsUUID()
   customerId?: string;
 
   @IsOptional()
-  @IsString()
-  deliveryLocation?: string;
+  @IsUUID()
+  branchId?: string;
 
   @IsOptional()
-  @IsString()
-  merchantLocation?: string;
+  estimatedDelivery?: Date;
 
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @IsOptional()
-  @IsString()
-  customerName?: string;
-
-  @IsOptional()
-  @IsString()
-  customerPhone?: string;
-
-  @IsOptional()
-  @IsString()
-  paymentType?: string;
-
-  @IsOptional()
-  @IsNumber()
-  totalPrice?: number;
-
-  @IsOptional()
-  @IsString()
-  COD_Collection_Method?: string;
-
-  @IsOptional()
-  @IsNumber()
-  COD_Amount?: number;
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items?: CreateOrderItemDto[];
 }

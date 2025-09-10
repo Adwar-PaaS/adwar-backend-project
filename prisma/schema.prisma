@@ -8,267 +8,610 @@ datasource db {
 }
 
 model User {
-  id                      String          @id @default(uuid())
-  email                   String          @unique
-  password                String
-  fullName                String
-  phone                   String?
-  status                  Status          @default(ACTIVE)
-  roleId                  String
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  deletedAt               DateTime?
-  createdTenants          Tenant[]        @relation("UserCreatedTenants")
-  role                    Role            @relation(fields: [roleId], references: [id])
-  memberships             UserTenant[]
-  driverOrders            Order[]         @relation("DriverOrders")
-  customerOrders          Order[]         @relation("CustomerOrders")
-  customerBranches        Branch[]        @relation("CustomerBranch")
-  auditLogs               AuditLog[]      @relation("UserAuditLogs")
-  sentPickUpRequests      PickUpRequest[] @relation("PickUpRequester")
-  responsedPickUpRequests PickUpRequest[] @relation("PickUpResponder")
-  requestSenders          Request[]       @relation("RequestSender")
-  requestResponses        Request[]       @relation("RequestResponder")
-  sentNotifications       Notification[]  @relation("SentNotifications")
-  receivedNotifications   Notification[]  @relation("ReceivedNotifications")
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  fullName  String
+  phone     String?
+  status    Status    @default(ACTIVE)
+  roleId    String
+  joinedAt  DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  role                   Role                    @relation(fields: [roleId], references: [id])
+  createdTenants         Tenant[]                @relation("UserCreatedTenants")
+  memberships            UserTenant[]
+  addresses              UserAddress[]
+  customerOrders         Order[]                 @relation("CustomerOrders")
+  pickUpDriver           PickUp[]                @relation("PickUpDriver")
+  customerBranches       Branch[]                @relation("CustomerBranch")
+  auditLogs              AuditLog[]              @relation("UserAuditLogs")
+  sentPickUpRequests     PickUpRequest[]         @relation("PickUpRequester")
+  receivedPickUpRequests PickUpRequest[]         @relation("PickUpResponder")
+  sentRequests           Request[]               @relation("RequestSender")
+  receivedRequests       Request[]               @relation("RequestResponder")
+  sentNotifications      Notification[]          @relation("SentNotifications")
+  receivedNotifications  NotificationRecipient[] @relation("ReceivedNotifications")
+  driverTrackings        Tracking[]              @relation("DriverTrackings")
+  attachmentUploads      Attachment[]            @relation("AttachmentUploader")
+  orderNotes             OrderNote[]             @relation("OrderNoteAuthor")
+
+  @@index([email])
+  @@index([status])
+  @@index([roleId])
+  @@index([deletedAt])
+  @@map("users")
 }
 
 model Tenant {
-  id          String       @id @default(uuid())
-  name        String
-  slug        String       @unique
-  status      Status       @default(ACTIVE)
-  logoUrl     String?
-  address     String?
-  email       String?      @unique
-  phone       String?
-  createdById String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  deletedAt   DateTime?
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  status    Status    @default(ACTIVE)
+  logoUrl   String?
+  email     String?   @unique
+  phone     String?
+  creatorId String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  creator     User         @relation("UserCreatedTenants", fields: [creatorId], references: [id], onDelete: Restrict)
   roles       Role[]
-  createdBy   User         @relation("UserCreatedTenants", fields: [createdById], references: [id])
+  branches    Branch[]
   memberships UserTenant[]
-  warehouses  Warehouse[]
+  addresses   Address[]
+
+  @@index([slug])
+  @@index([creatorId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("tenants")
 }
 
 model UserTenant {
-  id          String           @id @default(uuid())
-  isOwner     Boolean          @default(false)
-  userId      String
-  tenantId    String
-  warehouseId String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  deletedAt   DateTime?
-  tenant      Tenant           @relation(fields: [tenantId], references: [id])
-  user        User             @relation(fields: [userId], references: [id])
-  warehouse   Warehouse?       @relation(fields: [warehouseId], references: [id])
+  id        String    @id @default(cuid())
+  userId    String
+  tenantId  String
+  branchId  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
   permissions UserPermission[]
 
   @@unique([userId, tenantId])
   @@index([tenantId])
-  @@index([warehouseId])
+  @@index([branchId])
+  @@index([deletedAt])
+  @@map("user_tenants")
 }
 
 model Role {
-  id          String           @id @default(uuid())
-  name        RoleName
-  tenantId    String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  deletedAt   DateTime?
-  tenant      Tenant?          @relation(fields: [tenantId], references: [id])
+  id        String    @id @default(cuid())
+  name      RoleName  @default(CUSTOMER)
+  tenantId  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  tenant      Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   permissions RolePermission[]
   users       User[]
 
-  // @@unique([tenantId, name])
   @@index([tenantId])
+  @@index([name])
+  @@index([deletedAt])
+  @@map("roles")
 }
 
 model RolePermission {
-  id         String       @id @default(uuid())
+  id         String       @id @default(cuid())
   roleId     String
   entityType EntityType
+  actions    ActionType[] @default([])
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
-  actionType ActionType[] @default([])
-  role       Role         @relation(fields: [roleId], references: [id])
+  deletedAt  DateTime?
+
+  // Relations
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, entityType])
   @@index([roleId])
+  @@index([entityType])
+  @@index([deletedAt])
+  @@map("role_permissions")
 }
 
 model UserPermission {
-  id           String       @id @default(uuid())
+  id           String       @id @default(cuid())
   userTenantId String
   entityType   EntityType
+  actions      ActionType[] @default([])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  actionType   ActionType[] @default([])
+  deletedAt    DateTime?
 
-  userTenant UserTenant @relation(fields: [userTenantId], references: [id])
+  // Relations
+  userTenant UserTenant @relation(fields: [userTenantId], references: [id], onDelete: Cascade)
 
   @@unique([userTenantId, entityType])
   @@index([userTenantId])
+  @@index([entityType])
+  @@index([deletedAt])
+  @@map("user_permissions")
 }
 
-model Warehouse {
-  id           String          @id @default(uuid())
-  location     String
-  capacity     Int
-  currentStock Int             @default(0)
-  status       WarehouseStatus @default(OPEN)
-  tenantId     String
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  deletedAt    DateTime?
-  name         String
-  memberships  UserTenant[]
-  tenant       Tenant          @relation(fields: [tenantId], references: [id])
-  orders       Order[]
+model Address {
+  id         String    @id @default(cuid())
+  label      String?
+  address1   String
+  address2   String?
+  district   String?
+  city       String
+  state      String?
+  country    String
+  postalCode String?
+  latitude   Decimal?  @db.Decimal(10, 8)
+  longitude  Decimal?  @db.Decimal(11, 8)
+  tenantId   String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  // Relations
+  tenant               Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userAddresses        UserAddress[]
+  branches             Branch[]
+  shipmentsAsSender    Shipment[]    @relation("SenderAddress")
+  shipmentsAsConsignee Shipment[]    @relation("ConsigneeAddress")
+
+  @@index([country, city])
+  @@index([tenantId])
+  @@index([isActive])
+  @@index([latitude, longitude])
+  @@index([deletedAt])
+  @@map("addresses")
+}
+
+model UserAddress {
+  id        String      @id @default(cuid())
+  userId    String
+  addressId String
+  type      AddressType @default(HOME)
+  isPrimary Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, addressId])
+  @@index([userId])
+  @@index([type])
+  @@index([isPrimary])
+  @@index([deletedAt])
+  @@map("user_addresses")
+}
+
+model Branch {
+  id         String         @id @default(cuid())
+  name       String
+  status     BranchStatus   @default(ACTIVE)
+  tenantId   String?
+  customerId String?
+  addressId  String
+  type       BranchType     @default(MAIN)
+  category   BranchCategory @default(WAREHOUSE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  deletedAt  DateTime?
+
+  // Relations
+  tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer    User?        @relation("CustomerBranch", fields: [customerId], references: [id], onDelete: SetNull)
+  address     Address      @relation(fields: [addressId], references: [id], onDelete: Restrict)
+  userTenants UserTenant[]
+  pickups     PickUp[]     @relation("PickupBranch")
 
   @@index([tenantId])
+  @@index([customerId])
+  @@index([addressId])
+  @@index([status])
+  @@index([type])
+  @@index([deletedAt])
+  @@map("branches")
 }
 
 model Order {
-  id           String        @id @default(uuid())
-  sku          String        @unique
-  totalPrice   Float?
-  quantity     Int
-  failedReason FailedReason?
+  id                  String        @id @default(cuid())
+  orderNumber         String        @unique
+  totalWeight         Decimal?      @db.Decimal(10, 3)
+  totalValue          Decimal?      @db.Decimal(12, 2)
+  specialInstructions String?
+  status              OrderStatus   @default(PENDING)
+  failedReason        FailedReason?
+  priority            OrderPriority @default(NORMAL)
+  customerId          String?
+  branchId            String?
+  estimatedDelivery   DateTime?
+  deliveredAt         DateTime?
+  assignedAt          DateTime?
+  pickedAt            DateTime?
+  cancelledAt         DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  deletedAt           DateTime?
 
-  deliveryLocation String? // client location
-  merchantLocation String? // vendor location (seller)
-  description      String?
-  customerName     String?
-  customerPhone    String?
+  // Relations
+  customer       User?           @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
+  payment        Payment?
+  pickUpOrders   PickUpOrder[]
+  shipmentOrders ShipmentOrder[]
+  items          OrderItem[]
+  tracking       Tracking[]
+  notes          OrderNote[]
 
-  status OrderStatus @default(PENDING)
-
-  paymentType           String?
-  COD_Collection_Method String?
-  COD_Amount            Float?
-  notes                 String?
-
-  warehouseId String?
-  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
-
-  driverId String?
-  driver   User?   @relation("DriverOrders", fields: [driverId], references: [id])
-
-  customerId String?
-  customer   User?   @relation("CustomerOrders", fields: [customerId], references: [id])
-
-  branchId String?
-  branch   Branch? @relation("BranchOrders", fields: [branchId], references: [id])
-
-  pickUpOrders PickUpOrder[]
-
-  assignedAt DateTime?
-  pickedAt   DateTime?
-
-  deliveredAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-
-  @@index([warehouseId])
+  @@index([orderNumber])
+  @@index([customerId])
+  @@index([branchId])
   @@index([status])
+  @@index([priority])
   @@index([createdAt])
+  @@index([estimatedDelivery])
+  @@index([deliveredAt])
+  @@index([deletedAt])
+  @@map("orders")
 }
 
-model Notification {
-  id          String  @id @default(uuid())
-  senderId    String?
-  recipientId String?
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  sku         String
+  name        String
+  description String?
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0) @db.Decimal(10, 2)
+  total       Decimal  @default(0) @db.Decimal(12, 2)
+  weight      Decimal? @db.Decimal(8, 3)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  title   String
-  message String
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  relatedId   String? // reference entity (orderId, requestId, tenantId)
-  relatedType EntityType? // which entity this is about
+  @@unique([orderId, sku])
+  @@index([orderId])
+  @@index([sku])
+  @@map("order_items")
+}
 
-  category NotificationCategory @default(INFO) // semantic classification
-  isRead   Boolean              @default(false)
+model Payment {
+  id                     String        @id @default(cuid())
+  orderId                String        @unique
+  paymentMethod          PaymentMethod @default(CASH)
+  codAmount              Decimal?      @db.Decimal(12, 2)
+  shippingCost           Decimal       @default(0) @db.Decimal(10, 2)
+  driverCost             Decimal       @default(0) @db.Decimal(10, 2)
+  insuranceFees          Decimal       @default(0) @db.Decimal(10, 2)
+  serviceFees            Decimal       @default(0) @db.Decimal(10, 2)
+  creditFees             Decimal       @default(0) @db.Decimal(10, 2)
+  extraFees              Decimal       @default(0) @db.Decimal(10, 2)
+  vatAmount              Decimal       @default(0) @db.Decimal(10, 2)
+  discountAmount         Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount            Decimal       @db.Decimal(12, 2)
+  paidAmount             Decimal       @default(0) @db.Decimal(12, 2)
+  remainingAmount        Decimal       @default(0) @db.Decimal(12, 2)
+  paymentReferenceNumber String?
+  paymentCardType        String?
+  approvalCode           String?
+  transactionDate        DateTime?
+  transactionType        String?
+  transactionSource      String?
+  transactionPercentage  Decimal?      @db.Decimal(5, 2)
+  status                 PaymentStatus @default(PENDING)
+  dueDate                DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  deletedAt              DateTime?
 
-  channels     NotificationChannel[] @default([])
-  deliveryMeta Json?
-  priority     NotificationPriority  @default(MEDIUM)
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  metadata  Json?
-  broadcast Boolean   @default(false)
-  expiresAt DateTime?
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([dueDate])
+  @@index([transactionDate])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("payments")
+}
 
+model Tracking {
+  id         String      @id @default(cuid())
+  orderId    String
+  driverId   String?
+  status     OrderStatus
+  location   String?
+  latitude   Decimal?    @db.Decimal(10, 8)
+  longitude  Decimal?    @db.Decimal(11, 8)
+  hub        String?
+  notes      String?
+  isPublic   Boolean     @default(true)
+  eventType  String?
+  metadata   Json?
+  timestamp  DateTime    @default(now())
+  recordedBy String?
+  createdAt  DateTime    @default(now())
+
+  // Relations
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver User? @relation("DriverTrackings", fields: [driverId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([driverId])
+  @@index([status])
+  @@index([timestamp])
+  @@index([isPublic])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("tracking")
+}
+
+model OrderNote {
+  id        String   @id @default(cuid())
+  orderId   String
+  content   String
+  private   Boolean  @default(false)
+  authorId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sender    User? @relation("SentNotifications", fields: [senderId], references: [id])
-  recipient User? @relation("ReceivedNotifications", fields: [recipientId], references: [id])
+  // Relations
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author User? @relation("OrderNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 
-  @@index([recipientId])
-  @@index([relatedId, relatedType])
-}
-
-model Attachment {
-  id          String         @id @default(uuid())
-  url         String
-  type        AttachmentType @default(IMAGE)
-  relatedId   String
-  relatedType RelatedType
-  metadata    Json?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  deletedAt   DateTime?
-
-  @@index([relatedId, relatedType])
+  @@index([orderId])
+  @@index([authorId])
+  @@index([private])
+  @@index([createdAt])
+  @@map("order_notes")
 }
 
 model PickUp {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String       @id @default(cuid())
+  status       PickUpStatus @default(CREATED)
+  scheduledFor DateTime?
+  completedAt  DateTime?
+  notes        String?
+  driverId     String?
+  branchId     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
 
-  orders PickUpOrder[]
+  // Relations
+  orders    PickUpOrder[]
+  requests  PickUpRequest[]
+  shipments Shipment[]
+  driver    User?           @relation("PickUpDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  branch    Branch?         @relation("PickupBranch", fields: [branchId], references: [id], onDelete: SetNull)
 
-  requests PickUpRequest[]
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([driverId])
+  @@index([branchId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("pickups")
 }
 
 model PickUpRequest {
-  id          String  @id @default(uuid())
+  id          String        @id @default(cuid())
   pickupId    String
   requestedBy String
   respondedBy String?
+  status      RequestStatus @default(PENDING)
+  requestedAt DateTime      @default(now())
+  respondedAt DateTime?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
 
-  status RequestStatus @default(PENDING)
-
-  pickup    PickUp @relation(fields: [pickupId], references: [id])
-  requester User   @relation("PickUpRequester", fields: [requestedBy], references: [id])
-  responder User?  @relation("PickUpResponder", fields: [respondedBy], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Relations
+  pickup    PickUp @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+  requester User   @relation("PickUpRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
+  responder User?  @relation("PickUpResponder", fields: [respondedBy], references: [id], onDelete: SetNull)
 
   @@index([pickupId])
   @@index([requestedBy])
   @@index([respondedBy])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([deletedAt])
+  @@map("pickup_requests")
 }
 
 model PickUpOrder {
-  id       String @id @default(uuid())
-  pickupId String
-  orderId  String
+  id        String    @id @default(cuid())
+  pickupId  String
+  orderId   String
+  sequence  Int       @default(1)
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
-  pickup PickUp @relation(fields: [pickupId], references: [id])
-  order  Order  @relation(fields: [orderId], references: [id])
+  // Relations
+  pickup PickUp @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([pickupId, orderId])
   @@index([pickupId])
   @@index([orderId])
+  @@index([sequence])
+  @@index([deletedAt])
+  @@map("pickup_orders")
+}
+
+model Shipment {
+  id                  String         @id @default(cuid())
+  shipmentNumber      String         @unique
+  pickupId            String?
+  originCountry       String
+  originCity          String
+  destinationCountry  String
+  destinationCity     String
+  serviceType         ServiceType    @default(STANDARD)
+  shipmentValue       Decimal        @default(0) @db.Decimal(12, 2)
+  declaredValue       Decimal?       @db.Decimal(12, 2)
+  weight              Decimal        @db.Decimal(10, 3)
+  volumetricWeight    Decimal?       @db.Decimal(10, 3)
+  dimensions          Json?
+  numberOfItems       Int            @default(1)
+  senderAccountNumber String?
+  senderName          String
+  senderBusinessName  String?
+  senderPhone         String
+  consigneeName       String
+  consigneePhone1     String
+  consigneePhone2     String?
+  senderAddressId     String
+  consigneeAddressId  String
+  specialInstructions String?
+  insuranceRequired   Boolean        @default(false)
+  signatureRequired   Boolean        @default(false)
+  status              ShipmentStatus @default(PENDING)
+  estimatedDelivery   DateTime?
+  actualDelivery      DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  pickup           PickUp?         @relation(fields: [pickupId], references: [id], onDelete: SetNull)
+  senderAddress    Address         @relation("SenderAddress", fields: [senderAddressId], references: [id], onDelete: Restrict)
+  consigneeAddress Address         @relation("ConsigneeAddress", fields: [consigneeAddressId], references: [id], onDelete: Restrict)
+  shipmentOrders   ShipmentOrder[]
+
+  @@index([shipmentNumber])
+  @@index([pickupId])
+  @@index([status])
+  @@index([serviceType])
+  @@index([originCountry, originCity])
+  @@index([destinationCountry, destinationCity])
+  @@index([estimatedDelivery])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("shipments")
+}
+
+model ShipmentOrder {
+  id         String @id @default(cuid())
+  shipmentId String
+  orderId    String
+
+  // Relations
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([shipmentId, orderId])
+  @@index([orderId])
+  @@index([shipmentId])
+  @@map("shipment_orders")
+}
+
+model Notification {
+  id           String                @id @default(cuid())
+  senderId     String?
+  title        String
+  message      String
+  relatedId    String?
+  relatedType  EntityType?
+  category     NotificationCategory  @default(INFO)
+  channels     NotificationChannel[] @default([])
+  priority     NotificationPriority  @default(MEDIUM)
+  metadata     Json?
+  scheduledFor DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  sender     User?                   @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  recipients NotificationRecipient[]
+
+  @@index([relatedId, relatedType])
+  @@index([category])
+  @@index([priority])
+  @@index([scheduledFor])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("notifications")
+}
+
+model NotificationRecipient {
+  id             String    @id @default(cuid())
+  notificationId String
+  recipientId    String
+  readAt         DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  recipient    User         @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, recipientId])
+  @@index([recipientId])
+  @@index([readAt])
+  @@index([deliveredAt])
+  @@map("notification_recipients")
+}
+
+model Attachment {
+  id           String         @id @default(cuid())
+  filename     String
+  originalName String
+  url          String
+  mimeType     String
+  fileSize     Int
+  type         AttachmentType @default(OTHER)
+  relatedId    String
+  relatedType  EntityType
+  metadata     Json?
+  uploadedBy   String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  uploader User? @relation("AttachmentUploader", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  @@index([relatedId, relatedType])
+  @@index([type])
+  @@index([uploadedBy])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("attachments")
 }
 
 model AuditLog {
-  id          String     @id @default(uuid())
+  id          String     @id @default(cuid())
   userId      String?
   entityType  EntityType
   entityId    String?
@@ -276,58 +619,105 @@ model AuditLog {
   oldValues   Json?
   newValues   Json?
   description String?
+  ipAddress   String?
+  userAgent   String?
   createdAt   DateTime   @default(now())
 
-  user User? @relation("UserAuditLogs", fields: [userId], references: [id])
+  // Relations
+  user User? @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
-  @@index([entityType])
+  @@index([entityType, entityId])
   @@index([actionType])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model Request {
-  id          String        @id @default(uuid())
+  id          String          @id @default(cuid())
   entityType  EntityType
   entityId    String?
   actionType  ActionType
-  status      RequestStatus @default(PENDING)
+  status      RequestStatus   @default(PENDING)
   reason      String?
   responseMsg String?
-
+  priority    RequestPriority @default(MEDIUM)
   senderId    String
   responderId String?
-  sender      User    @relation("RequestSender", fields: [senderId], references: [id])
-  responder   User?   @relation("RequestResponder", fields: [responderId], references: [id])
+  expiresAt   DateTime?
+  processedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Relations
+  sender    User  @relation("RequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  responder User? @relation("RequestResponder", fields: [responderId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId])
   @@index([senderId])
   @@index([responderId])
+  @@index([status])
+  @@index([priority])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("requests")
 }
 
-model Branch {
-  id       String @id @default(uuid())
-  name     String
-  location String
+// Enums remain the same
+enum Status {
+  ACTIVE
+  INACTIVE
+}
 
-  customerId String?
-  customer   User?   @relation("CustomerBranch", fields: [customerId], references: [id])
+enum AddressType {
+  HOME
+  WORK
+  OFFICE
+  BRANCH
+  PICKUP
+  DELIVERY
+  OTHER
+}
 
-  branchOrders Order[] @relation("BranchOrders")
+enum OrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+enum RequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  DIGITAL_WALLET
+  COD
+}
+
+enum ServiceType {
+  STANDARD
+  EXPRESS
+  NEXT_DAY
+  SAME_DAY
+  ECONOMY
 }
 
 enum NotificationCategory {
-  SYSTEM // technical/system-generated
-  INFO // informational
-  ACTION // requires user action
-  WARNING // potential issue
-  ERROR // failure or critical issue
+  SYSTEM
+  INFO
+  ACTION
+  WARNING
+  ERROR
+  MARKETING
 }
 
 enum NotificationChannel {
@@ -335,6 +725,7 @@ enum NotificationChannel {
   EMAIL
   SMS
   PUSH
+  WEBHOOK
 }
 
 enum NotificationPriority {
@@ -344,19 +735,11 @@ enum NotificationPriority {
   URGENT
 }
 
-enum RelatedType {
-  USER
-  TENANT
-  WAREHOUSE
-  ORDER
-  DRIVER
-  ROLE
-}
-
 enum RequestStatus {
   PENDING
   APPROVED
   REJECTED
+  EXPIRED
 }
 
 enum AttachmentType {
@@ -364,11 +747,14 @@ enum AttachmentType {
   DOCUMENT
   VIDEO
   AUDIO
+  SIGNATURE
+  INVOICE
+  RECEIPT
   OTHER
 }
 
 enum OrderStatus {
-  CREATED // FOR CUSTOMER WHEN CREATED ORDER BUT NOT SEND IT TO TENANT TO ARRPEOVED ON IT
+  CREATED
   PENDING
   APPROVED
   ASSIGNED_FOR_PICKUP
@@ -393,6 +779,9 @@ enum FailedReason {
   DAMAGED_PACKAGE
   OUT_OF_COVERAGE_AREA
   MOBILE_SWITCHED_OFF
+  CUSTOMER_REFUSED
+  INCOMPLETE_ADDRESS
+  SECURITY_ISSUE
   OTHER
 }
 
@@ -405,34 +794,26 @@ enum RoleName {
   PICKER
   OPERATION
   CUSTOMER
-}
-
-enum Status {
-  ACTIVE
-  INACTIVE
-}
-
-enum WarehouseStatus {
-  OPEN
-  EMPTY
-  FULL
-  CLOSED
-  UNDER_MAINTENANCE
+  BRANCH_MANAGER
 }
 
 enum EntityType {
   USER
   TENANT
-  WAREHOUSE
   ORDER
   DRIVER
-  BRANCH
   ROLE
-  DRIVER_ORDER
+  PICKUP_REQUEST
   TENANT_ORDER
   TENANT_CUSTOMER
   CUSTOMER_ORDER
-  TENANT_WAREHOUSE
+  BRANCH
+  SHIPMENT
+  PAYMENT
+  NOTIFICATION
+  ADDRESS
+  PICKUP
+  TRACKING
 }
 
 enum ActionType {
@@ -443,4 +824,55 @@ enum ActionType {
   DELETE
   ACTIVATE
   DEACTIVATE
+  APPROVE
+  EXPORT
+  IMPORT
+  REJECT
+  ASSIGN
+  COMPLETE
+  CANCEL
+}
+
+enum ShipmentStatus {
+  PENDING
+  DISPATCHED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RETURNED
+  CANCELLED
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+  UNDER_MAINTENANCE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_PAID
+}
+
+enum PickUpStatus {
+  CREATED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum BranchCategory {
+  WAREHOUSE
+  RETAIL
+}
+
+enum BranchType {
+  MAIN
+  SUB
 }

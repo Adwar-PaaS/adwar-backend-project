@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpStatus,
   Post,
@@ -11,6 +12,7 @@ import {
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
 import { SessionGuard } from './guards/session.guard';
+import { CsrfGuard } from '../../common/guards/csrf.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { RegisterDto } from './dto/register.dto';
@@ -20,6 +22,7 @@ import { clearCookieConfig } from '../../config/cookie.config';
 import { AuthUser } from './interfaces/auth-user.interface';
 import { AttachUserToTenantDto } from '../users/dto/attach-user-to-tenant.dto';
 import { UsersService } from '../users/users.service';
+import { Throttle, SkipThrottle, seconds } from '@nestjs/throttler';
 
 export interface AuthenticatedRequest extends Request {
   session: Session & {
@@ -40,7 +43,11 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
+  @UseGuards(CsrfGuard)
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  async register(
+    @Body() dto: RegisterDto,
+  ): Promise<APIResponse<{ user: AuthUser }>> {
     const user = await this.auth.register(dto);
     return APIResponse.success(
       { user },
@@ -50,7 +57,11 @@ export class AuthController {
   }
 
   @Post('attach-to-tenant')
-  async attachUserToTenant(@Body() dto: AttachUserToTenantDto) {
+  @UseGuards(CsrfGuard)
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  async attachUserToTenant(
+    @Body() dto: AttachUserToTenantDto,
+  ): Promise<APIResponse<{ user: AuthUser }>> {
     const user = await this.auth.attachUserToTenant(dto);
 
     return APIResponse.success(
@@ -61,7 +72,12 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Req() req: AuthenticatedRequest) {
+  @UseGuards(CsrfGuard)
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<APIResponse<{ user: AuthUser }>> {
     const user = await this.auth.login(dto.email, dto.password);
 
     await new Promise<void>((resolve, reject) =>
@@ -79,8 +95,12 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(SessionGuard)
-  async logout(@Req() req: AuthenticatedRequest, @Res() res: Response) {
+  @UseGuards(SessionGuard, CsrfGuard)
+  @SkipThrottle()
+  async logout(
+    @Req() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ): Promise<Response> {
     await new Promise<void>((resolve, reject) =>
       req.session.destroy((err) => (err ? reject(err) : resolve())),
     );
@@ -97,7 +117,10 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(SessionGuard)
-  async me(@CurrentUser() user: { id: string }) {
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  async me(
+    @CurrentUser() user: { id: string },
+  ): Promise<APIResponse<{ user: AuthUser }>> {
     const currentUser = await this.auth.getCurrentUser(user.id);
     return APIResponse.success(
       { user: currentUser },
@@ -107,8 +130,11 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(SessionGuard)
-  async refresh(@Req() req: AuthenticatedRequest) {
+  @UseGuards(SessionGuard, CsrfGuard)
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  async refresh(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<APIResponse<{ user: AuthUser }>> {
     if (!req.session) throw new Error('Session missing');
     req.session.touch();
     await new Promise<void>((resolve, reject) =>
@@ -121,6 +147,22 @@ export class AuthController {
     return APIResponse.success(
       { user: currentUser },
       'Session refreshed successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Get('csrf-token')
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  async getCsrfToken(
+    @Req() req: Request,
+  ): Promise<APIResponse<{ token: string }>> {
+    const token = req.cookies['XSRF-TOKEN'];
+    if (!token) {
+      throw new ForbiddenException('CSRF token not found');
+    }
+    return APIResponse.success(
+      { token },
+      'CSRF token retrieved',
       HttpStatus.OK,
     );
   }

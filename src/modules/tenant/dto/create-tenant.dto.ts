@@ -1,5 +1,14 @@
-import { IsEnum, IsOptional, IsString, IsEmail } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsEmail,
+  ValidateNested,
+} from 'class-validator';
+
 import { Status } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { CreateAddressDto } from 'src/shared/address/dto/create-address.dto';
 
 export class CreateTenantDto {
   @IsString()
@@ -20,6 +29,7 @@ export class CreateTenantDto {
   logoUrl?: string;
 
   @IsOptional()
-  @IsString()
-  address?: string;
+  @ValidateNested({ each: true })
+  @Type(() => CreateAddressDto)
+  addresses?: CreateAddressDto[];
 }

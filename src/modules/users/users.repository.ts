@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
 import {
   Prisma,
@@ -19,7 +23,6 @@ const userInclude = {
   memberships: {
     include: {
       tenant: true,
-      warehouse: true,
       permissions: true,
     },
   },
@@ -66,7 +69,7 @@ export class UsersRepository extends BaseRepository<User> {
   async attachUserToTenant(data: {
     userId: string;
     tenantId: string;
-    warehouseId?: string | null;
+    branchId?: string | null;
   }): Promise<UserWithRelations> {
     await this.prisma.userTenant.upsert({
       where: {
@@ -76,12 +79,12 @@ export class UsersRepository extends BaseRepository<User> {
         },
       },
       update: {
-        ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+        ...(data.branchId ? { branchId: data.branchId } : {}),
       },
       create: {
         userId: data.userId,
         tenantId: data.tenantId,
-        ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+        ...(data.branchId ? { branchId: data.branchId } : {}),
       },
     });
 
@@ -104,7 +107,7 @@ export class UsersRepository extends BaseRepository<User> {
     phone?: string;
     tenantId: string;
     roleName: RoleName;
-    warehouseId?: string | null;
+    branchId?: string | null;
   }): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
 
@@ -137,13 +140,11 @@ export class UsersRepository extends BaseRepository<User> {
         password: data.password,
         fullName: data.fullName,
         phone: data.phone,
-        role: {
-          connect: { id: role.id },
-        },
+        role: { connect: { id: role.id } },
         memberships: {
           create: {
             tenantId: data.tenantId,
-            ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+            ...(data.branchId ? { branchId: data.branchId } : {}),
           },
         },
       },
@@ -160,7 +161,7 @@ export class UsersRepository extends BaseRepository<User> {
     phone?: string;
     roleId: string;
     tenantId: string;
-    warehouseId?: string | null;
+    branchId?: string | null;
     permissions?: { entityType: EntityType; actionType: ActionType[] }[];
   }): Promise<UserWithRelations> {
     await checkEmailUnique(this.prisma, 'user', data.email);
@@ -178,7 +179,7 @@ export class UsersRepository extends BaseRepository<User> {
         memberships: {
           create: {
             tenantId: data.tenantId,
-            ...(data.warehouseId ? { warehouseId: data.warehouseId } : {}),
+            ...(data.branchId ? { branchId: data.branchId } : {}),
             permissions: hasCustomPermissions
               ? {
                   create: data.permissions!.map((p) => ({
@@ -205,7 +206,7 @@ export class UsersRepository extends BaseRepository<User> {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const { tenantId, warehouseId, ...userData } = data;
+      const { tenantId, branchId, ...userData } = data;
 
       const updatedUser = await tx.user.update({
         where: { id },
@@ -215,16 +216,14 @@ export class UsersRepository extends BaseRepository<User> {
 
       if (tenantId) {
         await tx.userTenant.upsert({
-          where: {
-            userId_tenantId: { userId: id, tenantId },
-          },
+          where: { userId_tenantId: { userId: id, tenantId } },
           update: {
-            ...(warehouseId ? { warehouseId } : {}),
+            ...(branchId ? { branchId } : {}),
           },
           create: {
             userId: id,
             tenantId,
-            ...(warehouseId ? { warehouseId } : {}),
+            ...(branchId ? { branchId } : {}),
           },
         });
       }

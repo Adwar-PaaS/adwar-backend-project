@@ -1,63 +1,35 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaClient, Attachment, RelatedType } from '@prisma/client';
+import { AttachmentRepository } from './attachment.repository';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
 import { UpdateAttachmentDto } from './dto/update-attachment.dto';
+import { Attachment, EntityType } from '@prisma/client';
 
 @Injectable()
 export class AttachmentService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly attachmentRepo: AttachmentRepository) {}
 
   async create(dto: CreateAttachmentDto): Promise<Attachment> {
-    return this.prisma.attachment.create({
-      data: {
-        ...dto,
-      },
-    });
-  }
-
-  findManyByEntity(
-    relatedType: RelatedType,
-    relatedId: string,
-  ): Promise<Attachment[]> {
-    return this.prisma.attachment.findMany({
-      where: {
-        relatedType,
-        relatedId,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  findOne(id: string): Promise<Attachment | null> {
-    return this.prisma.attachment.findUnique({
-      where: { id },
-    });
+    return this.attachmentRepo.create(dto);
   }
 
   async update(id: string, dto: UpdateAttachmentDto): Promise<Attachment> {
-    const existing = await this.prisma.attachment.findUnique({
-      where: { id },
-    });
-    if (!existing) {
-      throw new NotFoundException(`Attachment with ID ${id} not found`);
-    }
-    return this.prisma.attachment.update({
-      where: { id },
-      data: {
-        ...dto,
-      },
-    });
+    return this.attachmentRepo.update(id, dto);
+  }
+
+  async findOne(id: string): Promise<Attachment> {
+    const attachment = await this.attachmentRepo.findOne({ id });
+    if (!attachment) throw new NotFoundException('Attachment not found');
+    return attachment;
   }
 
   async delete(id: string): Promise<void> {
-    const existing = await this.prisma.attachment.findUnique({
-      where: { id },
-    });
-    if (!existing) {
-      throw new NotFoundException(`Attachment with ID ${id} not found`);
-    }
-    await this.prisma.attachment.delete({
-      where: { id },
-    });
+    return this.attachmentRepo.delete(id);
+  }
+
+  async findManyByEntity(
+    relatedType: EntityType,
+    relatedId: string,
+  ): Promise<Attachment[]> {
+    return this.attachmentRepo.findManyByEntity(relatedType, relatedId);
   }
 }

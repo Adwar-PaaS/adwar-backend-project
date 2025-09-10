@@ -9,5 +9,5 @@ export class AttachUserToTenantDto {
 
   @IsOptional()
   @IsUUID()
-  warehouseId?: string | null;
+  branchId?: string | null;
 }

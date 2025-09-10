@@ -17,11 +17,67 @@ export class OrderService {
       dto.customerId = user.id;
     }
 
-    return this.orderRepo.create(dto);
+    const itemsWithTotal = (dto.items || []).map((item) => ({
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      weight: item.weight,
+      total: item.quantity * item.unitPrice,
+    }));
+
+    const totalValue = itemsWithTotal.reduce(
+      (acc, item) => acc + item.total,
+      0,
+    );
+    const totalWeight = itemsWithTotal.reduce(
+      (acc, item) => acc + (item.weight || 0) * item.quantity,
+      0,
+    );
+
+    const orderData = {
+      ...dto,
+      items: itemsWithTotal.length > 0 ? { create: itemsWithTotal } : undefined,
+      totalValue: dto.totalValue ?? totalValue,
+      totalWeight: dto.totalWeight ?? totalWeight,
+    };
+
+    return this.orderRepo.create(orderData, { items: true });
   }
 
   async update(id: string, dto: UpdateOrderDto): Promise<IOrder> {
-    return this.orderRepo.update(id, dto);
+    const updateData: any = { ...dto };
+
+    if (dto.items !== undefined) {
+      const itemsWithTotal = (dto.items || []).map((item) => ({
+        sku: item.sku,
+        name: item.name,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        weight: item.weight,
+        total: item.quantity * item.unitPrice,
+      }));
+
+      updateData.items = {
+        deleteMany: {},
+        create: itemsWithTotal,
+      };
+
+      updateData.totalValue =
+        dto.totalValue ??
+        itemsWithTotal.reduce((acc, item) => acc + item.total, 0);
+
+      updateData.totalWeight =
+        dto.totalWeight ??
+        itemsWithTotal.reduce(
+          (acc, item) => acc + (item.weight || 0) * item.quantity,
+          0,
+        );
+    }
+
+    return this.orderRepo.update(id, updateData, { items: true });
   }
 
   async findAll(query: Record<string, any>) {

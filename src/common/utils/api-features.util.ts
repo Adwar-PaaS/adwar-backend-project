@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Prisma, RoleName } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 export interface PaginationResult {
   totalRecords: number;
@@ -20,9 +20,16 @@ export class ApiFeatures<
   TWhere extends Record<string, any>,
 > {
   private readonly logger = new Logger(ApiFeatures.name);
-  private readonly roleValues = new Set(Object.values(RoleName));
-  private queryOptions: Partial<Prisma.UserFindManyArgs> & { where?: TWhere } =
-    {};
+
+  private queryOptions: {
+    where?: TWhere;
+    orderBy?: any;
+    select?: Record<string, boolean>;
+    include?: Record<string, any>;
+    take?: number;
+    skip?: number;
+  } = {};
+
   private paginationResult: PaginationResult | null = null;
 
   constructor(
@@ -35,7 +42,7 @@ export class ApiFeatures<
     const { page, sort, limit, fields, search, ...filters } = this.queryString;
 
     for (const [key, rawValue] of Object.entries(filters)) {
-      if (rawValue == null || rawValue === '') continue;
+      if (!rawValue) continue;
 
       const parsed = this.parseFilterValue(key, String(rawValue).trim());
       if (parsed === undefined) {
@@ -55,14 +62,6 @@ export class ApiFeatures<
   }
 
   private parseFilterValue(key: string, value: string): unknown {
-    if (key === 'role') {
-      const upper = value.toUpperCase();
-      if (!this.roleValues.has(upper as RoleName)) {
-        throw new HttpException('Invalid role value', HttpStatus.BAD_REQUEST);
-      }
-      return upper as RoleName;
-    }
-
     if (value.includes(',')) {
       const items = value.split(',').map((v) => v.trim());
       return { in: items.map((v) => this.detectAndConvertSingle(v)) };
@@ -81,6 +80,7 @@ export class ApiFeatures<
       return { [opMap[op]]: parsed };
     }
 
+    // Boolean
     if (value === 'true' || value === 'false') return value === 'true';
 
     return this.detectAndConvertSingle(value);
@@ -102,20 +102,10 @@ export class ApiFeatures<
     const orConditions: TWhere[] = [];
 
     for (const field of this.searchableFields) {
-      if (field === 'role') {
-        const matches = (Object.values(RoleName) as string[]).filter((role) =>
-          role.replace(/\s+/g, '').toLowerCase().includes(normalized),
-        ) as RoleName[];
-
-        if (matches.length) {
-          orConditions.push({ [field]: { in: matches } } as TWhere);
-        }
-      } else {
-        orConditions.push(
-          { [field]: { contains: searchTerm, mode: 'insensitive' } } as TWhere,
-          { [field]: { contains: normalized, mode: 'insensitive' } } as TWhere,
-        );
-      }
+      orConditions.push(
+        { [field]: { contains: searchTerm, mode: 'insensitive' } } as TWhere,
+        { [field]: { contains: normalized, mode: 'insensitive' } } as TWhere,
+      );
     }
 
     if (orConditions.length) {
@@ -130,6 +120,7 @@ export class ApiFeatures<
 
   sort(): this {
     const { sort } = this.queryString;
+
     if (typeof sort === 'string' && sort.trim()) {
       this.queryOptions.orderBy = sort.split(',').map((field) => {
         const isDesc = field.startsWith('-');
@@ -138,6 +129,7 @@ export class ApiFeatures<
     } else {
       this.queryOptions.orderBy = [{ createdAt: 'desc' }];
     }
+
     return this;
   }
 
@@ -152,10 +144,11 @@ export class ApiFeatures<
 
     if (selected.length) {
       this.queryOptions.select = selected.reduce(
-        (acc: any, f: any) => ({ ...acc, [f]: true }),
+        (acc, f) => ({ ...acc, [f]: true }),
         {} as Record<string, boolean>,
       );
     }
+
     return this;
   }
 
@@ -220,7 +213,7 @@ export class ApiFeatures<
     } catch (error: any) {
       this.logger.error(`Error executing query: ${error.message}`, error.stack);
       throw new HttpException(
-        'Failed to execute query',
+        `Failed to execute query: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

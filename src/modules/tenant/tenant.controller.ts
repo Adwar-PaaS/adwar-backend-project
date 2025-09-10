@@ -77,14 +77,14 @@ export class TenantController {
     return APIResponse.success({ roles }, 'Tenant roles fetched successfully');
   }
 
-  @Get(':id/warehouses')
-  async getTenantWarehouses(
+  @Get(':id/branches')
+  async getBranchesOfTenant(
     @Param('id') id: string,
-  ): Promise<APIResponse<{ warehouses: any[] }>> {
-    const warehouses = await this.service.getWarehousesInTenant(id);
+  ): Promise<APIResponse<{ branches: any[] }>> {
+    const branches = await this.service.getBranchesOfTenant(id);
     return APIResponse.success(
-      { warehouses },
-      'Tenant warehouses fetched successfully',
+      { branches },
+      'Tenant branches fetched successfully',
     );
   }
 

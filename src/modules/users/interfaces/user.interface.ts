@@ -7,13 +7,14 @@ export interface IUser {
   fullName: string;
   phone: string | null;
   status: Status;
-  warehouseId?: string | null;
+  branchId?: string | null;
   tenantId?: string;
 
   role?: {
     id: string;
     name: RoleName;
-    permissions?: { // is is user permissions of user we don't need all role permissions
+    permissions?: {
+      // is is user permissions of user we don't need all role permissions
       entityType: EntityType;
       actionType: ActionType | ActionType[];
     }[];
