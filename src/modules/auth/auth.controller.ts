@@ -117,7 +117,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(SessionGuard)
-  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  @Throttle({ default: { limit: 30, ttl: seconds(300) } })
   async me(
     @CurrentUser() user: { id: string },
   ): Promise<APIResponse<{ user: AuthUser }>> {
@@ -131,7 +131,7 @@ export class AuthController {
 
   @Post('refresh')
   @UseGuards(SessionGuard, CsrfGuard)
-  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  @Throttle({ default: { limit: 20, ttl: seconds(300) } })
   async refresh(
     @Req() req: AuthenticatedRequest,
   ): Promise<APIResponse<{ user: AuthUser }>> {
@@ -152,7 +152,7 @@ export class AuthController {
   }
 
   @Get('csrf-token')
-  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  @Throttle({ default: { limit: 5, ttl: seconds(30) } })
   async getCsrfToken(
     @Req() req: Request,
   ): Promise<APIResponse<{ token: string }>> {

@@ -24,23 +24,21 @@ export class TenantService {
       ? await this.uploadService.uploadImage(file)
       : dto.logoUrl;
 
-    const { logoUrl: _, addresses, ...cleanDto } = dto;
+    const { logoUrl: _, address, ...cleanDto } = dto;
 
-    const tenant = await this.tenantRepo.createTenant({
+    let tenant = await this.tenantRepo.createTenant({
       ...cleanDto,
       logoUrl,
       creatorId,
     });
 
-    if (addresses?.length) {
-      await Promise.all(
-        addresses.map((addr) =>
-          this.addressService.create({
-            ...addr,
-            tenantId: tenant.id,
-          }),
-        ),
-      );
+    if (address) {
+      const createdAddress = await this.addressService.create(address);
+      await this.tenantRepo.updateTenant(tenant.id, {
+        addressId: createdAddress.id,
+      });
+
+      tenant = await this.tenantRepo.getById(tenant.id);
     }
 
     return tenant;
@@ -81,26 +79,24 @@ export class TenantService {
       logoUrl = await this.uploadService.uploadImage(file);
     }
 
-    const { logoUrl: _, addresses, ...cleanDto } = dto;
+    const { logoUrl: _, address, ...cleanDto } = dto;
 
-    const tenant = await this.tenantRepo.updateTenant(id, {
+    let tenant = await this.tenantRepo.updateTenant(id, {
       ...cleanDto,
       logoUrl,
     });
 
-    if (addresses?.length) {
-      await Promise.all(
-        addresses.map(async (addr) => {
-          if (addr.id) {
-            return this.addressService.update(addr.id, addr);
-          } else {
-            return this.addressService.create({
-              ...addr,
-              tenantId: tenant.id,
-            });
-          }
-        }),
-      );
+    if (address) {
+      if (tenant.addressId) {
+        await this.addressService.update(tenant.addressId, address);
+      } else {
+        const createdAddress = await this.addressService.create(address);
+        await this.tenantRepo.updateTenant(id, {
+          addressId: createdAddress.id,
+        });
+      }
+
+      tenant = await this.tenantRepo.getById(id);
     }
 
     return tenant;

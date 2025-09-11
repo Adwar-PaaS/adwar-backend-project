@@ -19,7 +19,11 @@ export class CreateUserViaSuperAdminDto {
 
   @IsString()
   @IsNotEmpty()
-  fullName: string;
+  firstName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
 
   @IsOptional()
   @IsString()

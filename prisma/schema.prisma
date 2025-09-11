@@ -8,17 +8,21 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String
-  fullName  String
-  phone     String?
-  status    Status    @default(ACTIVE)
-  roleId    String
-  joinedAt  DateTime  @default(now())
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String
+  firstName   String
+  lastName    String
+  phone       String?
+  avatar      String?
+  status      Status    @default(ACTIVE)
+  roleId      String
+  isVerified  Boolean   @default(false)
+  lastLoginAt DateTime?
+  joinedAt    DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
   // Relations
   role                   Role                    @relation(fields: [roleId], references: [id])
@@ -35,10 +39,10 @@ model User {
   receivedRequests       Request[]               @relation("RequestResponder")
   sentNotifications      Notification[]          @relation("SentNotifications")
   receivedNotifications  NotificationRecipient[] @relation("ReceivedNotifications")
-  driverTrackings        Tracking[]              @relation("DriverTrackings")
+  updatorTrackings       TrackingEvent[]         @relation("TrackingUpdater")
   attachmentUploads      Attachment[]            @relation("AttachmentUploader")
   orderNotes             OrderNote[]             @relation("OrderNoteAuthor")
-  createdHubs            Hub[]                   @relation("HubCreator")
+  // createdHubs            Hub[]                   @relation("HubCreator")
 
   @@index([email])
   @@index([status])
@@ -48,18 +52,23 @@ model User {
 }
 
 model Tenant {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  status    Status    @default(ACTIVE)
-  logoUrl   String?
-  email     String?   @unique
-  phone     String?
-  creatorId String
-  addressId String?   @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id            String    @id @default(cuid())
+  name          String
+  slug          String    @unique
+  description   String?
+  status        Status    @default(ACTIVE)
+  logoUrl       String?
+  website       String?
+  email         String?   @unique
+  phone         String?
+  taxNumber     String?   @unique
+  licenseNumber String?   @unique
+  creatorId     String
+  addressId     String?   @unique
+  settings      Json? // For tenant-specific configurations
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   // Relations
   creator     User         @relation("UserCreatedTenants", fields: [creatorId], references: [id], onDelete: Restrict)
@@ -67,7 +76,7 @@ model Tenant {
   roles       Role[]
   branches    Branch[]
   memberships UserTenant[]
-  hubs        Hub[]        @relation("TenantHubs")
+  // hubs        Hub[]        @relation("TenantHubs")
 
   @@index([slug])
   @@index([creatorId])
@@ -76,38 +85,45 @@ model Tenant {
   @@map("tenants")
 }
 
-model Hub {
-  id        String    @id @default(cuid())
-  name      String?
-  code      String
-  status    Status    @default(ACTIVE)
-  tenantId  String
-  addressId String    @unique
-  creatorId String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+// model Hub {
+//   id             String    @id @default(cuid())
+//   name           String
+//   code           String
+//   description    String?
+//   status         Status    @default(ACTIVE)
+//   tenantId       String
+//   addressId      String    @unique
+//   creatorId      String?
+//   capacity       Int? // Storage capacity
+//   operatingHours Json? // Operating hours configuration
+//   contactInfo    Json? // Contact information
+//   createdAt      DateTime  @default(now())
+//   updatedAt      DateTime  @updatedAt
+//   deletedAt      DateTime?
 
-  // Relations
-  tenant   Tenant   @relation("TenantHubs", fields: [tenantId], references: [id], onDelete: Cascade)
-  address  Address  @relation("HubAddress", fields: [addressId], references: [id], onDelete: Restrict)
-  creator  User?    @relation("HubCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-  branches Branch[] @relation("HubBranches")
+//   // Relations
+//   tenant   Tenant   @relation("TenantHubs", fields: [tenantId], references: [id], onDelete: Cascade)
+//   address  Address  @relation("HubAddress", fields: [addressId], references: [id], onDelete: Restrict)
+//   creator  User?    @relation("HubCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+//   branches Branch[] @relation("HubBranches")
 
-  @@unique([tenantId, code])
-  @@index([tenantId])
-  @@index([addressId])
-  @@index([creatorId])
-  @@index([status])
-  @@index([deletedAt])
-  @@map("hubs")
-}
+//   @@unique([tenantId, code])
+//   @@index([tenantId])
+//   @@index([addressId])
+//   @@index([creatorId])
+//   @@index([status])
+//   @@index([deletedAt])
+//   @@map("hubs")
+// }
 
 model UserTenant {
   id        String    @id @default(cuid())
   userId    String
   tenantId  String
   branchId  String?
+  isActive  Boolean   @default(true)
+  startDate DateTime  @default(now())
+  endDate   DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -183,29 +199,33 @@ model UserPermission {
 }
 
 model Address {
-  id         String    @id @default(cuid())
-  label      String?
-  address1   String
-  address2   String?
-  district   String?
-  city       String
-  state      String?
-  country    String
-  postalCode String?
-  latitude   Decimal?  @db.Decimal(10, 8)
-  longitude  Decimal?  @db.Decimal(11, 8)
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  id           String    @id @default(cuid())
+  label        String?
+  address1     String
+  address2     String?
+  district     String?
+  city         String
+  state        String?
+  country      String
+  postalCode   String?
+  latitude     Decimal?  @db.Decimal(10, 8)
+  longitude    Decimal?  @db.Decimal(11, 8)
+  isActive     Boolean   @default(true)
+  landmark     String?
+  instructions String? // Delivery instructions
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   // Relations
-  userAddresses        UserAddress[]
-  tenantAddress        Tenant?       @relation("TenantAddress")
-  hubAddress           Hub?          @relation("HubAddress")
-  branches             Branch[]
-  shipmentsAsSender    Shipment[]    @relation("SenderAddress")
-  shipmentsAsConsignee Shipment[]    @relation("ConsigneeAddress")
+  userAddresses UserAddress[]
+  tenantAddress Tenant?       @relation("TenantAddress")
+  // hubAddress    Hub?          @relation("HubAddress")
+  branches      Branch[]
+  pickups       PickUp[]      @relation("PickUpAddress")
+
+  shipmentsAsSender    Shipment[] @relation("SenderAddress")
+  shipmentsAsConsignee Shipment[] @relation("ConsigneeAddress")
 
   @@index([country, city])
   @@index([isActive])
@@ -220,6 +240,7 @@ model UserAddress {
   addressId String
   type      AddressType @default(HOME)
   isPrimary Boolean     @default(false)
+  isDefault Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   deletedAt DateTime?
@@ -237,27 +258,33 @@ model UserAddress {
 }
 
 model Branch {
-  id         String         @id @default(cuid())
-  name       String
-  status     BranchStatus   @default(ACTIVE)
-  tenantId   String?
-  customerId String?
-  addressId  String
-  hubId      String?
-  type       BranchType     @default(MAIN)
-  category   BranchCategory @default(WAREHOUSE)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  deletedAt  DateTime?
+  id             String         @id @default(cuid())
+  name           String
+  code           String
+  status         BranchStatus   @default(ACTIVE)
+  tenantId       String?
+  customerId     String?
+  addressId      String
+  hubId          String?
+  creatorId      String?
+  type           BranchType     @default(MAIN)
+  category       BranchCategory @default(WAREHOUSE)
+  capacity       Int?
+  operatingHours Json?
+  contactInfo    Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
 
   // Relations
   tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer    User?        @relation("CustomerBranch", fields: [customerId], references: [id], onDelete: SetNull)
   address     Address      @relation(fields: [addressId], references: [id], onDelete: Restrict)
-  hub         Hub?         @relation("HubBranches", fields: [hubId], references: [id], onDelete: SetNull)
+  // hub         Hub?         @relation("HubBranches", fields: [hubId], references: [id], onDelete: SetNull)
   userTenants UserTenant[]
   pickups     PickUp[]     @relation("PickupBranch")
 
+  @@unique([tenantId, code])
   @@index([tenantId])
   @@index([customerId])
   @@index([addressId])
@@ -269,23 +296,27 @@ model Branch {
 }
 
 model Order {
-  id                  String        @id @default(cuid())
-  orderNumber         String        @unique
-  totalWeight         Decimal?      @db.Decimal(10, 3)
-  totalValue          Decimal?      @db.Decimal(12, 2)
+  id                  String         @id @default(cuid())
+  orderNumber         String         @unique
+  referenceNumber     String? // Customer reference
+  totalWeight         Decimal?       @db.Decimal(10, 3)
+  totalValue          Decimal?       @db.Decimal(12, 2)
+  packageCount        Int            @default(1)
   specialInstructions String?
-  status              OrderStatus   @default(PENDING)
+  status              OrderStatus    @default(PENDING)
   failedReason        FailedReason?
-  priority            OrderPriority @default(NORMAL)
+  priority            PriorityStatus @default(NORMAL)
   customerId          String?
   branchId            String?
+  routeId             String?
   estimatedDelivery   DateTime?
+  scheduledDelivery   DateTime?
   deliveredAt         DateTime?
   assignedAt          DateTime?
   pickedAt            DateTime?
   cancelledAt         DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
   deletedAt           DateTime?
 
   // Relations
@@ -294,7 +325,7 @@ model Order {
   pickUpOrders   PickUpOrder[]
   shipmentOrders ShipmentOrder[]
   items          OrderItem[]
-  tracking       Tracking[]
+  tracking       TrackingEvent[]
   notes          OrderNote[]
 
   @@index([orderNumber])
@@ -315,10 +346,13 @@ model OrderItem {
   sku         String
   name        String
   description String?
+  category    String?
   quantity    Int      @default(1)
   unitPrice   Decimal  @default(0) @db.Decimal(10, 2)
   total       Decimal  @default(0) @db.Decimal(12, 2)
   weight      Decimal? @db.Decimal(8, 3)
+  dimensions  Json? // width, height, length
+  isFragile   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -372,35 +406,34 @@ model Payment {
   @@map("payments")
 }
 
-model Tracking {
-  id         String      @id @default(cuid())
-  orderId    String
-  driverId   String?
-  status     OrderStatus
-  location   String?
-  latitude   Decimal?    @db.Decimal(10, 8)
-  longitude  Decimal?    @db.Decimal(11, 8)
-  hub        String?
-  notes      String?
-  isPublic   Boolean     @default(true)
-  eventType  String?
-  metadata   Json?
-  timestamp  DateTime    @default(now())
-  recordedBy String?
-  createdAt  DateTime    @default(now())
+model TrackingEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  updaterId String?
+  status    OrderStatus
+  location  String?
+  latitude  Decimal?    @db.Decimal(10, 8)
+  longitude Decimal?    @db.Decimal(11, 8)
+  hub       String?
+  notes     String?
+  isPublic  Boolean     @default(true)
+  eventType String?
+  metadata  Json?
+  timestamp DateTime    @default(now())
+  createdAt DateTime    @default(now())
 
   // Relations
-  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  driver User? @relation("DriverTrackings", fields: [driverId], references: [id], onDelete: SetNull)
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  updater User? @relation("TrackingUpdater", fields: [updaterId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
-  @@index([driverId])
+  @@index([updaterId])
   @@index([status])
   @@index([timestamp])
   @@index([isPublic])
   @@index([eventType])
   @@index([createdAt])
-  @@map("tracking")
+  @@map("tracking_events")
 }
 
 model OrderNote {
@@ -425,12 +458,15 @@ model OrderNote {
 
 model PickUp {
   id           String       @id @default(cuid())
+  pickupNumber String       @unique @default(cuid())
   status       PickUpStatus @default(CREATED)
+  type         PickupType   @default(REGULAR)
   scheduledFor DateTime?
   completedAt  DateTime?
   notes        String?
   driverId     String?
   branchId     String?
+  addressId    String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   deletedAt    DateTime?
@@ -438,17 +474,30 @@ model PickUp {
   // Relations
   orders    PickUpOrder[]
   requests  PickUpRequest[]
-  shipments Shipment[]
+  shipments Shipment[]      @relation("PickUpShipments")
   driver    User?           @relation("PickUpDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  address   Address?        @relation("PickUpAddress", fields: [addressId], references: [id], onDelete: SetNull)
   branch    Branch?         @relation("PickupBranch", fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([scheduledFor])
   @@index([driverId])
   @@index([branchId])
+  @@index([addressId])
   @@index([createdAt])
   @@index([deletedAt])
   @@map("pickups")
+}
+
+enum PickUpStatus {
+  CREATED
+  SCHEDULED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+  RESCHEDULED
 }
 
 model PickUpRequest {
@@ -511,20 +560,23 @@ model Shipment {
   declaredValue       Decimal?       @db.Decimal(12, 2)
   weight              Decimal        @db.Decimal(10, 3)
   volumetricWeight    Decimal?       @db.Decimal(10, 3)
-  dimensions          Json?
+  dimensions          Json? // length, width, height
   numberOfItems       Int            @default(1)
   senderAccountNumber String?
   senderName          String
   senderBusinessName  String?
   senderPhone         String
+  senderEmail         String?
   consigneeName       String
   consigneePhone1     String
   consigneePhone2     String?
+  consigneeEmail      String?
   senderAddressId     String
   consigneeAddressId  String
   specialInstructions String?
   insuranceRequired   Boolean        @default(false)
   signatureRequired   Boolean        @default(false)
+  fragileItems        Boolean        @default(false)
   status              ShipmentStatus @default(PENDING)
   estimatedDelivery   DateTime?
   actualDelivery      DateTime?
@@ -533,7 +585,7 @@ model Shipment {
   deletedAt           DateTime?
 
   // Relations
-  pickup           PickUp?         @relation(fields: [pickupId], references: [id], onDelete: SetNull)
+  pickup           PickUp?         @relation("PickUpShipments", fields: [pickupId], references: [id], onDelete: SetNull)
   senderAddress    Address         @relation("SenderAddress", fields: [senderAddressId], references: [id], onDelete: Restrict)
   consigneeAddress Address         @relation("ConsigneeAddress", fields: [consigneeAddressId], references: [id], onDelete: Restrict)
   shipmentOrders   ShipmentOrder[]
@@ -574,8 +626,9 @@ model Notification {
   relatedType  EntityType?
   category     NotificationCategory  @default(INFO)
   channels     NotificationChannel[] @default([])
-  priority     NotificationPriority  @default(MEDIUM)
+  priority     PriorityStatus        @default(MEDIUM)
   metadata     Json?
+  templateId   String? // For notification templates
   scheduledFor DateTime?
   expiresAt    DateTime?
   createdAt    DateTime              @default(now())
@@ -597,21 +650,25 @@ model Notification {
 }
 
 model NotificationRecipient {
-  id             String    @id @default(cuid())
+  id             String               @id @default(cuid())
   notificationId String
   recipientId    String
+  channel        NotificationChannel?
   readAt         DateTime?
   deliveredAt    DateTime?
-  createdAt      DateTime  @default(now())
+  failedAt       DateTime?
+  errorMessage   String?
+  createdAt      DateTime             @default(now())
 
   // Relations
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   recipient    User         @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
 
-  @@unique([notificationId, recipientId])
+  @@unique([notificationId, recipientId, channel])
   @@index([recipientId])
   @@index([readAt])
   @@index([deliveredAt])
+  @@index([channel])
   @@map("notification_recipients")
 }
 
@@ -627,6 +684,8 @@ model Attachment {
   relatedType  EntityType
   metadata     Json?
   uploadedBy   String?
+  isPublic     Boolean        @default(false)
+  expiresAt    DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   deletedAt    DateTime?
@@ -637,6 +696,7 @@ model Attachment {
   @@index([relatedId, relatedType])
   @@index([type])
   @@index([uploadedBy])
+  @@index([isPublic])
   @@index([createdAt])
   @@index([deletedAt])
   @@map("attachments")
@@ -666,20 +726,20 @@ model AuditLog {
 }
 
 model Request {
-  id          String          @id @default(cuid())
+  id          String         @id @default(cuid())
   entityType  EntityType
   entityId    String?
   actionType  ActionType
-  status      RequestStatus   @default(PENDING)
+  status      RequestStatus  @default(PENDING)
   reason      String?
   responseMsg String?
-  priority    RequestPriority @default(MEDIUM)
+  priority    PriorityStatus @default(MEDIUM)
   senderId    String
   responderId String?
   expiresAt   DateTime?
   processedAt DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   deletedAt   DateTime?
 
   // Relations
@@ -713,15 +773,9 @@ enum AddressType {
   OTHER
 }
 
-enum OrderPriority {
+enum PriorityStatus {
   LOW
   NORMAL
-  HIGH
-  URGENT
-}
-
-enum RequestPriority {
-  LOW
   MEDIUM
   HIGH
   URGENT
@@ -733,6 +787,7 @@ enum PaymentMethod {
   BANK_TRANSFER
   DIGITAL_WALLET
   COD
+  CREDIT
 }
 
 enum ServiceType {
@@ -741,6 +796,7 @@ enum ServiceType {
   NEXT_DAY
   SAME_DAY
   ECONOMY
+  PREMIUM
 }
 
 enum NotificationCategory {
@@ -750,6 +806,9 @@ enum NotificationCategory {
   WARNING
   ERROR
   MARKETING
+  PICKUP
+  DELIVERY
+  PAYMENT
 }
 
 enum NotificationChannel {
@@ -758,13 +817,7 @@ enum NotificationChannel {
   SMS
   PUSH
   WEBHOOK
-}
-
-enum NotificationPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
+  WHATSAPP
 }
 
 enum RequestStatus {
@@ -772,6 +825,7 @@ enum RequestStatus {
   APPROVED
   REJECTED
   EXPIRED
+  CANCELLED
 }
 
 enum AttachmentType {
@@ -814,6 +868,9 @@ enum FailedReason {
   CUSTOMER_REFUSED
   INCOMPLETE_ADDRESS
   SECURITY_ISSUE
+  WEATHER_CONDITIONS
+  VEHICLE_BREAKDOWN
+  TRAFFIC_CONGESTION
   OTHER
 }
 
@@ -826,7 +883,9 @@ enum RoleName {
   PICKER
   OPERATION
   CUSTOMER
-  BRANCH_MANAGER
+  // BRANCH_MANAGER
+  // DISPATCHER
+  // FLEET_MANAGER
 }
 
 enum EntityType {
@@ -836,6 +895,7 @@ enum EntityType {
   DRIVER
   ROLE
   PICKUP_REQUEST
+  PICKUP
   TENANT_ORDER
   TENANT_CUSTOMER
   CUSTOMER_ORDER
@@ -844,7 +904,6 @@ enum EntityType {
   PAYMENT
   NOTIFICATION
   ADDRESS
-  PICKUP
   TRACKING
   HUB
 }
@@ -875,12 +934,23 @@ enum ShipmentStatus {
   FAILED
   RETURNED
   CANCELLED
+  LOST
+  DAMAGED
+}
+
+enum PickupType {
+  REGULAR
+  EXPRESS
+  BULK
+  SCHEDULED
+  ON_DEMAND
 }
 
 enum BranchStatus {
   ACTIVE
   INACTIVE
   UNDER_MAINTENANCE
+  CLOSED
 }
 
 enum PaymentStatus {
@@ -889,23 +959,19 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   PARTIALLY_PAID
-}
-
-enum PickUpStatus {
-  CREATED
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  FAILED
+  OVERDUE
 }
 
 enum BranchCategory {
   WAREHOUSE
   RETAIL
+  DISTRIBUTION_CENTER
+  SORTING_FACILITY
+  DARK_STORE
 }
 
 enum BranchType {
   MAIN
   SUB
+  SATELLITE
 }

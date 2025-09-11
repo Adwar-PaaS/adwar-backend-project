@@ -18,9 +18,10 @@ export interface ITenant {
   email: string | null;
   phone: string | null;
   creator?: {
-    fullName: string;
+    firstName: string;
+    lastName: string;
   } | null;
-  addresses?: Address[];
+  address?: Address;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;

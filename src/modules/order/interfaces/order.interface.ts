@@ -1,6 +1,6 @@
 import {
   FailedReason,
-  OrderPriority,
+  PriorityStatus,
   OrderStatus,
 } from '@prisma/client';
 
@@ -36,7 +36,7 @@ export interface IOrder {
   specialInstructions?: string | null;
   status: OrderStatus;
   failedReason?: FailedReason | null;
-  priority: OrderPriority;
+  priority: PriorityStatus;
   estimatedDelivery?: Date | null;
   branchId?: string | null;
   customerId?: string | null;

@@ -10,7 +10,7 @@ import {
   EntityType,
   NotificationCategory,
   NotificationChannel,
-  NotificationPriority,
+  PriorityStatus,
 } from '@prisma/client';
 
 export class CreateNotificationDto {
@@ -48,8 +48,8 @@ export class CreateNotificationDto {
   channels?: NotificationChannel[];
 
   @IsOptional()
-  @IsEnum(NotificationPriority)
-  priority?: NotificationPriority;
+  @IsEnum(PriorityStatus)
+  priority?: PriorityStatus;
 
   @IsOptional()
   scheduledFor?: Date;

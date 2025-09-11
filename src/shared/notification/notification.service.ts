@@ -93,12 +93,10 @@ export class NotificationService {
   }
 
   async markRead(notificationId: string, userId: string) {
-    const recipient = await this.prisma.notificationRecipient.findUnique({
+    const recipient = await this.prisma.notificationRecipient.findFirst({
       where: {
-        notificationId_recipientId: {
-          notificationId,
-          recipientId: userId,
-        },
+        notificationId,
+        recipientId: userId,
       },
     });
 

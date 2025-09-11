@@ -29,8 +29,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const { creator, ...rest } = tenant;
     return {
       ...rest,
-      creator: creator ? { fullName: creator.fullName } : null,
-      addresses: tenant.addresses ?? [],
+      creator: creator
+        ? { firstName: creator.firstName, lastName: creator.lastName }
+        : null,
+      address: tenant.address,
     };
   }
 
@@ -47,8 +49,8 @@ export class TenantRepository extends BaseRepository<Tenant> {
         creator: { connect: { id: creatorId } },
       },
       include: {
-        creator: { select: { fullName: true } },
-        addresses: true,
+        creator: { select: { firstName: true, lastName: true } },
+        address: true,
       },
     });
 
@@ -101,8 +103,8 @@ export class TenantRepository extends BaseRepository<Tenant> {
       queryString,
       {},
       {
-        creator: { select: { fullName: true } },
-        addresses: true,
+        creator: { select: { firstName: true, lastName: true } },
+        address: true,
       },
     );
     return {
@@ -124,8 +126,8 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const tenant = await this.model.findUnique({
       where: { id },
       include: {
-        creator: { select: { fullName: true } },
-        addresses: true,
+        creator: { select: { firstName: true, lastName: true } },
+        address: true,
       },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
@@ -145,7 +147,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
           slug: slugify(data.name, { lower: true, strict: true }),
         }),
       },
-      include: { creator: { select: { fullName: true } } },
+      include: {
+        creator: { select: { firstName: true, lastName: true } },
+        address: true,
+      },
     });
 
     return this.mapToCreator(tenant);
@@ -169,7 +174,8 @@ export class TenantRepository extends BaseRepository<Tenant> {
       driver: {
         select: {
           id: true,
-          fullName: true,
+          firstName: true,
+          lastName: true,
           email: true,
           phone: true,
           status: true,
@@ -195,7 +201,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const tenant = await this.model.update({
       where: { id },
       data: { status },
-      include: { creator: { select: { fullName: true } } },
+      include: { creator: { select: { firstName: true, lastName: true } } },
     });
 
     return this.mapToCreator(tenant);

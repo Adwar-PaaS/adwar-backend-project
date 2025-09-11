@@ -1,32 +1,29 @@
 -- CreateEnum
+CREATE TYPE "public"."PickUpStatus" AS ENUM ('CREATED', 'SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'FAILED', 'RESCHEDULED');
+
+-- CreateEnum
 CREATE TYPE "public"."Status" AS ENUM ('ACTIVE', 'INACTIVE');
 
 -- CreateEnum
 CREATE TYPE "public"."AddressType" AS ENUM ('HOME', 'WORK', 'OFFICE', 'BRANCH', 'PICKUP', 'DELIVERY', 'OTHER');
 
 -- CreateEnum
-CREATE TYPE "public"."OrderPriority" AS ENUM ('LOW', 'NORMAL', 'HIGH', 'URGENT');
+CREATE TYPE "public"."PriorityStatus" AS ENUM ('LOW', 'NORMAL', 'MEDIUM', 'HIGH', 'URGENT');
 
 -- CreateEnum
-CREATE TYPE "public"."RequestPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+CREATE TYPE "public"."PaymentMethod" AS ENUM ('CASH', 'CARD', 'BANK_TRANSFER', 'DIGITAL_WALLET', 'COD', 'CREDIT');
 
 -- CreateEnum
-CREATE TYPE "public"."PaymentMethod" AS ENUM ('CASH', 'CARD', 'BANK_TRANSFER', 'DIGITAL_WALLET', 'COD');
+CREATE TYPE "public"."ServiceType" AS ENUM ('STANDARD', 'EXPRESS', 'NEXT_DAY', 'SAME_DAY', 'ECONOMY', 'PREMIUM');
 
 -- CreateEnum
-CREATE TYPE "public"."ServiceType" AS ENUM ('STANDARD', 'EXPRESS', 'NEXT_DAY', 'SAME_DAY', 'ECONOMY');
+CREATE TYPE "public"."NotificationCategory" AS ENUM ('SYSTEM', 'INFO', 'ACTION', 'WARNING', 'ERROR', 'MARKETING', 'PICKUP', 'DELIVERY', 'PAYMENT');
 
 -- CreateEnum
-CREATE TYPE "public"."NotificationCategory" AS ENUM ('SYSTEM', 'INFO', 'ACTION', 'WARNING', 'ERROR', 'MARKETING');
+CREATE TYPE "public"."NotificationChannel" AS ENUM ('IN_APP', 'EMAIL', 'SMS', 'PUSH', 'WEBHOOK', 'WHATSAPP');
 
 -- CreateEnum
-CREATE TYPE "public"."NotificationChannel" AS ENUM ('IN_APP', 'EMAIL', 'SMS', 'PUSH', 'WEBHOOK');
-
--- CreateEnum
-CREATE TYPE "public"."NotificationPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
-
--- CreateEnum
-CREATE TYPE "public"."RequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED');
+CREATE TYPE "public"."RequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "public"."AttachmentType" AS ENUM ('IMAGE', 'DOCUMENT', 'VIDEO', 'AUDIO', 'SIGNATURE', 'INVOICE', 'RECEIPT', 'OTHER');
@@ -35,44 +32,48 @@ CREATE TYPE "public"."AttachmentType" AS ENUM ('IMAGE', 'DOCUMENT', 'VIDEO', 'AU
 CREATE TYPE "public"."OrderStatus" AS ENUM ('CREATED', 'PENDING', 'APPROVED', 'ASSIGNED_FOR_PICKUP', 'PICKED_UP', 'RECEIVED_IN_WAREHOUSE', 'STORED_ON_SHELVES', 'READY_FOR_DISPATCH', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RESCHEDULED', 'CANCELLED', 'RETURNED_TO_OPERATION', 'READY_TO_RETURN_TO_ORIGIN', 'RETURNED_TO_ORIGIN');
 
 -- CreateEnum
-CREATE TYPE "public"."FailedReason" AS ENUM ('CUSTOMER_NOT_AVAILABLE', 'WRONG_ADDRESS', 'NO_ANSWER', 'DAMAGED_PACKAGE', 'OUT_OF_COVERAGE_AREA', 'MOBILE_SWITCHED_OFF', 'CUSTOMER_REFUSED', 'INCOMPLETE_ADDRESS', 'SECURITY_ISSUE', 'OTHER');
+CREATE TYPE "public"."FailedReason" AS ENUM ('CUSTOMER_NOT_AVAILABLE', 'WRONG_ADDRESS', 'NO_ANSWER', 'DAMAGED_PACKAGE', 'OUT_OF_COVERAGE_AREA', 'MOBILE_SWITCHED_OFF', 'CUSTOMER_REFUSED', 'INCOMPLETE_ADDRESS', 'SECURITY_ISSUE', 'WEATHER_CONDITIONS', 'VEHICLE_BREAKDOWN', 'TRAFFIC_CONGESTION', 'OTHER');
 
 -- CreateEnum
-CREATE TYPE "public"."RoleName" AS ENUM ('SUPER_ADMIN', 'ADMIN', 'DRIVER', 'PACKER', 'ACCOUNTANT', 'PICKER', 'OPERATION', 'CUSTOMER', 'BRANCH_MANAGER');
+CREATE TYPE "public"."RoleName" AS ENUM ('SUPER_ADMIN', 'ADMIN', 'DRIVER', 'PACKER', 'ACCOUNTANT', 'PICKER', 'OPERATION', 'CUSTOMER');
 
 -- CreateEnum
-CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'TENANT', 'ORDER', 'DRIVER', 'ROLE', 'PICKUP_REQUEST', 'TENANT_ORDER', 'TENANT_CUSTOMER', 'CUSTOMER_ORDER', 'BRANCH', 'SHIPMENT', 'PAYMENT', 'NOTIFICATION', 'ADDRESS', 'PICKUP', 'TRACKING');
+CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'TENANT', 'ORDER', 'DRIVER', 'ROLE', 'PICKUP_REQUEST', 'PICKUP', 'TENANT_ORDER', 'TENANT_CUSTOMER', 'CUSTOMER_ORDER', 'BRANCH', 'SHIPMENT', 'PAYMENT', 'NOTIFICATION', 'ADDRESS', 'TRACKING', 'HUB');
 
 -- CreateEnum
 CREATE TYPE "public"."ActionType" AS ENUM ('ALL', 'CREATE', 'READ', 'UPDATE', 'DELETE', 'ACTIVATE', 'DEACTIVATE', 'APPROVE', 'EXPORT', 'IMPORT', 'REJECT', 'ASSIGN', 'COMPLETE', 'CANCEL');
 
 -- CreateEnum
-CREATE TYPE "public"."ShipmentStatus" AS ENUM ('PENDING', 'DISPATCHED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED', 'CANCELLED');
+CREATE TYPE "public"."ShipmentStatus" AS ENUM ('PENDING', 'DISPATCHED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED', 'CANCELLED', 'LOST', 'DAMAGED');
 
 -- CreateEnum
-CREATE TYPE "public"."BranchStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'UNDER_MAINTENANCE');
+CREATE TYPE "public"."PickupType" AS ENUM ('REGULAR', 'EXPRESS', 'BULK', 'SCHEDULED', 'ON_DEMAND');
 
 -- CreateEnum
-CREATE TYPE "public"."PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED', 'PARTIALLY_PAID');
+CREATE TYPE "public"."BranchStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'UNDER_MAINTENANCE', 'CLOSED');
 
 -- CreateEnum
-CREATE TYPE "public"."PickUpStatus" AS ENUM ('CREATED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'FAILED');
+CREATE TYPE "public"."PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED', 'PARTIALLY_PAID', 'OVERDUE');
 
 -- CreateEnum
-CREATE TYPE "public"."BranchCategory" AS ENUM ('WAREHOUSE', 'RETAIL');
+CREATE TYPE "public"."BranchCategory" AS ENUM ('WAREHOUSE', 'RETAIL', 'DISTRIBUTION_CENTER', 'SORTING_FACILITY', 'DARK_STORE');
 
 -- CreateEnum
-CREATE TYPE "public"."BranchType" AS ENUM ('MAIN', 'SUB');
+CREATE TYPE "public"."BranchType" AS ENUM ('MAIN', 'SUB', 'SATELLITE');
 
 -- CreateTable
 CREATE TABLE "public"."users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "fullName" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
     "phone" TEXT,
+    "avatar" TEXT,
     "status" "public"."Status" NOT NULL DEFAULT 'ACTIVE',
     "roleId" TEXT NOT NULL,
+    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "lastLoginAt" TIMESTAMP(3),
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -86,11 +87,17 @@ CREATE TABLE "public"."tenants" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
+    "description" TEXT,
     "status" "public"."Status" NOT NULL DEFAULT 'ACTIVE',
     "logoUrl" TEXT,
+    "website" TEXT,
     "email" TEXT,
     "phone" TEXT,
+    "taxNumber" TEXT,
+    "licenseNumber" TEXT,
     "creatorId" TEXT NOT NULL,
+    "addressId" TEXT,
+    "settings" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -104,6 +111,9 @@ CREATE TABLE "public"."user_tenants" (
     "userId" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "branchId" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endDate" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -162,8 +172,9 @@ CREATE TABLE "public"."addresses" (
     "postalCode" TEXT,
     "latitude" DECIMAL(10,8),
     "longitude" DECIMAL(11,8),
-    "tenantId" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "landmark" TEXT,
+    "instructions" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -178,6 +189,7 @@ CREATE TABLE "public"."user_addresses" (
     "addressId" TEXT NOT NULL,
     "type" "public"."AddressType" NOT NULL DEFAULT 'HOME',
     "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -189,12 +201,18 @@ CREATE TABLE "public"."user_addresses" (
 CREATE TABLE "public"."branches" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
     "status" "public"."BranchStatus" NOT NULL DEFAULT 'ACTIVE',
     "tenantId" TEXT,
     "customerId" TEXT,
     "addressId" TEXT NOT NULL,
+    "hubId" TEXT,
+    "creatorId" TEXT,
     "type" "public"."BranchType" NOT NULL DEFAULT 'MAIN',
     "category" "public"."BranchCategory" NOT NULL DEFAULT 'WAREHOUSE',
+    "capacity" INTEGER,
+    "operatingHours" JSONB,
+    "contactInfo" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -206,15 +224,19 @@ CREATE TABLE "public"."branches" (
 CREATE TABLE "public"."orders" (
     "id" TEXT NOT NULL,
     "orderNumber" TEXT NOT NULL,
+    "referenceNumber" TEXT,
     "totalWeight" DECIMAL(10,3),
     "totalValue" DECIMAL(12,2),
+    "packageCount" INTEGER NOT NULL DEFAULT 1,
     "specialInstructions" TEXT,
     "status" "public"."OrderStatus" NOT NULL DEFAULT 'PENDING',
     "failedReason" "public"."FailedReason",
-    "priority" "public"."OrderPriority" NOT NULL DEFAULT 'NORMAL',
+    "priority" "public"."PriorityStatus" NOT NULL DEFAULT 'NORMAL',
     "customerId" TEXT,
     "branchId" TEXT,
+    "routeId" TEXT,
     "estimatedDelivery" TIMESTAMP(3),
+    "scheduledDelivery" TIMESTAMP(3),
     "deliveredAt" TIMESTAMP(3),
     "assignedAt" TIMESTAMP(3),
     "pickedAt" TIMESTAMP(3),
@@ -233,10 +255,13 @@ CREATE TABLE "public"."order_items" (
     "sku" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
+    "category" TEXT,
     "quantity" INTEGER NOT NULL DEFAULT 1,
     "unitPrice" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "total" DECIMAL(12,2) NOT NULL DEFAULT 0,
     "weight" DECIMAL(8,3),
+    "dimensions" JSONB,
+    "isFragile" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -277,10 +302,10 @@ CREATE TABLE "public"."payments" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."tracking" (
+CREATE TABLE "public"."tracking_events" (
     "id" TEXT NOT NULL,
     "orderId" TEXT NOT NULL,
-    "driverId" TEXT,
+    "updaterId" TEXT,
     "status" "public"."OrderStatus" NOT NULL,
     "location" TEXT,
     "latitude" DECIMAL(10,8),
@@ -291,10 +316,9 @@ CREATE TABLE "public"."tracking" (
     "eventType" TEXT,
     "metadata" JSONB,
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "recordedBy" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "tracking_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "tracking_events_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -313,12 +337,15 @@ CREATE TABLE "public"."order_notes" (
 -- CreateTable
 CREATE TABLE "public"."pickups" (
     "id" TEXT NOT NULL,
+    "pickupNumber" TEXT NOT NULL,
     "status" "public"."PickUpStatus" NOT NULL DEFAULT 'CREATED',
+    "type" "public"."PickupType" NOT NULL DEFAULT 'REGULAR',
     "scheduledFor" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
     "notes" TEXT,
     "driverId" TEXT,
     "branchId" TEXT,
+    "addressId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -375,14 +402,17 @@ CREATE TABLE "public"."shipments" (
     "senderName" TEXT NOT NULL,
     "senderBusinessName" TEXT,
     "senderPhone" TEXT NOT NULL,
+    "senderEmail" TEXT,
     "consigneeName" TEXT NOT NULL,
     "consigneePhone1" TEXT NOT NULL,
     "consigneePhone2" TEXT,
+    "consigneeEmail" TEXT,
     "senderAddressId" TEXT NOT NULL,
     "consigneeAddressId" TEXT NOT NULL,
     "specialInstructions" TEXT,
     "insuranceRequired" BOOLEAN NOT NULL DEFAULT false,
     "signatureRequired" BOOLEAN NOT NULL DEFAULT false,
+    "fragileItems" BOOLEAN NOT NULL DEFAULT false,
     "status" "public"."ShipmentStatus" NOT NULL DEFAULT 'PENDING',
     "estimatedDelivery" TIMESTAMP(3),
     "actualDelivery" TIMESTAMP(3),
@@ -412,8 +442,9 @@ CREATE TABLE "public"."notifications" (
     "relatedType" "public"."EntityType",
     "category" "public"."NotificationCategory" NOT NULL DEFAULT 'INFO',
     "channels" "public"."NotificationChannel"[] DEFAULT ARRAY[]::"public"."NotificationChannel"[],
-    "priority" "public"."NotificationPriority" NOT NULL DEFAULT 'MEDIUM',
+    "priority" "public"."PriorityStatus" NOT NULL DEFAULT 'MEDIUM',
     "metadata" JSONB,
+    "templateId" TEXT,
     "scheduledFor" TIMESTAMP(3),
     "expiresAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -428,8 +459,11 @@ CREATE TABLE "public"."notification_recipients" (
     "id" TEXT NOT NULL,
     "notificationId" TEXT NOT NULL,
     "recipientId" TEXT NOT NULL,
+    "channel" "public"."NotificationChannel",
     "readAt" TIMESTAMP(3),
     "deliveredAt" TIMESTAMP(3),
+    "failedAt" TIMESTAMP(3),
+    "errorMessage" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "notification_recipients_pkey" PRIMARY KEY ("id")
@@ -448,6 +482,8 @@ CREATE TABLE "public"."attachments" (
     "relatedType" "public"."EntityType" NOT NULL,
     "metadata" JSONB,
     "uploadedBy" TEXT,
+    "isPublic" BOOLEAN NOT NULL DEFAULT false,
+    "expiresAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -481,7 +517,7 @@ CREATE TABLE "public"."requests" (
     "status" "public"."RequestStatus" NOT NULL DEFAULT 'PENDING',
     "reason" TEXT,
     "responseMsg" TEXT,
-    "priority" "public"."RequestPriority" NOT NULL DEFAULT 'MEDIUM',
+    "priority" "public"."PriorityStatus" NOT NULL DEFAULT 'MEDIUM',
     "senderId" TEXT NOT NULL,
     "responderId" TEXT,
     "expiresAt" TIMESTAMP(3),
@@ -513,6 +549,15 @@ CREATE UNIQUE INDEX "tenants_slug_key" ON "public"."tenants"("slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "tenants_email_key" ON "public"."tenants"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tenants_taxNumber_key" ON "public"."tenants"("taxNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tenants_licenseNumber_key" ON "public"."tenants"("licenseNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tenants_addressId_key" ON "public"."tenants"("addressId");
 
 -- CreateIndex
 CREATE INDEX "tenants_slug_idx" ON "public"."tenants"("slug");
@@ -575,9 +620,6 @@ CREATE UNIQUE INDEX "user_permissions_userTenantId_entityType_key" ON "public"."
 CREATE INDEX "addresses_country_city_idx" ON "public"."addresses"("country", "city");
 
 -- CreateIndex
-CREATE INDEX "addresses_tenantId_idx" ON "public"."addresses"("tenantId");
-
--- CreateIndex
 CREATE INDEX "addresses_isActive_idx" ON "public"."addresses"("isActive");
 
 -- CreateIndex
@@ -611,6 +653,9 @@ CREATE INDEX "branches_customerId_idx" ON "public"."branches"("customerId");
 CREATE INDEX "branches_addressId_idx" ON "public"."branches"("addressId");
 
 -- CreateIndex
+CREATE INDEX "branches_hubId_idx" ON "public"."branches"("hubId");
+
+-- CreateIndex
 CREATE INDEX "branches_status_idx" ON "public"."branches"("status");
 
 -- CreateIndex
@@ -618,6 +663,9 @@ CREATE INDEX "branches_type_idx" ON "public"."branches"("type");
 
 -- CreateIndex
 CREATE INDEX "branches_deletedAt_idx" ON "public"."branches"("deletedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "branches_tenantId_code_key" ON "public"."branches"("tenantId", "code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "orders_orderNumber_key" ON "public"."orders"("orderNumber");
@@ -680,25 +728,25 @@ CREATE INDEX "payments_createdAt_idx" ON "public"."payments"("createdAt");
 CREATE INDEX "payments_deletedAt_idx" ON "public"."payments"("deletedAt");
 
 -- CreateIndex
-CREATE INDEX "tracking_orderId_idx" ON "public"."tracking"("orderId");
+CREATE INDEX "tracking_events_orderId_idx" ON "public"."tracking_events"("orderId");
 
 -- CreateIndex
-CREATE INDEX "tracking_driverId_idx" ON "public"."tracking"("driverId");
+CREATE INDEX "tracking_events_updaterId_idx" ON "public"."tracking_events"("updaterId");
 
 -- CreateIndex
-CREATE INDEX "tracking_status_idx" ON "public"."tracking"("status");
+CREATE INDEX "tracking_events_status_idx" ON "public"."tracking_events"("status");
 
 -- CreateIndex
-CREATE INDEX "tracking_timestamp_idx" ON "public"."tracking"("timestamp");
+CREATE INDEX "tracking_events_timestamp_idx" ON "public"."tracking_events"("timestamp");
 
 -- CreateIndex
-CREATE INDEX "tracking_isPublic_idx" ON "public"."tracking"("isPublic");
+CREATE INDEX "tracking_events_isPublic_idx" ON "public"."tracking_events"("isPublic");
 
 -- CreateIndex
-CREATE INDEX "tracking_eventType_idx" ON "public"."tracking"("eventType");
+CREATE INDEX "tracking_events_eventType_idx" ON "public"."tracking_events"("eventType");
 
 -- CreateIndex
-CREATE INDEX "tracking_createdAt_idx" ON "public"."tracking"("createdAt");
+CREATE INDEX "tracking_events_createdAt_idx" ON "public"."tracking_events"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "order_notes_orderId_idx" ON "public"."order_notes"("orderId");
@@ -713,6 +761,9 @@ CREATE INDEX "order_notes_private_idx" ON "public"."order_notes"("private");
 CREATE INDEX "order_notes_createdAt_idx" ON "public"."order_notes"("createdAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "pickups_pickupNumber_key" ON "public"."pickups"("pickupNumber");
+
+-- CreateIndex
 CREATE INDEX "pickups_status_idx" ON "public"."pickups"("status");
 
 -- CreateIndex
@@ -723,6 +774,9 @@ CREATE INDEX "pickups_driverId_idx" ON "public"."pickups"("driverId");
 
 -- CreateIndex
 CREATE INDEX "pickups_branchId_idx" ON "public"."pickups"("branchId");
+
+-- CreateIndex
+CREATE INDEX "pickups_addressId_idx" ON "public"."pickups"("addressId");
 
 -- CreateIndex
 CREATE INDEX "pickups_createdAt_idx" ON "public"."pickups"("createdAt");
@@ -833,7 +887,10 @@ CREATE INDEX "notification_recipients_readAt_idx" ON "public"."notification_reci
 CREATE INDEX "notification_recipients_deliveredAt_idx" ON "public"."notification_recipients"("deliveredAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "notification_recipients_notificationId_recipientId_key" ON "public"."notification_recipients"("notificationId", "recipientId");
+CREATE INDEX "notification_recipients_channel_idx" ON "public"."notification_recipients"("channel");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "notification_recipients_notificationId_recipientId_channel_key" ON "public"."notification_recipients"("notificationId", "recipientId", "channel");
 
 -- CreateIndex
 CREATE INDEX "attachments_relatedId_relatedType_idx" ON "public"."attachments"("relatedId", "relatedType");
@@ -843,6 +900,9 @@ CREATE INDEX "attachments_type_idx" ON "public"."attachments"("type");
 
 -- CreateIndex
 CREATE INDEX "attachments_uploadedBy_idx" ON "public"."attachments"("uploadedBy");
+
+-- CreateIndex
+CREATE INDEX "attachments_isPublic_idx" ON "public"."attachments"("isPublic");
 
 -- CreateIndex
 CREATE INDEX "attachments_createdAt_idx" ON "public"."attachments"("createdAt");
@@ -893,6 +953,9 @@ ALTER TABLE "public"."users" ADD CONSTRAINT "users_roleId_fkey" FOREIGN KEY ("ro
 ALTER TABLE "public"."tenants" ADD CONSTRAINT "tenants_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "public"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."tenants" ADD CONSTRAINT "tenants_addressId_fkey" FOREIGN KEY ("addressId") REFERENCES "public"."addresses"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."user_tenants" ADD CONSTRAINT "user_tenants_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -909,9 +972,6 @@ ALTER TABLE "public"."role_permissions" ADD CONSTRAINT "role_permissions_roleId_
 
 -- AddForeignKey
 ALTER TABLE "public"."user_permissions" ADD CONSTRAINT "user_permissions_userTenantId_fkey" FOREIGN KEY ("userTenantId") REFERENCES "public"."user_tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."addresses" ADD CONSTRAINT "addresses_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "public"."tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."user_addresses" ADD CONSTRAINT "user_addresses_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -938,10 +998,10 @@ ALTER TABLE "public"."order_items" ADD CONSTRAINT "order_items_orderId_fkey" FOR
 ALTER TABLE "public"."payments" ADD CONSTRAINT "payments_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."tracking" ADD CONSTRAINT "tracking_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."tracking_events" ADD CONSTRAINT "tracking_events_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."tracking" ADD CONSTRAINT "tracking_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."tracking_events" ADD CONSTRAINT "tracking_events_updaterId_fkey" FOREIGN KEY ("updaterId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."order_notes" ADD CONSTRAINT "order_notes_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -951,6 +1011,9 @@ ALTER TABLE "public"."order_notes" ADD CONSTRAINT "order_notes_authorId_fkey" FO
 
 -- AddForeignKey
 ALTER TABLE "public"."pickups" ADD CONSTRAINT "pickups_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."pickups" ADD CONSTRAINT "pickups_addressId_fkey" FOREIGN KEY ("addressId") REFERENCES "public"."addresses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."pickups" ADD CONSTRAINT "pickups_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "public"."branches"("id") ON DELETE SET NULL ON UPDATE CASCADE;

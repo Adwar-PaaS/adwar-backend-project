@@ -40,7 +40,7 @@ import { RedisService } from './db/redis/redis.service';
       ): Promise<ThrottlerModuleOptions> => ({
         throttlers: [
           {
-            limit: config.get<number>('THROTTLE_LIMIT', 100),
+            limit: config.get<number>('THROTTLE_LIMIT', 200),
             ttl: seconds(config.get<number>('THROTTLE_TTL', 60)),
           },
         ],

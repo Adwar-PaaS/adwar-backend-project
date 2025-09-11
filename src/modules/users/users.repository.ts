@@ -54,7 +54,8 @@ export class UsersRepository extends BaseRepository<User> {
       data: {
         email: data.email,
         password: data.password,
-        fullName: data.fullName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         phone: data.phone,
         role: {
           connect: { id: role.id },
@@ -103,7 +104,8 @@ export class UsersRepository extends BaseRepository<User> {
   async createUserViaSuperAdminWithRole(data: {
     email: string;
     password: string;
-    fullName: string;
+    firstName: string;
+    lastName: string;
     phone?: string;
     tenantId: string;
     roleName: RoleName;
@@ -138,7 +140,8 @@ export class UsersRepository extends BaseRepository<User> {
       data: {
         email: data.email,
         password: data.password,
-        fullName: data.fullName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         phone: data.phone,
         role: { connect: { id: role.id } },
         memberships: {
@@ -157,7 +160,8 @@ export class UsersRepository extends BaseRepository<User> {
   async createTenantUser(data: {
     email: string;
     password: string;
-    fullName: string;
+    firstName: string;
+    lastName: string;
     phone?: string;
     roleId: string;
     tenantId: string;
@@ -173,7 +177,8 @@ export class UsersRepository extends BaseRepository<User> {
       data: {
         email: data.email,
         password: data.password,
-        fullName: data.fullName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         phone: data.phone,
         roleId: data.roleId,
         memberships: {

@@ -4,6 +4,7 @@ import {
   IsString,
   IsEmail,
   ValidateNested,
+  IsUUID,
 } from 'class-validator';
 
 import { Status } from '@prisma/client';
@@ -26,10 +27,14 @@ export class CreateTenantDto {
   phone?: string;
 
   @IsOptional()
+  @IsUUID()
+  addressId?: string;
+
+  @IsOptional()
   logoUrl?: string;
 
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateAddressDto)
-  addresses?: CreateAddressDto[];
+  address?: CreateAddressDto;
 }

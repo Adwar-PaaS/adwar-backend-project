@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import {
   FailedReason,
-  OrderPriority,
+  PriorityStatus,
   OrderStatus,
 } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -44,8 +44,8 @@ export class CreateOrderDto {
   failedReason?: FailedReason;
 
   @IsOptional()
-  @IsEnum(OrderPriority)
-  priority?: OrderPriority = OrderPriority.NORMAL;
+  @IsEnum(PriorityStatus)
+  priority?: PriorityStatus = PriorityStatus.NORMAL;
 
   @IsOptional()
   @IsUUID()

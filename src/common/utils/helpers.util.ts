@@ -1,7 +1,8 @@
 export const userWithRoleSelect = {
   id: true,
   email: true,
-  fullName: true,
+  firstName: true,
+  lastName: true,
   phone: true,
   status: true,
   role: {

@@ -70,6 +70,8 @@ export class AuditInterceptor implements NestInterceptor {
               oldValues,
               newValues,
               description: options.description ?? null,
+              ipAddress: req.ip ?? null,
+              userAgent: req.headers['user-agent'] ?? null,
             },
           });
         } catch (err) {
@@ -106,11 +108,11 @@ export class AuditInterceptor implements NestInterceptor {
     const data = response.data ?? response;
 
     if (typeof data === 'object') {
-      if (data.id) return data.id;
+      if (data.id) return String(data.id);
 
       for (const key of Object.keys(data)) {
         if (data[key]?.id) {
-          return data[key].id;
+          return String(data[key].id);
         }
       }
     }

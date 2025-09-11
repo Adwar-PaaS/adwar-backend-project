@@ -177,7 +177,7 @@ export class PickUpService {
       const pickupId = p.pickup.id;
 
       if (!pickupMap.has(pickupId)) {
-        const request = p.pickup.requests?.[0];
+        // const request = p.pickup.requests?.[0];
         const status = p.pickup.status || 'CREATED';
 
         pickupMap.set(pickupId, {

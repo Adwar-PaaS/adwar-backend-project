@@ -63,8 +63,8 @@ export class OrderRepository extends BaseRepository<IOrder> {
                 customer: {
                   select: {
                     id: true,
-                    fullName: true,
-                    phone: true,
+                    firstName: true,
+                    lastName: true,
                   },
                 },
               },

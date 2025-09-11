@@ -10,5 +10,5 @@ export class UpdateTenantDto extends PartialType(CreateTenantDto) {
   // @TransformToArray()
   @ValidateNested({ each: true })
   @Type(() => TenantAddressUpdateDto)
-  addresses?: TenantAddressUpdateDto[];
+  address?: TenantAddressUpdateDto;
 }

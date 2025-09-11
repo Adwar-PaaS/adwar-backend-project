@@ -31,7 +31,11 @@ export class CreateTenantUserDto {
 
   @IsString()
   @IsNotEmpty()
-  fullName: string;
+  firstName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
 
   @IsOptional()
   @IsString()

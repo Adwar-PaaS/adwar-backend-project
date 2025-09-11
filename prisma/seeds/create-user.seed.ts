@@ -38,7 +38,8 @@ async function seed() {
       data: {
         email: 'superadmin@adwar.com',
         password: hashedPassword,
-        fullName: 'Super Administrator',
+        firstName: 'Super',
+        lastName: 'Administrator',
         status: Status.ACTIVE,
         roleId: superAdminRole.id,
       },
