@@ -38,6 +38,7 @@ model User {
   driverTrackings        Tracking[]              @relation("DriverTrackings")
   attachmentUploads      Attachment[]            @relation("AttachmentUploader")
   orderNotes             OrderNote[]             @relation("OrderNoteAuthor")
+  createdHubs            Hub[]                   @relation("HubCreator")
 
   @@index([email])
   @@index([status])
@@ -55,22 +56,51 @@ model Tenant {
   email     String?   @unique
   phone     String?
   creatorId String
+  addressId String?   @unique
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   // Relations
   creator     User         @relation("UserCreatedTenants", fields: [creatorId], references: [id], onDelete: Restrict)
+  address     Address?     @relation("TenantAddress", fields: [addressId], references: [id], onDelete: Restrict)
   roles       Role[]
   branches    Branch[]
   memberships UserTenant[]
-  addresses   Address[]
+  hubs        Hub[]        @relation("TenantHubs")
 
   @@index([slug])
   @@index([creatorId])
   @@index([status])
   @@index([deletedAt])
   @@map("tenants")
+}
+
+model Hub {
+  id        String    @id @default(cuid())
+  name      String?
+  code      String
+  status    Status    @default(ACTIVE)
+  tenantId  String
+  addressId String    @unique
+  creatorId String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  tenant   Tenant   @relation("TenantHubs", fields: [tenantId], references: [id], onDelete: Cascade)
+  address  Address  @relation("HubAddress", fields: [addressId], references: [id], onDelete: Restrict)
+  creator  User?    @relation("HubCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  branches Branch[] @relation("HubBranches")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([addressId])
+  @@index([creatorId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("hubs")
 }
 
 model UserTenant {
@@ -164,21 +194,20 @@ model Address {
   postalCode String?
   latitude   Decimal?  @db.Decimal(10, 8)
   longitude  Decimal?  @db.Decimal(11, 8)
-  tenantId   String?
   isActive   Boolean   @default(true)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
   // Relations
-  tenant               Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userAddresses        UserAddress[]
+  tenantAddress        Tenant?       @relation("TenantAddress")
+  hubAddress           Hub?          @relation("HubAddress")
   branches             Branch[]
   shipmentsAsSender    Shipment[]    @relation("SenderAddress")
   shipmentsAsConsignee Shipment[]    @relation("ConsigneeAddress")
 
   @@index([country, city])
-  @@index([tenantId])
   @@index([isActive])
   @@index([latitude, longitude])
   @@index([deletedAt])
@@ -214,6 +243,7 @@ model Branch {
   tenantId   String?
   customerId String?
   addressId  String
+  hubId      String?
   type       BranchType     @default(MAIN)
   category   BranchCategory @default(WAREHOUSE)
   createdAt  DateTime       @default(now())
@@ -224,12 +254,14 @@ model Branch {
   tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer    User?        @relation("CustomerBranch", fields: [customerId], references: [id], onDelete: SetNull)
   address     Address      @relation(fields: [addressId], references: [id], onDelete: Restrict)
+  hub         Hub?         @relation("HubBranches", fields: [hubId], references: [id], onDelete: SetNull)
   userTenants UserTenant[]
   pickups     PickUp[]     @relation("PickupBranch")
 
   @@index([tenantId])
   @@index([customerId])
   @@index([addressId])
+  @@index([hubId])
   @@index([status])
   @@index([type])
   @@index([deletedAt])
@@ -665,7 +697,7 @@ model Request {
   @@map("requests")
 }
 
-// Enums remain the same
+// Enums
 enum Status {
   ACTIVE
   INACTIVE
@@ -814,6 +846,7 @@ enum EntityType {
   ADDRESS
   PICKUP
   TRACKING
+  HUB
 }
 
 enum ActionType {

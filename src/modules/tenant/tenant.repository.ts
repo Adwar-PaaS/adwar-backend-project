@@ -30,6 +30,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
     return {
       ...rest,
       creator: creator ? { fullName: creator.fullName } : null,
+      addresses: tenant.addresses ?? [],
     };
   }
 
@@ -45,7 +46,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
         status: data.status ?? Status.ACTIVE,
         creator: { connect: { id: creatorId } },
       },
-      include: { creator: { select: { fullName: true } } },
+      include: {
+        creator: { select: { fullName: true } },
+        addresses: true,
+      },
     });
 
     return this.mapToCreator(tenant);
@@ -96,7 +100,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
     const result = await this.findAll(
       queryString,
       {},
-      { creator: { select: { fullName: true } } },
+      {
+        creator: { select: { fullName: true } },
+        addresses: true,
+      },
     );
     return {
       ...result,
@@ -116,7 +123,10 @@ export class TenantRepository extends BaseRepository<Tenant> {
   async getById(id: string): Promise<any> {
     const tenant = await this.model.findUnique({
       where: { id },
-      include: { creator: { select: { fullName: true } } },
+      include: {
+        creator: { select: { fullName: true } },
+        addresses: true,
+      },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
     return this.mapToCreator(tenant);

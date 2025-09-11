@@ -1,5 +1,14 @@
 import { Status, Address } from '@prisma/client';
 
+// interface IAddress {
+//   id: string;
+//   address1: string;
+//   city: string;
+//   country: string;
+//   latitude?: string | null;
+//   longitude?: string | null;
+// }
+
 export interface ITenant {
   id: string;
   name: string;
