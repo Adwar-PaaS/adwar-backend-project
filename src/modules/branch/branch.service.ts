@@ -12,27 +12,59 @@ export class BranchService {
   ) {}
 
   async create(dto: CreateBranchDto) {
-    if (dto.address && dto.addressId) {
+    const branchData: any = {
+      name: dto.name,
+      status: dto.status,
+      type: dto.type,
+      category: dto.category,
+    };
+
+    if (dto.tenantId) {
+      branchData.tenant = { connect: { id: dto.tenantId } };
+    }
+
+    if (dto.customerId) {
+      branchData.customer = { connect: { id: dto.customerId } };
+    }
+
+    if (dto.addressId) {
+      branchData.address = { connect: { id: dto.addressId } };
+    } else if (dto.address) {
+      const address = await this.addressService.create(dto.address);
+      branchData.address = { connect: { id: address.id } };
+    } else {
       throw new BadRequestException(
-        'Provide either addressId or address details, not both',
+        'Either addressId or address object must be provided',
       );
     }
 
-    let addressId = dto.addressId;
-
-    if (dto.address) {
-      const address = await this.addressService.create(dto.address);
-      addressId = address.id;
-    }
-
-    return this.branchRepo.create({
-      ...dto,
-      addressId,
-    });
+    return this.branchRepo.create(branchData);
   }
 
   async update(id: string, dto: UpdateBranchDto) {
-    return this.branchRepo.update(id, dto);
+    const updateData: any = {
+      name: dto.name,
+      status: dto.status,
+      type: dto.type,
+      category: dto.category,
+    };
+
+    if (dto.tenantId) {
+      updateData.tenant = { connect: { id: dto.tenantId } };
+    }
+
+    if (dto.customerId) {
+      updateData.customer = { connect: { id: dto.customerId } };
+    }
+
+    if (dto.addressId) {
+      updateData.address = { connect: { id: dto.addressId } };
+    } else if (dto.address) {
+      const address = await this.addressService.create(dto.address);
+      updateData.address = { connect: { id: address.id } };
+    }
+
+    return this.branchRepo.update(id, updateData);
   }
 
   async findAll(query: Record<string, any>) {
