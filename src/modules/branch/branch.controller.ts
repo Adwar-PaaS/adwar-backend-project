@@ -20,6 +20,7 @@ import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 import { Audit } from 'src/common/decorators/audit.decorator';
 import { PaginationResult } from '../../common/utils/api-features.util';
+import { IBranch } from './interfaces/branch.interface';
 
 @Controller('branches')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -46,7 +47,7 @@ export class BranchController {
   @Permissions(EntityType.BRANCH, ActionType.READ)
   async findAll(
     @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ branches: any[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ branches: IBranch[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.branchService.findAll(query);
     return APIResponse.success(
       { branches: items, ...pagination },
@@ -64,10 +65,14 @@ export class BranchController {
 
   @Get('customer/:customerId')
   @Permissions(EntityType.BRANCH, ActionType.READ)
-  async getCustomerBranches(@Param('customerId') customerId: string) {
-    const branches = await this.branchService.getCustomerBranches(customerId);
+  async getCustomerBranches(
+    @Query() query: Record<string, any>,
+    @Param('customerId') customerId: string,
+  ) {
+    const { items, ...pagination } =
+      await this.branchService.getCustomerBranches(query, customerId);
     return APIResponse.success(
-      { branches },
+      { branches: items, ...pagination },
       'Customer branches fetched successfully',
     );
   }

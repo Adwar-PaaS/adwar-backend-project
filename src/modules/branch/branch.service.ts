@@ -1,15 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { BranchRepository } from './branch.repository';
+import { AddressService } from 'src/shared/address/address.service';
+import { CreateBranchDto } from './dto/create-branch.dto';
+import { UpdateBranchDto } from './dto/update-branch.dto';
 
 @Injectable()
 export class BranchService {
-  constructor(private readonly branchRepo: BranchRepository) {}
+  constructor(
+    private readonly branchRepo: BranchRepository,
+    private readonly addressService: AddressService,
+  ) {}
 
-  async create(dto: any) {
-    return this.branchRepo.create(dto);
+  async create(dto: CreateBranchDto) {
+    if (dto.address && dto.addressId) {
+      throw new BadRequestException(
+        'Provide either addressId or address details, not both',
+      );
+    }
+
+    let addressId = dto.addressId;
+
+    if (dto.address) {
+      const address = await this.addressService.create(dto.address);
+      addressId = address.id;
+    }
+
+    return this.branchRepo.create({
+      ...dto,
+      addressId,
+    });
   }
 
-  async update(id: string, dto: any) {
+  async update(id: string, dto: UpdateBranchDto) {
     return this.branchRepo.update(id, dto);
   }
 
@@ -21,8 +43,8 @@ export class BranchService {
     return this.branchRepo.findOne({ id });
   }
 
-  async getCustomerBranches(customerId: string) {
-    return this.branchRepo.getCustomerBranches(customerId);
+  async getCustomerBranches(query: Record<string, any>, customerId: string) {
+    return this.branchRepo.findAll({ ...query, customerId });
   }
 
   async delete(id: string) {

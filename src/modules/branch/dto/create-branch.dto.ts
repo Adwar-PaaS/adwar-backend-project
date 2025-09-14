@@ -1,11 +1,14 @@
-import { 
-  IsEnum, 
-  IsNotEmpty, 
-  IsOptional, 
-  IsString, 
-  IsUUID 
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { BranchCategory, BranchStatus, BranchType } from '@prisma/client';
+import { CreateAddressDto } from 'src/shared/address/dto/create-address.dto';
 
 export class CreateBranchDto {
   @IsNotEmpty()
@@ -13,8 +16,13 @@ export class CreateBranchDto {
   name: string;
 
   @IsUUID()
-  @IsNotEmpty()
-  addressId: string;
+  @IsOptional()
+  addressId?: string;
+
+  @ValidateNested()
+  @Type(() => CreateAddressDto)
+  @IsOptional()
+  address?: CreateAddressDto;
 
   @IsUUID()
   @IsOptional()
