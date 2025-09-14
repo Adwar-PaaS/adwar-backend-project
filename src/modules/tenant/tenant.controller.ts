@@ -77,17 +77,6 @@ export class TenantController {
     return APIResponse.success({ roles }, 'Tenant roles fetched successfully');
   }
 
-  @Get(':id/branches')
-  async getBranchesOfTenant(
-    @Param('id') id: string,
-  ): Promise<APIResponse<{ branches: any[] }>> {
-    const branches = await this.service.getBranchesOfTenant(id);
-    return APIResponse.success(
-      { branches },
-      'Tenant branches fetched successfully',
-    );
-  }
-
   @Get(':id/orders')
   async getTenantOrders(
     @Param('id') id: string,

@@ -60,10 +60,6 @@ export class TenantService {
     return this.tenantRepo.getTenantOrders(tenantId, query);
   }
 
-  async getBranchesOfTenant(tenantId: string) {
-    return this.tenantRepo.getTenantBranches(tenantId);
-  }
-
   async update(
     id: string,
     dto: UpdateTenantDto,

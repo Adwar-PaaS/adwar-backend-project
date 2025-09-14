@@ -80,7 +80,8 @@ export class TenantRepository extends BaseRepository<Tenant> {
       },
     });
 
-    if (!tenant || tenant.length === 0) throw new NotFoundException('Tenant not found');
+    if (!tenant || tenant.length === 0)
+      throw new NotFoundException('Tenant not found');
 
     return tenant[0].memberships.map((m: { user: any; branch: any }) => ({
       user: m.user,
@@ -116,15 +117,6 @@ export class TenantRepository extends BaseRepository<Tenant> {
       ...result,
       items: result.items.map((tenant: any) => this.mapToCreator(tenant)),
     };
-  }
-
-  async getTenantBranches(tenantId: string) {
-    const tenant = await this.model.findMany({
-      where: { id: tenantId },
-      include: { branch: true },
-    });
-    if (!tenant || tenant.length === 0) throw new NotFoundException('Tenant not found');
-    return tenant[0].branch;
   }
 
   async getById(id: string): Promise<any> {
