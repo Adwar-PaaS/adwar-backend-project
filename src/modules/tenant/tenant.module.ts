@@ -5,9 +5,10 @@ import { TenantRepository } from './tenant.repository';
 import { CloudinaryModule } from '../../shared/upload/cloudinary.module';
 import { PermissionModule } from '../../shared/permission/permission.module';
 import { AddressModule } from 'src/shared/address/address.module';
+import { RolesModule } from '../role/roles.module';
 
 @Module({
-  imports: [CloudinaryModule, PermissionModule, AddressModule],
+  imports: [CloudinaryModule, PermissionModule, AddressModule, RolesModule],
   controllers: [TenantController],
   providers: [TenantService, TenantRepository],
   exports: [TenantService],

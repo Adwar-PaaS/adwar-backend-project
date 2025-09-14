@@ -24,6 +24,7 @@ import { PaginationResult } from '../../common/utils/api-features.util';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PermissionGuard } from '../../common/guards/permission.guard';
+import { any } from 'joi';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -63,10 +64,17 @@ export class TenantController {
 
   @Get(':id/users')
   async getTenantUsers(
+    @Query() query: Record<string, any>,
     @Param('id') id: string,
-  ): Promise<APIResponse<{ users: any[] }>> {
-    const users = await this.service.getUsersInTenant(id);
-    return APIResponse.success({ users }, 'Tenant users fetched successfully');
+  ): Promise<APIResponse<{ users: any[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } = await this.service.getTenantUsers(
+      query,
+      id,
+    );
+    return APIResponse.success(
+      { users: items, ...pagination },
+      'Tenant users fetched successfully',
+    );
   }
 
   @Get(':id/roles')
@@ -75,16 +83,6 @@ export class TenantController {
   ): Promise<APIResponse<{ roles: any[] }>> {
     const roles = await this.service.getRolesForTenant(id);
     return APIResponse.success({ roles }, 'Tenant roles fetched successfully');
-  }
-
-  @Get(':id/orders')
-  async getTenantOrders(
-    @Param('id') id: string,
-    @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ orders: any[] } & Partial<PaginationResult>>> {
-    const result = await this.service.getTenantOrders(id, query);
-
-    return APIResponse.success(result, 'Tenant orders fetched successfully');
   }
 
   @Put(':id')

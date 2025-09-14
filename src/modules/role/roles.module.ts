@@ -8,6 +8,6 @@ import { PermissionModule } from '../../shared/permission/permission.module';
   imports: [PermissionModule],
   controllers: [RolesController],
   providers: [RolesService, RolesRepository],
-  exports: [RolesService],
+  exports: [RolesService, RolesRepository],
 })
 export class RolesModule {}

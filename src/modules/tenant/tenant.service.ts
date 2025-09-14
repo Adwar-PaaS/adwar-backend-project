@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantRepository } from './tenant.repository';
@@ -6,6 +6,10 @@ import { ITenant } from './interfaces/tenant.interface';
 import { UploadService } from '../../shared/upload/upload.service';
 import { Status } from '@prisma/client';
 import { AddressService } from 'src/shared/address/address.service';
+import slugify from 'slugify';
+import { checkUnique } from '../../common/utils/check-unique.util';
+import { PrismaService } from 'src/db/prisma/prisma.service';
+import { RolesRepository } from '../role/roles.repository';
 
 @Injectable()
 export class TenantService {
@@ -13,6 +17,8 @@ export class TenantService {
     private readonly tenantRepo: TenantRepository,
     private readonly uploadService: UploadService,
     private readonly addressService: AddressService,
+    private readonly prismaService: PrismaService,
+    private readonly rolesRepo: RolesRepository,
   ) {}
 
   async create(
@@ -24,40 +30,47 @@ export class TenantService {
       ? await this.uploadService.uploadImage(file)
       : dto.logoUrl;
 
-    const { logoUrl: _, address, ...cleanDto } = dto;
+    const slug = slugify(dto.name, { lower: true, strict: true });
 
-    let tenant = await this.tenantRepo.createTenant({
-      ...cleanDto,
-      logoUrl,
-      creatorId,
+    await checkUnique(this.prismaService, 'tenant', {
+      email: dto.email,
+      slug,
     });
 
-    if (address) {
-      const createdAddress = await this.addressService.create(address);
-      await this.tenantRepo.updateTenant(tenant.id, {
-        addressId: createdAddress.id,
-      });
+    const { logoUrl: _, address, ...cleanDto } = dto;
 
-      tenant = await this.tenantRepo.getById(tenant.id);
+    const tenantData: any = {
+      ...cleanDto,
+      logoUrl,
+      slug,
+      creatorId,
+    };
+
+    if (dto.addressId) {
+      tenantData.address = { connect: { id: dto.addressId } };
+    } else if (dto.address) {
+      const address = await this.addressService.create(dto.address);
+      tenantData.address = { connect: { id: address.id } };
+    } else {
+      throw new BadRequestException(
+        'Either addressId or address object must be provided',
+      );
     }
 
-    return tenant;
+    return await this.tenantRepo.create({ data: tenantData });
   }
 
   async getRolesForTenant(tenantId: string) {
-    return this.tenantRepo.getRolesForTenant(tenantId);
+    const { items } = await this.rolesRepo.findAll({}, { tenantId });
+    return items;
   }
 
   findAll(query: Record<string, any>) {
-    return this.tenantRepo.findAllWithCreator(query);
+    return this.tenantRepo.findAll(query);
   }
 
   findById(id: string): Promise<ITenant> {
-    return this.tenantRepo.getById(id);
-  }
-
-  async getTenantOrders(tenantId: string, query?: Record<string, any>) {
-    return this.tenantRepo.getTenantOrders(tenantId, query);
+    return this.tenantRepo.findOne({ id });
   }
 
   async update(
@@ -68,7 +81,7 @@ export class TenantService {
     let logoUrl = dto.logoUrl;
 
     if (file) {
-      const existing = await this.tenantRepo.getById(id);
+      const existing = await this.tenantRepo.findOne({ id });
       if (existing.logoUrl) {
         await this.uploadService.deleteFile(existing.logoUrl);
       }
@@ -77,38 +90,32 @@ export class TenantService {
 
     const { logoUrl: _, address, ...cleanDto } = dto;
 
-    let tenant = await this.tenantRepo.updateTenant(id, {
+    const updateData: any = {
       ...cleanDto,
       logoUrl,
-    });
+    };
 
-    if (address) {
-      if (tenant.addressId) {
-        await this.addressService.update(tenant.addressId, address);
-      } else {
-        const createdAddress = await this.addressService.create(address);
-        await this.tenantRepo.updateTenant(id, {
-          addressId: createdAddress.id,
-        });
-      }
-
-      tenant = await this.tenantRepo.getById(id);
+    if (dto.addressId) {
+      updateData.address = { connect: { id: dto.addressId } };
+    } else if (dto.address) {
+      const address = await this.addressService.create(dto.address);
+      updateData.address = { connect: { id: address.id } };
     }
 
-    return tenant;
+    return await this.tenantRepo.update(id, updateData);
   }
 
   async toggleStatus(id: string): Promise<ITenant> {
-    const existing = await this.tenantRepo.getById(id);
+    const existing = await this.tenantRepo.findOne({ id });
 
     const newStatus =
       existing.status === Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE;
 
-    return this.tenantRepo.updateStatus(id, newStatus);
+    return this.tenantRepo.update(id, { status: newStatus });
   }
 
-  async getUsersInTenant(tenantId: string) {
-    return this.tenantRepo.getTenantUsers(tenantId);
+  async getTenantUsers(query: Record<string, any>, tenantId: string) {
+    return this.tenantRepo.findAll({ ...query, tenantId });
   }
 
   async delete(id: string): Promise<void> {
