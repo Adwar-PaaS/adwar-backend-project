@@ -8,21 +8,23 @@ datasource db {
 }
 
 model User {
-  id          String    @id @default(cuid())
-  email       String    @unique
-  password    String
-  firstName   String
-  lastName    String
-  phone       String?
-  avatar      String?
-  status      Status    @default(ACTIVE)
-  roleId      String
-  isVerified  Boolean   @default(false)
-  lastLoginAt DateTime?
-  joinedAt    DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id                String        @id @default(uuid()) @db.Uuid
+  email             String        @unique
+  password          String
+  firstName         String
+  lastName          String
+  phone             String?
+  avatar            String?
+  status            Status        @default(ACTIVE)
+  customerSubdomain String?       @unique
+  businessType      BusinessType? @default(TENANT)
+  roleId            String        @db.Uuid
+  isVerified        Boolean       @default(false)
+  lastLoginAt       DateTime?
+  joinedAt          DateTime      @default(now())
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  deletedAt         DateTime?
 
   // Relations
   role                   Role                    @relation(fields: [roleId], references: [id])
@@ -42,29 +44,31 @@ model User {
   updatorTrackings       TrackingEvent[]         @relation("TrackingUpdater")
   attachmentUploads      Attachment[]            @relation("AttachmentUploader")
   orderNotes             OrderNote[]             @relation("OrderNoteAuthor")
-  // createdHubs            Hub[]                   @relation("HubCreator")
 
   @@index([email])
+  @@index([customerSubdomain])
   @@index([status])
+  @@index([businessType])
   @@index([roleId])
   @@index([deletedAt])
   @@map("users")
 }
 
 model Tenant {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid()) @db.Uuid
   name          String
   slug          String    @unique
+  subdomain     String?   @unique // Full subdomain: slug.website-domain.com
   description   String?
   status        Status    @default(ACTIVE)
   logoUrl       String?
   website       String?
-  email         String?   @unique
+  email         String? // Removed @unique - handle in app logic
   phone         String?
-  taxNumber     String?   @unique
-  licenseNumber String?   @unique
-  creatorId     String
-  addressId     String?   @unique
+  taxNumber     String? // Removed @unique - handle in app logic
+  licenseNumber String? // Removed @unique - handle in app logic
+  creatorId     String    @db.Uuid
+  addressId     String?   @db.Uuid // Removed @unique to allow address reuse
   settings      Json? // For tenant-specific configurations
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -72,11 +76,10 @@ model Tenant {
 
   // Relations
   creator     User         @relation("UserCreatedTenants", fields: [creatorId], references: [id], onDelete: Restrict)
-  address     Address?     @relation("TenantAddress", fields: [addressId], references: [id], onDelete: Restrict)
+  address     Address?     @relation("TenantAddress", fields: [addressId], references: [id], onDelete: SetNull)
   roles       Role[]
   branches    Branch[]
   memberships UserTenant[]
-  // hubs        Hub[]        @relation("TenantHubs")
 
   @@index([slug])
   @@index([creatorId])
@@ -85,42 +88,11 @@ model Tenant {
   @@map("tenants")
 }
 
-// model Hub {
-//   id             String    @id @default(cuid())
-//   name           String
-//   code           String
-//   description    String?
-//   status         Status    @default(ACTIVE)
-//   tenantId       String
-//   addressId      String    @unique
-//   creatorId      String?
-//   capacity       Int? // Storage capacity
-//   operatingHours Json? // Operating hours configuration
-//   contactInfo    Json? // Contact information
-//   createdAt      DateTime  @default(now())
-//   updatedAt      DateTime  @updatedAt
-//   deletedAt      DateTime?
-
-//   // Relations
-//   tenant   Tenant   @relation("TenantHubs", fields: [tenantId], references: [id], onDelete: Cascade)
-//   address  Address  @relation("HubAddress", fields: [addressId], references: [id], onDelete: Restrict)
-//   creator  User?    @relation("HubCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-//   branches Branch[] @relation("HubBranches")
-
-//   @@unique([tenantId, code])
-//   @@index([tenantId])
-//   @@index([addressId])
-//   @@index([creatorId])
-//   @@index([status])
-//   @@index([deletedAt])
-//   @@map("hubs")
-// }
-
 model UserTenant {
-  id        String    @id @default(cuid())
-  userId    String
-  tenantId  String
-  branchId  String?
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tenantId  String    @db.Uuid
+  branchId  String?   @db.Uuid
   isActive  Boolean   @default(true)
   startDate DateTime  @default(now())
   endDate   DateTime?
@@ -142,9 +114,9 @@ model UserTenant {
 }
 
 model Role {
-  id        String    @id @default(cuid())
+  id        String    @id @default(uuid()) @db.Uuid
   name      RoleName  @default(CUSTOMER)
-  tenantId  String?
+  tenantId  String?   @db.Uuid
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -161,8 +133,8 @@ model Role {
 }
 
 model RolePermission {
-  id         String       @id @default(cuid())
-  roleId     String
+  id         String       @id @default(uuid()) @db.Uuid
+  roleId     String       @db.Uuid
   entityType EntityType
   actions    ActionType[] @default([])
   createdAt  DateTime     @default(now())
@@ -180,8 +152,8 @@ model RolePermission {
 }
 
 model UserPermission {
-  id           String       @id @default(cuid())
-  userTenantId String
+  id           String       @id @default(uuid()) @db.Uuid
+  userTenantId String       @db.Uuid
   entityType   EntityType
   actions      ActionType[] @default([])
   createdAt    DateTime     @default(now())
@@ -199,7 +171,7 @@ model UserPermission {
 }
 
 model Address {
-  id           String    @id @default(cuid())
+  id           String    @id @default(uuid()) @db.Uuid
   label        String?
   address1     String
   address2     String?
@@ -212,15 +184,14 @@ model Address {
   longitude    Decimal?  @db.Decimal(11, 8)
   isActive     Boolean   @default(true)
   landmark     String?
-  instructions String? // Delivery instructions
+  instructions String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
   // Relations
   userAddresses UserAddress[]
-  tenantAddress Tenant?       @relation("TenantAddress")
-  // hubAddress    Hub?          @relation("HubAddress")
+  tenantAddress Tenant[]      @relation("TenantAddress") // Multiple tenants can use same address
   branches      Branch[]
   pickups       PickUp[]      @relation("PickUpAddress")
 
@@ -235,9 +206,9 @@ model Address {
 }
 
 model UserAddress {
-  id        String      @id @default(cuid())
-  userId    String
-  addressId String
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @db.Uuid
+  addressId String      @db.Uuid
   type      AddressType @default(HOME)
   isPrimary Boolean     @default(false)
   isDefault Boolean     @default(false)
@@ -258,15 +229,14 @@ model UserAddress {
 }
 
 model Branch {
-  id             String         @id @default(cuid())
+  id             String         @id @default(uuid()) @db.Uuid
   name           String
   code           String
   status         BranchStatus   @default(ACTIVE)
-  tenantId       String?
-  customerId     String?
-  addressId      String
-  hubId          String?
-  creatorId      String?
+  tenantId       String?        @db.Uuid
+  customerId     String?        @db.Uuid
+  addressId      String         @db.Uuid
+  creatorId      String?        @db.Uuid
   type           BranchType     @default(MAIN)
   category       BranchCategory @default(WAREHOUSE)
   capacity       Int?
@@ -280,7 +250,6 @@ model Branch {
   tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer    User?        @relation("CustomerBranch", fields: [customerId], references: [id], onDelete: SetNull)
   address     Address      @relation(fields: [addressId], references: [id], onDelete: Restrict)
-  // hub         Hub?         @relation("HubBranches", fields: [hubId], references: [id], onDelete: SetNull)
   userTenants UserTenant[]
   pickups     PickUp[]     @relation("PickupBranch")
 
@@ -288,7 +257,6 @@ model Branch {
   @@index([tenantId])
   @@index([customerId])
   @@index([addressId])
-  @@index([hubId])
   @@index([status])
   @@index([type])
   @@index([deletedAt])
@@ -296,19 +264,19 @@ model Branch {
 }
 
 model Order {
-  id                  String         @id @default(cuid())
+  id                  String         @id @default(uuid()) @db.Uuid
   orderNumber         String         @unique
-  referenceNumber     String? // Customer reference
+  referenceNumber     String?
   totalWeight         Decimal?       @db.Decimal(10, 3)
   totalValue          Decimal?       @db.Decimal(12, 2)
   packageCount        Int            @default(1)
   specialInstructions String?
-  status              OrderStatus    @default(PENDING)
+  status              OrderStatus    @default(DRAFT) // Added DRAFT status
   failedReason        FailedReason?
   priority            PriorityStatus @default(NORMAL)
-  customerId          String?
-  branchId            String?
-  routeId             String?
+  customerId          String?        @db.Uuid
+  branchId            String?        @db.Uuid
+  routeId             String?        @db.Uuid
   estimatedDelivery   DateTime?
   scheduledDelivery   DateTime?
   deliveredAt         DateTime?
@@ -330,7 +298,6 @@ model Order {
 
   @@index([orderNumber])
   @@index([customerId])
-  @@index([branchId])
   @@index([status])
   @@index([priority])
   @@index([createdAt])
@@ -341,8 +308,8 @@ model Order {
 }
 
 model OrderItem {
-  id          String   @id @default(cuid())
-  orderId     String
+  id          String   @id @default(uuid()) @db.Uuid
+  orderId     String   @db.Uuid
   sku         String
   name        String
   description String?
@@ -351,7 +318,7 @@ model OrderItem {
   unitPrice   Decimal  @default(0) @db.Decimal(10, 2)
   total       Decimal  @default(0) @db.Decimal(12, 2)
   weight      Decimal? @db.Decimal(8, 3)
-  dimensions  Json? // width, height, length
+  dimensions  Json?
   isFragile   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -366,8 +333,8 @@ model OrderItem {
 }
 
 model Payment {
-  id                     String        @id @default(cuid())
-  orderId                String        @unique
+  id                     String        @id @default(uuid()) @db.Uuid
+  orderId                String        @unique @db.Uuid
   paymentMethod          PaymentMethod @default(CASH)
   codAmount              Decimal?      @db.Decimal(12, 2)
   shippingCost           Decimal       @default(0) @db.Decimal(10, 2)
@@ -401,20 +368,18 @@ model Payment {
   @@index([paymentMethod])
   @@index([dueDate])
   @@index([transactionDate])
-  @@index([createdAt])
   @@index([deletedAt])
   @@map("payments")
 }
 
 model TrackingEvent {
-  id        String      @id @default(cuid())
-  orderId   String
-  updaterId String?
+  id        String      @id @default(uuid()) @db.Uuid
+  orderId   String      @db.Uuid
+  updaterId String?     @db.Uuid
   status    OrderStatus
   location  String?
   latitude  Decimal?    @db.Decimal(10, 8)
   longitude Decimal?    @db.Decimal(11, 8)
-  hub       String?
   notes     String?
   isPublic  Boolean     @default(true)
   eventType String?
@@ -430,18 +395,16 @@ model TrackingEvent {
   @@index([updaterId])
   @@index([status])
   @@index([timestamp])
-  @@index([isPublic])
   @@index([eventType])
-  @@index([createdAt])
   @@map("tracking_events")
 }
 
 model OrderNote {
-  id        String   @id @default(cuid())
-  orderId   String
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
   content   String
   private   Boolean  @default(false)
-  authorId  String?
+  authorId  String?  @db.Uuid
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -452,21 +415,20 @@ model OrderNote {
   @@index([orderId])
   @@index([authorId])
   @@index([private])
-  @@index([createdAt])
   @@map("order_notes")
 }
 
 model PickUp {
-  id           String       @id @default(cuid())
-  pickupNumber String       @unique @default(cuid())
+  id           String       @id @default(uuid()) @db.Uuid
+  pickupNumber String       @unique @default(uuid())
   status       PickUpStatus @default(CREATED)
   type         PickupType   @default(REGULAR)
   scheduledFor DateTime?
   completedAt  DateTime?
   notes        String?
-  driverId     String?
-  branchId     String?
-  addressId    String?
+  driverId     String?      @db.Uuid
+  branchId     String?      @db.Uuid
+  addressId    String?      @db.Uuid
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   deletedAt    DateTime?
@@ -484,27 +446,15 @@ model PickUp {
   @@index([driverId])
   @@index([branchId])
   @@index([addressId])
-  @@index([createdAt])
   @@index([deletedAt])
   @@map("pickups")
 }
 
-enum PickUpStatus {
-  CREATED
-  SCHEDULED
-  ASSIGNED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  FAILED
-  RESCHEDULED
-}
-
 model PickUpRequest {
-  id          String        @id @default(cuid())
-  pickupId    String
-  requestedBy String
-  respondedBy String?
+  id          String        @id @default(uuid()) @db.Uuid
+  pickupId    String        @db.Uuid
+  requestedBy String        @db.Uuid
+  respondedBy String?       @db.Uuid
   status      RequestStatus @default(PENDING)
   requestedAt DateTime      @default(now())
   respondedAt DateTime?
@@ -528,9 +478,9 @@ model PickUpRequest {
 }
 
 model PickUpOrder {
-  id        String    @id @default(cuid())
-  pickupId  String
-  orderId   String
+  id        String    @id @default(uuid()) @db.Uuid
+  pickupId  String    @db.Uuid
+  orderId   String    @db.Uuid
   sequence  Int       @default(1)
   createdAt DateTime  @default(now())
   deletedAt DateTime?
@@ -548,9 +498,9 @@ model PickUpOrder {
 }
 
 model Shipment {
-  id                  String         @id @default(cuid())
+  id                  String         @id @default(uuid()) @db.Uuid
   shipmentNumber      String         @unique
-  pickupId            String?
+  pickupId            String?        @db.Uuid
   originCountry       String
   originCity          String
   destinationCountry  String
@@ -560,7 +510,7 @@ model Shipment {
   declaredValue       Decimal?       @db.Decimal(12, 2)
   weight              Decimal        @db.Decimal(10, 3)
   volumetricWeight    Decimal?       @db.Decimal(10, 3)
-  dimensions          Json? // length, width, height
+  dimensions          Json?
   numberOfItems       Int            @default(1)
   senderAccountNumber String?
   senderName          String
@@ -571,8 +521,8 @@ model Shipment {
   consigneePhone1     String
   consigneePhone2     String?
   consigneeEmail      String?
-  senderAddressId     String
-  consigneeAddressId  String
+  senderAddressId     String         @db.Uuid
+  consigneeAddressId  String         @db.Uuid
   specialInstructions String?
   insuranceRequired   Boolean        @default(false)
   signatureRequired   Boolean        @default(false)
@@ -597,15 +547,14 @@ model Shipment {
   @@index([originCountry, originCity])
   @@index([destinationCountry, destinationCity])
   @@index([estimatedDelivery])
-  @@index([createdAt])
   @@index([deletedAt])
   @@map("shipments")
 }
 
 model ShipmentOrder {
-  id         String @id @default(cuid())
-  shipmentId String
-  orderId    String
+  id         String @id @default(uuid()) @db.Uuid
+  shipmentId String @db.Uuid
+  orderId    String @db.Uuid
 
   // Relations
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
@@ -618,17 +567,17 @@ model ShipmentOrder {
 }
 
 model Notification {
-  id           String                @id @default(cuid())
-  senderId     String?
+  id           String                @id @default(uuid()) @db.Uuid
+  senderId     String?               @db.Uuid
   title        String
   message      String
-  relatedId    String?
+  relatedId    String?               @db.Uuid
   relatedType  EntityType?
   category     NotificationCategory  @default(INFO)
   channels     NotificationChannel[] @default([])
   priority     PriorityStatus        @default(MEDIUM)
   metadata     Json?
-  templateId   String? // For notification templates
+  templateId   String?
   scheduledFor DateTime?
   expiresAt    DateTime?
   createdAt    DateTime              @default(now())
@@ -644,15 +593,14 @@ model Notification {
   @@index([priority])
   @@index([scheduledFor])
   @@index([expiresAt])
-  @@index([createdAt])
   @@index([deletedAt])
   @@map("notifications")
 }
 
 model NotificationRecipient {
-  id             String               @id @default(cuid())
-  notificationId String
-  recipientId    String
+  id             String               @id @default(uuid()) @db.Uuid
+  notificationId String               @db.Uuid
+  recipientId    String               @db.Uuid
   channel        NotificationChannel?
   readAt         DateTime?
   deliveredAt    DateTime?
@@ -673,17 +621,17 @@ model NotificationRecipient {
 }
 
 model Attachment {
-  id           String         @id @default(cuid())
+  id           String         @id @default(uuid()) @db.Uuid
   filename     String
   originalName String
   url          String
   mimeType     String
   fileSize     Int
   type         AttachmentType @default(OTHER)
-  relatedId    String
+  relatedId    String         @db.Uuid
   relatedType  EntityType
   metadata     Json?
-  uploadedBy   String?
+  uploadedBy   String?        @db.Uuid
   isPublic     Boolean        @default(false)
   expiresAt    DateTime?
   createdAt    DateTime       @default(now())
@@ -697,16 +645,15 @@ model Attachment {
   @@index([type])
   @@index([uploadedBy])
   @@index([isPublic])
-  @@index([createdAt])
   @@index([deletedAt])
   @@map("attachments")
 }
 
 model AuditLog {
-  id          String     @id @default(cuid())
-  userId      String?
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String?    @db.Uuid
   entityType  EntityType
-  entityId    String?
+  entityId    String?    @db.Uuid
   actionType  ActionType
   oldValues   Json?
   newValues   Json?
@@ -726,16 +673,16 @@ model AuditLog {
 }
 
 model Request {
-  id          String         @id @default(cuid())
+  id          String         @id @default(uuid()) @db.Uuid
   entityType  EntityType
-  entityId    String?
+  entityId    String?        @db.Uuid
   actionType  ActionType
   status      RequestStatus  @default(PENDING)
   reason      String?
   responseMsg String?
   priority    PriorityStatus @default(MEDIUM)
-  senderId    String
-  responderId String?
+  senderId    String         @db.Uuid
+  responderId String?        @db.Uuid
   expiresAt   DateTime?
   processedAt DateTime?
   createdAt   DateTime       @default(now())
@@ -752,7 +699,6 @@ model Request {
   @@index([status])
   @@index([priority])
   @@index([expiresAt])
-  @@index([createdAt])
   @@index([deletedAt])
   @@map("requests")
 }
@@ -761,6 +707,14 @@ model Request {
 enum Status {
   ACTIVE
   INACTIVE
+}
+
+enum BusinessType {
+  TENANT
+  INDIVIDUAL
+  SME
+  ENTERPRISE
+  GOVERNMENT
 }
 
 enum AddressType {
@@ -840,6 +794,7 @@ enum AttachmentType {
 }
 
 enum OrderStatus {
+  DRAFT
   CREATED
   PENDING
   APPROVED
@@ -905,7 +860,6 @@ enum EntityType {
   NOTIFICATION
   ADDRESS
   TRACKING
-  HUB
 }
 
 enum ActionType {
@@ -926,6 +880,7 @@ enum ActionType {
 }
 
 enum ShipmentStatus {
+  DRAFT
   PENDING
   DISPATCHED
   IN_TRANSIT
@@ -974,4 +929,15 @@ enum BranchType {
   MAIN
   SUB
   SATELLITE
+}
+
+enum PickUpStatus {
+  CREATED
+  SCHEDULED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+  RESCHEDULED
 }

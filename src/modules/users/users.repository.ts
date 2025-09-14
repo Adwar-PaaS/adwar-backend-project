@@ -15,7 +15,7 @@ import {
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { checkEmailUnique } from '../../common/utils/check-email.util';
+import { checkUnique } from '../../common/utils/check-unique.util';
 import { sanitizeUser } from '../../common/utils/sanitize-user.util';
 
 const userInclude = {
@@ -41,7 +41,7 @@ export class UsersRepository extends BaseRepository<User> {
   }
 
   async createUser(data: CreateUserDto): Promise<UserWithRelations> {
-    await checkEmailUnique(this.prisma, 'user', data.email);
+    await checkUnique(this.prisma, 'user', { email: data.email });
 
     const role = await this.prisma.role.create({
       data: {
@@ -111,7 +111,7 @@ export class UsersRepository extends BaseRepository<User> {
     roleName: RoleName;
     branchId?: string | null;
   }): Promise<UserWithRelations> {
-    await checkEmailUnique(this.prisma, 'user', data.email);
+    await checkUnique(this.prisma, 'user', { email: data.email });
 
     if (data.roleName !== RoleName.CUSTOMER) {
       const existingRole = await this.prisma.role.findFirst({
@@ -168,7 +168,7 @@ export class UsersRepository extends BaseRepository<User> {
     branchId?: string | null;
     permissions?: { entityType: EntityType; actionType: ActionType[] }[];
   }): Promise<UserWithRelations> {
-    await checkEmailUnique(this.prisma, 'user', data.email);
+    await checkUnique(this.prisma, 'user', { email: data.email });
 
     const hasCustomPermissions =
       data.permissions && data.permissions.length > 0;
@@ -207,7 +207,7 @@ export class UsersRepository extends BaseRepository<User> {
     data: UpdateUserDto,
   ): Promise<UserWithRelations> {
     if (data.email) {
-      await checkEmailUnique(this.prisma, 'user', data.email, id);
+      await checkUnique(this.prisma, 'user', { email: data.email }, id);
     }
 
     return this.prisma.$transaction(async (tx) => {

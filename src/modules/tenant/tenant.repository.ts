@@ -4,7 +4,7 @@ import { Tenant, Status } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
-import { checkEmailUnique } from '../../common/utils/check-email.util';
+import { checkUnique } from '../../common/utils/check-unique.util';
 import { userWithRoleSelect } from '../../common/utils/helpers.util';
 import { ApiFeatures } from '../../common/utils/api-features.util';
 import slugify from 'slugify';
@@ -37,14 +37,19 @@ export class TenantRepository extends BaseRepository<Tenant> {
   }
 
   async createTenant(data: CreateTenantInput): Promise<any> {
-    await checkEmailUnique(this.prismaService, 'tenant', data.email);
+    const slug = slugify(data.name, { lower: true, strict: true });
+
+    await checkUnique(this.prismaService, 'tenant', {
+      email: data.email,
+      slug,
+    });
 
     const { creatorId, ...rest } = data;
 
     const tenant = await this.model.create({
       data: {
         ...rest,
-        slug: slugify(data.name, { lower: true, strict: true }),
+        slug,
         status: data.status ?? Status.ACTIVE,
         creator: { connect: { id: creatorId } },
       },
@@ -136,17 +141,23 @@ export class TenantRepository extends BaseRepository<Tenant> {
 
   async updateTenant(id: string, data: UpdateTenantInput): Promise<any> {
     if (data.email) {
-      await checkEmailUnique(this.prismaService, 'tenant', data.email, id);
+      await checkUnique(
+        this.prismaService,
+        'tenant',
+        { email: data.email },
+        id,
+      );
+    }
+
+    if (data.name) {
+      const slug = slugify(data.name, { lower: true, strict: true });
+      await checkUnique(this.prismaService, 'tenant', { slug }, id);
+      data.slug = slug;
     }
 
     const tenant = await this.model.update({
       where: { id },
-      data: {
-        ...data,
-        ...(data.name && {
-          slug: slugify(data.name, { lower: true, strict: true }),
-        }),
-      },
+      data,
       include: {
         creator: { select: { firstName: true, lastName: true } },
         address: true,
