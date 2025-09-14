@@ -1,3 +1,16 @@
+-- Code Generator Function
+CREATE SEQUENCE IF NOT EXISTS gen_code_seq START 1;
+
+CREATE OR REPLACE FUNCTION gen_code(prefix TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    new_code TEXT;
+BEGIN
+    new_code := prefix || '-' || lpad(nextval('gen_code_seq')::TEXT, 6, '0');
+    RETURN new_code;
+END;
+$$ LANGUAGE plpgsql;
+
 -- CreateEnum
 CREATE TYPE "public"."Status" AS ENUM ('ACTIVE', 'INACTIVE');
 
@@ -207,7 +220,7 @@ CREATE TABLE "public"."user_addresses" (
 CREATE TABLE "public"."branches" (
     "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
-    "code" TEXT NOT NULL,
+    "code" TEXT NOT NULL DEFAULT gen_code('BR'::text),
     "status" "public"."BranchStatus" NOT NULL DEFAULT 'ACTIVE',
     "tenantId" UUID,
     "customerId" UUID,
@@ -341,7 +354,7 @@ CREATE TABLE "public"."order_notes" (
 -- CreateTable
 CREATE TABLE "public"."pickups" (
     "id" UUID NOT NULL,
-    "pickupNumber" TEXT NOT NULL,
+    "pickupNumber" TEXT NOT NULL DEFAULT gen_code('PICK'::text),
     "status" "public"."PickUpStatus" NOT NULL DEFAULT 'CREATED',
     "type" "public"."PickupType" NOT NULL DEFAULT 'REGULAR',
     "scheduledFor" TIMESTAMP(3),

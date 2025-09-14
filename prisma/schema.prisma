@@ -231,7 +231,7 @@ model UserAddress {
 model Branch {
   id             String         @id @default(uuid()) @db.Uuid
   name           String
-  code           String
+  code           String         @default(dbgenerated("gen_code('BR'::text)"))
   status         BranchStatus   @default(ACTIVE)
   tenantId       String?        @db.Uuid
   customerId     String?        @db.Uuid
@@ -420,7 +420,7 @@ model OrderNote {
 
 model PickUp {
   id           String       @id @default(uuid()) @db.Uuid
-  pickupNumber String       @unique @default(uuid())
+  pickupNumber String       @unique @default(dbgenerated("gen_code('PICK'::text)"))
   status       PickUpStatus @default(CREATED)
   type         PickupType   @default(REGULAR)
   scheduledFor DateTime?
