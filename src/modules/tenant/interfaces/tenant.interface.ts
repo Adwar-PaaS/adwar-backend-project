@@ -1,13 +1,5 @@
-import { Status, Address } from '@prisma/client';
-
-// interface IAddress {
-//   id: string;
-//   address1: string;
-//   city: string;
-//   country: string;
-//   latitude?: string | null;
-//   longitude?: string | null;
-// }
+import { Status } from '@prisma/client';
+import { IAddress } from 'src/shared/address/interfaces/address.interface';
 
 export interface ITenant {
   id: string;
@@ -21,7 +13,7 @@ export interface ITenant {
     firstName: string;
     lastName: string;
   } | null;
-  address?: Address;
+  address?: IAddress;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
