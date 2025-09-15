@@ -31,11 +31,7 @@ type UserWithRelations = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.user, ['email', 'fullName', 'role']);
-  }
-
-  private getUserInclude() {
-    return userInclude;
+    super(prisma, prisma.user, ['email', 'firstName', 'lastName'], userInclude);
   }
 
   async createUser(data: CreateUserDto): Promise<UserWithRelations> {
@@ -55,11 +51,9 @@ export class UsersRepository extends BaseRepository<User> {
         firstName: data.firstName,
         lastName: data.lastName,
         phone: data.phone,
-        role: {
-          connect: { id: role.id },
-        },
+        role: { connect: { id: role.id } },
       },
-      include: this.getUserInclude(),
+      include: userInclude,
     });
 
     return sanitizeUser(user) as UserWithRelations;
@@ -89,7 +83,7 @@ export class UsersRepository extends BaseRepository<User> {
 
     const user = await this.prisma.user.findUnique({
       where: { id: data.userId },
-      include: this.getUserInclude(),
+      include: userInclude,
     });
 
     if (!user) {
@@ -146,7 +140,7 @@ export class UsersRepository extends BaseRepository<User> {
           },
         },
       },
-      include: this.getUserInclude(),
+      include: userInclude,
     });
 
     return sanitizeUser(user) as UserWithRelations;
@@ -185,7 +179,7 @@ export class UsersRepository extends BaseRepository<User> {
           },
         },
       },
-      include: this.getUserInclude(),
+      include: userInclude,
     });
 
     return sanitizeUser(user) as UserWithRelations;
@@ -221,7 +215,7 @@ export class UsersRepository extends BaseRepository<User> {
       const updatedUser = await tx.user.update({
         where: { id },
         data: userData as any,
-        include: this.getUserInclude(),
+        include: userInclude,
       });
 
       if (tenantId) {
@@ -245,14 +239,14 @@ export class UsersRepository extends BaseRepository<User> {
   async findById(id: string): Promise<UserWithRelations | null> {
     return this.prisma.user.findUnique({
       where: { id },
-      include: this.getUserInclude(),
+      include: userInclude,
     });
   }
 
   async getByEmail(email: string): Promise<UserWithRelations | null> {
     return this.prisma.user.findUnique({
       where: { email },
-      include: this.getUserInclude(),
+      include: userInclude,
     });
   }
 
@@ -264,7 +258,7 @@ export class UsersRepository extends BaseRepository<User> {
     return this.prisma.user.update({
       where: { id },
       data: { status },
-      include: this.getUserInclude(),
+      include: userInclude,
     });
   }
 }

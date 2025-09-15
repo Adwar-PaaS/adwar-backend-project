@@ -117,9 +117,34 @@ export class TenantService {
   }
 
   async getTenantUsers(query: Record<string, any>, tenantId: string) {
-    return this.userRepo.findAll(query, {
+    const { items, ...pagination } = await this.userRepo.findAll(query, {
       memberships: { some: { tenantId } },
     });
+
+    const users = items.map((u: any) => ({
+      id: u.id,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      phone: u.phone,
+      status: u.status,
+      avatar: u.avatar ?? null,
+      customerSubdomain: u.customerSubdomain ?? null,
+      businessType: u.businessType ?? null,
+      branchId: u.branchId ?? null,
+      tenantId: tenantId,
+      isVerified: u.isVerified ?? false,
+      lastLoginAt: u.lastLoginAt ?? null,
+      joinedAt: u.joinedAt,
+      role: u.role
+        ? {
+            id: u.role.id,
+            name: u.role.name,
+          }
+        : null,
+    }));
+
+    return { items: users, ...pagination };
   }
 
   async delete(id: string): Promise<void> {

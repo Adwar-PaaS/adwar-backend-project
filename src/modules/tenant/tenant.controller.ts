@@ -81,6 +81,7 @@ export class TenantController {
       query,
       id,
     );
+
     return APIResponse.success(
       { users: items, ...pagination },
       'Tenant users fetched successfully',
