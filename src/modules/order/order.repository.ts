@@ -100,4 +100,20 @@ export class OrderRepository extends BaseRepository<IOrder> {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async findByItemSku(sku: string) {
+    return this.prisma.order.findFirst({
+      where: {
+        items: {
+          some: { sku },
+        },
+        deletedAt: null,
+      },
+      include: {
+        items: true,
+        customer: { select: userWithRoleSelect },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

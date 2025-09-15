@@ -3,17 +3,32 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersRepository } from './users.repository';
 import { hashPassword } from '../../common/utils/crypto.util';
-import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
+import { AddressService } from 'src/shared/address/address.service';
 import { Status } from '@prisma/client';
-import { CreateUserViaSuperAdminDto } from './dto/create-user-via-super-admin.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepo: UsersRepository) {}
+  constructor(
+    private readonly usersRepo: UsersRepository,
+    private readonly addressService: AddressService,
+  ) {}
 
   async create(dto: CreateUserDto) {
     dto.password = await hashPassword(dto.password);
-    return this.usersRepo.createUser(dto);
+    const user = await this.usersRepo.createUser(dto);
+
+    if (dto.addresses?.length) {
+      for (const addr of dto.addresses) {
+        const address = await this.addressService.create(addr);
+        await this.usersRepo.attachAddressToUser(user.id, address.id, {
+          type: addr.type,
+          isPrimary: false,
+          isDefault: false,
+        });
+      }
+    }
+
+    return user;
   }
 
   findAll(query: Record<string, any>) {
@@ -28,16 +43,17 @@ export class UsersService {
     if (dto.password) {
       dto.password = await hashPassword(dto.password);
     }
+
     return this.usersRepo.updateUser(id, dto);
   }
 
-  async createUserViaSuperAdminWithRole(dto: CreateUserViaSuperAdminDto) {
+  async createUserViaSuperAdminWithRole(dto: CreateUserDto) {
     dto.password = await hashPassword(dto.password);
 
     return this.usersRepo.createUserViaSuperAdminWithRole(dto);
   }
 
-  async createTenantUser(dto: CreateTenantUserDto) {
+  async createTenantUser(dto: CreateUserDto) {
     dto.password = await hashPassword(dto.password);
 
     return this.usersRepo.createTenantUser(dto);

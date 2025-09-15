@@ -4,10 +4,23 @@ import {
   IsOptional,
   IsString,
   MinLength,
-  IsEnum,
   IsUUID,
+  IsArray,
+  ValidateNested,
+  IsEnum,
 } from 'class-validator';
-import { RoleName } from '@prisma/client';
+import { EntityType, ActionType, RoleName } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { CreateAddressDto } from 'src/shared/address/dto/create-address.dto';
+
+class PermissionDto {
+  @IsEnum(EntityType)
+  entityType: EntityType;
+
+  @IsArray()
+  @IsEnum(ActionType, { each: true })
+  actionType: ActionType[];
+}
 
 export class CreateUserDto {
   @IsEmail()
@@ -35,15 +48,25 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsUUID()
-  roleId?: string;
+  roleId?: string | null;
 
   @IsOptional()
   @IsUUID()
-  tenantId?: string;
+  tenantId?: string | null;
 
   @IsOptional()
   @IsUUID()
   branchId?: string | null;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateAddressDto)
+  addresses?: CreateAddressDto[];
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => PermissionDto)
+  permissions?: PermissionDto[];
 }
 
 // import {

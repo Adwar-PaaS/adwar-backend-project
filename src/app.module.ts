@@ -15,6 +15,8 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { RolesModule } from './modules/role/roles.module';
 import { OrderModule } from './modules/order/order.module';
 import { PickUpModule } from './modules/pickup/pickup.module';
+import { ShipmentModule } from './modules/shipment/shipment.module';
+import { MapModule } from './modules/map/map.module';
 import { RequestModule } from './modules/request/request.module';
 import validationSchema from './config/env.validation';
 import { DbModule } from './db/db.module';
@@ -55,6 +57,8 @@ import { RedisService } from './db/redis/redis.service';
     OrderModule,
     PickUpModule,
     RequestModule,
+    ShipmentModule,
+    MapModule,
     BranchModule,
     DbModule,
   ],

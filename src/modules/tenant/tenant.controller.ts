@@ -18,13 +18,17 @@ import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { ITenant } from './interfaces/tenant.interface';
+import {
+  mapTenantView,
+  mapTenantViews,
+  TenantView,
+} from './mappers/tenant.mapper';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { PaginationResult } from '../../common/utils/api-features.util';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PermissionGuard } from '../../common/guards/permission.guard';
-import { any } from 'joi';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -45,10 +49,13 @@ export class TenantController {
   @Get()
   async findAll(
     @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ tenants: any[] } & Partial<PaginationResult>>> {
+  ): Promise<
+    APIResponse<{ tenants: TenantView[] } & Partial<PaginationResult>>
+  > {
     const { items, ...pagination } = await this.service.findAll(query);
+    const tenants = mapTenantViews(items as unknown as ITenant[]);
     return APIResponse.success(
-      { tenants: items, ...pagination },
+      { tenants, ...pagination },
       'Fetched tenants successfully',
       HttpStatus.OK,
     );
@@ -57,9 +64,12 @@ export class TenantController {
   @Get(':id')
   async findById(
     @Param('id') id: string,
-  ): Promise<APIResponse<{ tenant: ITenant }>> {
+  ): Promise<APIResponse<{ tenant: TenantView }>> {
     const tenant = await this.service.findById(id);
-    return APIResponse.success({ tenant }, 'Tenant retrieved successfully');
+    return APIResponse.success(
+      { tenant: mapTenantView(tenant as ITenant) },
+      'Tenant retrieved successfully',
+    );
   }
 
   @Get(':id/users')
@@ -91,18 +101,21 @@ export class TenantController {
     @Param('id') id: string,
     @Body() dto: UpdateTenantDto,
     @UploadedFile() file?: Express.Multer.File,
-  ): Promise<APIResponse<{ tenant: ITenant }>> {
+  ): Promise<APIResponse<{ tenant: TenantView }>> {
     const tenant = await this.service.update(id, dto, file);
-    return APIResponse.success({ tenant }, 'Tenant updated successfully');
+    return APIResponse.success(
+      { tenant: mapTenantView(tenant as ITenant) },
+      'Tenant updated successfully',
+    );
   }
 
   @Patch(':id/status')
   async updateStatus(
     @Param('id') id: string,
-  ): Promise<APIResponse<{ tenant: ITenant }>> {
+  ): Promise<APIResponse<{ tenant: TenantView }>> {
     const tenant = await this.service.toggleStatus(id);
     return APIResponse.success(
-      { tenant },
+      { tenant: mapTenantView(tenant as ITenant) },
       `Tenant status updated to ${tenant.status}`,
     );
   }

@@ -9,7 +9,9 @@ export interface ITenant {
   logoUrl: string | null;
   email: string | null;
   phone: string | null;
+  website: string | null;
   creator?: {
+    id: string;
     firstName: string;
     lastName: string;
   } | null;

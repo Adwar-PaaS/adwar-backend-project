@@ -8,11 +8,7 @@ import {
   ValidateNested,
   Min,
 } from 'class-validator';
-import {
-  FailedReason,
-  PriorityStatus,
-  OrderStatus,
-} from '@prisma/client';
+import { FailedReason, PriorityStatus, OrderStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './order-item.dto';
 

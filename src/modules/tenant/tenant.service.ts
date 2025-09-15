@@ -10,6 +10,7 @@ import slugify from 'slugify';
 import { checkUnique } from '../../common/utils/check-unique.util';
 import { PrismaService } from 'src/db/prisma/prisma.service';
 import { RolesRepository } from '../role/roles.repository';
+import { UsersRepository } from '../users/users.repository';
 
 @Injectable()
 export class TenantService {
@@ -19,6 +20,7 @@ export class TenantService {
     private readonly addressService: AddressService,
     private readonly prismaService: PrismaService,
     private readonly rolesRepo: RolesRepository,
+    private readonly userRepo: UsersRepository,
   ) {}
 
   async create(
@@ -115,7 +117,9 @@ export class TenantService {
   }
 
   async getTenantUsers(query: Record<string, any>, tenantId: string) {
-    return this.tenantRepo.findAll({ ...query, tenantId });
+    return this.userRepo.findAll(query, {
+      memberships: { some: { tenantId } },
+    });
   }
 
   async delete(id: string): Promise<void> {

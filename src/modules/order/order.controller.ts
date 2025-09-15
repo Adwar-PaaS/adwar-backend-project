@@ -23,6 +23,9 @@ import { Audit } from '../../common/decorators/audit.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PaginationResult } from '../../common/utils/api-features.util';
+import { CsrfExempt } from '../../common/decorators/csrf-exempt.decorator';
+import { ScanUpdateStatusDto } from './dto/scan-update-status.dto';
+import { ScanCreateOrderDto } from './dto/scan-create-order.dto';
 
 @Controller('orders')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -117,6 +120,52 @@ export class OrderController {
       null,
       'Order deleted successfully',
       HttpStatus.NO_CONTENT,
+    );
+  }
+
+  @Get('scan/sku/:sku')
+  @Permissions(EntityType.ORDER, ActionType.READ)
+  async findBySku(@Param('sku') sku: string) {
+    const order = await this.orderService.findByItemSku(sku);
+    return APIResponse.success({ order }, 'Order retrieved by SKU');
+  }
+
+  // Public/CSRF-exempt webhook endpoints for scanners/integrations
+  @Post('scan/update-status')
+  @CsrfExempt()
+  async scanUpdateStatus(
+    @Body() dto: ScanUpdateStatusDto,
+    @Param() _p: any,
+    @Query() _q: any,
+    req?: any,
+  ) {
+    const signature = req?.headers['x-webhook-signature'] as string | undefined;
+    const order = await this.orderService.scanUpdateStatus(
+      dto,
+      signature,
+      req?.rawBody,
+    );
+    return APIResponse.success({ order }, 'Order status updated via scan');
+  }
+
+  @Post('scan/create')
+  @CsrfExempt()
+  async scanCreateOrder(
+    @Body() dto: ScanCreateOrderDto,
+    @Param() _p: any,
+    @Query() _q: any,
+    req?: any,
+  ) {
+    const signature = req?.headers['x-webhook-signature'] as string | undefined;
+    const order = await this.orderService.scanCreateOrder(
+      dto,
+      signature,
+      req?.rawBody,
+    );
+    return APIResponse.success(
+      { order },
+      'Order created via scan',
+      HttpStatus.CREATED,
     );
   }
 }

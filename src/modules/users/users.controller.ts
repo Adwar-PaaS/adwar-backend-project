@@ -21,11 +21,9 @@ import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { Permissions } from '../../common/decorators/permission.decorator';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { PaginationResult } from '../../common/utils/api-features.util';
-import { EntityType, ActionType, RoleName } from '@prisma/client';
-import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
+import { EntityType, ActionType } from '@prisma/client';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { CreateUserViaSuperAdminDto } from './dto/create-user-via-super-admin.dto';
 import {
   Cacheable,
   InvalidateCache,
@@ -57,9 +55,7 @@ export class UsersController {
   @UseInterceptors(InvalidateCacheInterceptor)
   @InvalidateCache('users:*')
   @Permissions(EntityType.USER, ActionType.CREATE)
-  async createAdminUserViaSuperAdminWithRole(
-    @Body() dto: CreateUserViaSuperAdminDto,
-  ) {
+  async createAdminUserViaSuperAdminWithRole(@Body() dto: CreateUserDto) {
     const user = await this.usersService.createUserViaSuperAdminWithRole(dto);
     return APIResponse.success(
       { user },
@@ -73,7 +69,7 @@ export class UsersController {
   @InvalidateCache('users:*')
   @Permissions(EntityType.USER, ActionType.CREATE)
   async createTenantUser(
-    @Body() dto: CreateTenantUserDto,
+    @Body() dto: CreateUserDto,
     @CurrentUser() authUser: AuthUser,
   ) {
     const user = await this.usersService.createTenantUser(dto);

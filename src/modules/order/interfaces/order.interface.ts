@@ -1,8 +1,4 @@
-import {
-  FailedReason,
-  PriorityStatus,
-  OrderStatus,
-} from '@prisma/client';
+import { FailedReason, PriorityStatus, OrderStatus } from '@prisma/client';
 
 export interface IOrderItem {
   id: string;
@@ -27,8 +23,10 @@ export interface ICustomer {
 export interface IOrder {
   id: string;
   orderNumber: string;
+  referenceNumber?: string | null;
   totalWeight?: number | null;
   totalValue?: number | null;
+  packageCount: number;
   deliveredAt?: Date | null;
   assignedAt?: Date | null;
   pickedAt?: Date | null;
@@ -38,11 +36,15 @@ export interface IOrder {
   failedReason?: FailedReason | null;
   priority: PriorityStatus;
   estimatedDelivery?: Date | null;
+  scheduledDelivery?: Date | null;
   branchId?: string | null;
   customerId?: string | null;
+  routeId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 
   items?: IOrderItem[];
   customer?: ICustomer | null;
+  // tracking?: any[]; // can be typed later if needed
+  // payment?: any | null;
 }

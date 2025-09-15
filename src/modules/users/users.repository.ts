@@ -4,14 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import {
-  Prisma,
-  User,
-  RoleName,
-  Status,
-  EntityType,
-  ActionType,
-} from '@prisma/client';
+import { Prisma, User, RoleName, Status, AddressType } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -24,6 +17,11 @@ const userInclude = {
     include: {
       tenant: true,
       permissions: true,
+    },
+  },
+  addresses: {
+    include: {
+      address: true,
     },
   },
 } satisfies Prisma.UserInclude;
@@ -101,16 +99,13 @@ export class UsersRepository extends BaseRepository<User> {
     return sanitizeUser(user) as UserWithRelations;
   }
 
-  async createUserViaSuperAdminWithRole(data: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    tenantId: string;
-    roleName: RoleName;
-    branchId?: string | null;
-  }): Promise<UserWithRelations> {
+  async createUserViaSuperAdminWithRole(
+    data: CreateUserDto,
+  ): Promise<UserWithRelations> {
+    if (!data.tenantId) {
+      throw new BadRequestException('tenantId are required');
+    }
+
     await checkUnique(this.prisma, 'user', { email: data.email });
 
     if (data.roleName !== RoleName.CUSTOMER) {
@@ -157,17 +152,11 @@ export class UsersRepository extends BaseRepository<User> {
     return sanitizeUser(user) as UserWithRelations;
   }
 
-  async createTenantUser(data: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    roleId: string;
-    tenantId: string;
-    branchId?: string | null;
-    permissions?: { entityType: EntityType; actionType: ActionType[] }[];
-  }): Promise<UserWithRelations> {
+  async createTenantUser(data: CreateUserDto): Promise<UserWithRelations> {
+    if (!data.roleId || !data.tenantId) {
+      throw new BadRequestException('roleId and tenantId are required');
+    }
+
     await checkUnique(this.prisma, 'user', { email: data.email });
 
     const hasCustomPermissions =
@@ -202,6 +191,22 @@ export class UsersRepository extends BaseRepository<User> {
     return sanitizeUser(user) as UserWithRelations;
   }
 
+  async attachAddressToUser(
+    userId: string,
+    addressId: string,
+    options?: { isPrimary?: boolean; isDefault?: boolean; type: AddressType },
+  ) {
+    return this.prisma.userAddress.create({
+      data: {
+        userId,
+        addressId,
+        type: options?.type ?? AddressType.HOME,
+        isPrimary: options?.isPrimary ?? false,
+        isDefault: options?.isDefault ?? false,
+      },
+    });
+  }
+
   async updateUser(
     id: string,
     data: UpdateUserDto,
@@ -215,7 +220,7 @@ export class UsersRepository extends BaseRepository<User> {
 
       const updatedUser = await tx.user.update({
         where: { id },
-        data: userData,
+        data: userData as any,
         include: this.getUserInclude(),
       });
 
