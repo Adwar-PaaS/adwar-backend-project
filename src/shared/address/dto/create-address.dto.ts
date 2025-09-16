@@ -25,9 +25,9 @@ export class CreateAddressDto {
   @IsString()
   district?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(AddressType)
-  type: AddressType;
+  type: AddressType = AddressType.HOME;
 
   @IsNotEmpty()
   @IsString()

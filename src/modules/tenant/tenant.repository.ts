@@ -5,8 +5,8 @@ import { BaseRepository } from '../../shared/factory/base.repository';
 
 @Injectable()
 export class TenantRepository extends BaseRepository<Tenant> {
-  constructor(private readonly prismaService: PrismaService) {
-    super(prismaService, prismaService.tenant, ['name', 'email'], {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma, prisma.tenant, ['name', 'email'], {
       creator: true,
       address: true,
     });

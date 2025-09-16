@@ -49,17 +49,17 @@ export class TenantService {
     };
 
     if (dto.addressId) {
-      tenantData.address = { connect: { id: dto.addressId } };
+      tenantData.addressId = dto.addressId;
     } else if (dto.address) {
       const address = await this.addressService.create(dto.address);
-      tenantData.address = { connect: { id: address.id } };
+      tenantData.addressId = address.id;
     } else {
       throw new BadRequestException(
         'Either addressId or address object must be provided',
       );
     }
 
-    return await this.tenantRepo.create({ data: tenantData });
+    return await this.tenantRepo.create(tenantData);
   }
 
   async getRolesForTenant(tenantId: string) {
@@ -98,10 +98,19 @@ export class TenantService {
     };
 
     if (dto.addressId) {
-      updateData.address = { connect: { id: dto.addressId } };
+      updateData.addressId = dto.addressId;
     } else if (dto.address) {
-      const address = await this.addressService.create(dto.address);
-      updateData.address = { connect: { id: address.id } };
+      const tenant = await this.tenantRepo.findOne({ id });
+      if (!tenant?.addressId) {
+        throw new BadRequestException('Tenant has no address to update');
+      }
+
+      const updatedAddress = await this.addressService.update(
+        tenant.addressId,
+        dto.address,
+      );
+
+      updateData.addressId = updatedAddress.id;
     }
 
     return await this.tenantRepo.update(id, updateData);
