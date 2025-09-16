@@ -21,7 +21,11 @@ export class SessionGuard implements CanActivate {
     const user = await this.prisma.user.findUnique({
       where: { id: req.session.userId },
       include: {
-        role: true,
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
         memberships: {
           include: {
             tenant: true,

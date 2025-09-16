@@ -7,7 +7,7 @@ export interface AuthUser {
   role: {
     id: string;
     name: RoleName;
-    permissions: {
+    permissions: { // user permission that allowed
       entity: EntityType;
       action: ActionType;
     }[];

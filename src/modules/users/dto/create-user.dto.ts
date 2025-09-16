@@ -13,13 +13,17 @@ import { EntityType, ActionType, RoleName } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { CreateAddressUserDto } from 'src/shared/address/dto/create-user-address.dto';
 
-class PermissionDto {
+class UserPermissionDto {
   @IsEnum(EntityType)
   entityType: EntityType;
 
-  @IsArray()
+  @IsOptional()
   @IsEnum(ActionType, { each: true })
-  actionType: ActionType[];
+  allowed?: ActionType[];
+
+  @IsOptional()
+  @IsEnum(ActionType, { each: true })
+  denied?: ActionType[];
 }
 
 export class CreateUserDto {
@@ -65,8 +69,8 @@ export class CreateUserDto {
 
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => PermissionDto)
-  permissions?: PermissionDto[];
+  @Type(() => UserPermissionDto)
+  permissions?: UserPermissionDto[];
 }
 
 // import {

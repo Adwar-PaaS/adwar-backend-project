@@ -153,9 +153,6 @@ export class UsersRepository extends BaseRepository<User> {
 
     await checkUnique(this.prisma, 'user', { email: data.email });
 
-    const hasCustomPermissions =
-      data.permissions && data.permissions.length > 0;
-
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
@@ -168,11 +165,12 @@ export class UsersRepository extends BaseRepository<User> {
           create: {
             tenantId: data.tenantId,
             ...(data.branchId ? { branchId: data.branchId } : {}),
-            permissions: hasCustomPermissions
+            permissions: data.permissions
               ? {
-                  create: data.permissions!.map((p) => ({
+                  create: data.permissions.map((p) => ({
                     entityType: p.entityType,
-                    actionType: p.actionType,
+                    allowed: p.allowed ?? [],
+                    denied: p.denied ?? [],
                   })),
                 }
               : undefined,
