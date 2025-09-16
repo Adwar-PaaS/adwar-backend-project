@@ -69,15 +69,15 @@ export class OrderController {
     return APIResponse.success({ order }, 'Order retrieved successfully');
   }
 
-  // @Get('customer/:customerId')
-  // @Permissions(EntityType.ORDER, ActionType.READ)
-  // async getOrdersOfCustomer(@Param('customerId') customerId: string) {
-  //   const orders = await this.orderService.getOrdersOfCustomer(customerId);
-  //   return APIResponse.success(
-  //     { orders },
-  //     'Customer orders retrieved successfully',
-  //   );
-  // }
+  @Get('customer/:customerId')
+  @Permissions(EntityType.ORDER, ActionType.READ)
+  async getOrdersOfCustomer(@Param('customerId') customerId: string) {
+    const orders = await this.orderService.getCustomerOrders(customerId);
+    return APIResponse.success(
+      { orders },
+      'Customer orders retrieved successfully',
+    );
+  }
 
   @Put(':id/status')
   @Permissions(EntityType.ORDER, ActionType.UPDATE)

@@ -33,7 +33,7 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsEnum(OrderStatus)
-  status?: OrderStatus = OrderStatus.PENDING;
+  status?: OrderStatus = OrderStatus.DRAFT;
 
   @IsOptional()
   @IsEnum(FailedReason)

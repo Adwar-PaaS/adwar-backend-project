@@ -5,7 +5,6 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderStatus } from '@prisma/client';
-import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { ScanUpdateStatusDto } from './dto/scan-update-status.dto';
 import { ScanCreateOrderDto } from './dto/scan-create-order.dto';
 import { PrismaService } from 'src/db/prisma/prisma.service';
@@ -14,6 +13,7 @@ import {
   computeHmacSha256,
   safeTimingEqual,
 } from '../../common/utils/hmac.util';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Injectable()
 export class OrderService {
@@ -24,38 +24,7 @@ export class OrderService {
   ) {}
 
   async create(user: AuthUser, dto: CreateOrderDto): Promise<IOrder> {
-    if (user?.role?.name === 'CUSTOMER') {
-      dto.status = OrderStatus.CREATED;
-      dto.customerId = user.id;
-    }
-
-    const itemsWithTotal = (dto.items || []).map((item) => ({
-      sku: item.sku,
-      name: item.name,
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      weight: item.weight,
-      total: item.quantity * item.unitPrice,
-    }));
-
-    const totalValue = itemsWithTotal.reduce(
-      (acc, item) => acc + item.total,
-      0,
-    );
-    const totalWeight = itemsWithTotal.reduce(
-      (acc, item) => acc + (item.weight || 0) * item.quantity,
-      0,
-    );
-
-    const orderData = {
-      ...dto,
-      items: itemsWithTotal.length > 0 ? { create: itemsWithTotal } : undefined,
-      totalValue: dto.totalValue ?? totalValue,
-      totalWeight: dto.totalWeight ?? totalWeight,
-    };
-
-    return this.orderRepo.create(orderData, { items: true });
+    return this.orderRepo.createWithProducts(user, dto);
   }
 
   async update(id: string, dto: UpdateOrderDto): Promise<IOrder> {
@@ -98,6 +67,10 @@ export class OrderService {
 
   async findOne(id: string): Promise<IOrder | null> {
     return this.orderRepo.findOne({ id });
+  }
+
+  async getCustomerOrders(customerId: string, query: Record<string, any> = {}) {
+    return this.orderRepo.findAll(query, { customerId });
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto): Promise<IOrder> {

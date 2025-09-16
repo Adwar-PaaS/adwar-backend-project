@@ -8,6 +8,6 @@ import { PermissionModule } from '../../shared/permission/permission.module';
   imports: [PermissionModule],
   controllers: [OrderController],
   providers: [OrderService, OrderRepository],
-  exports: [OrderService],
+  exports: [OrderService, OrderRepository],
 })
 export class OrderModule {}
