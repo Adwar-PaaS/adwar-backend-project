@@ -123,21 +123,13 @@ export class OrderService {
     return this.orderRepo.update(id, updates);
   }
 
-  async getOrdersOfDriver(driverId: string) {
-    return this.orderRepo.getAllOrdersForDriver(driverId);
-  }
-
-  async getOrdersOfCustomer(customerId: string) {
-    return this.orderRepo.getAllOrdersForCustomer(customerId);
-  }
-
   async delete(id: string): Promise<void> {
     return this.orderRepo.delete(id);
   }
 
-  async findByItemSku(sku: string) {
-    return this.orderRepo.findByItemSku(sku);
-  }
+  // async findByItemSku(sku: string) {
+  //   return this.orderRepo.findByItemSku(sku);
+  // }
 
   async scanUpdateStatus(
     dto: ScanUpdateStatusDto,

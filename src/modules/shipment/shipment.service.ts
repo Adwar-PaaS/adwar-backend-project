@@ -3,7 +3,7 @@ import { ShipmentRepository } from './shipment.repository';
 import { IShipment } from './interfaces/shipment.interface';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
-import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+// import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 
 @Injectable()
 export class ShipmentService {
@@ -37,9 +37,9 @@ export class ShipmentService {
     return this.shipmentRepo.update(id, data);
   }
 
-  updateStatus(id: string, dto: UpdateShipmentStatusDto): Promise<IShipment> {
-    return this.shipmentRepo.update(id, { status: dto.status });
-  }
+  // updateStatus(id: string, dto: UpdateShipmentStatusDto): Promise<IShipment> {
+  //   return this.shipmentRepo.update(id, { status: dto.status });
+  // }
 
   delete(id: string): Promise<void> {
     return this.shipmentRepo.delete(id);

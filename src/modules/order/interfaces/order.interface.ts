@@ -39,7 +39,6 @@ export interface IOrder {
   scheduledDelivery?: Date | null;
   branchId?: string | null;
   customerId?: string | null;
-  routeId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 

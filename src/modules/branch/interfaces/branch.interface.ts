@@ -7,7 +7,6 @@ export interface IBranch {
   code: string;
   status: BranchStatus;
   tenantId?: string;
-  customerId?: string;
   creatorId?: string;
   type: BranchType;
   category: BranchCategory;

@@ -1,4 +1,4 @@
-import { ShipmentStatus, ServiceType } from '@prisma/client';
+import { ServiceType } from '@prisma/client';
 
 export interface IShipmentAddressRef {
   id: string;
@@ -37,7 +37,6 @@ export interface IShipment {
   insuranceRequired: boolean;
   signatureRequired: boolean;
   fragileItems: boolean;
-  status: ShipmentStatus;
   estimatedDelivery?: Date | null;
   actualDelivery?: Date | null;
   createdAt: Date;

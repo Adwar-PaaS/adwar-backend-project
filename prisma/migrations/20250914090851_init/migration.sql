@@ -15,9 +15,6 @@ $$ LANGUAGE plpgsql;
 CREATE TYPE "public"."Status" AS ENUM ('ACTIVE', 'INACTIVE');
 
 -- CreateEnum
-CREATE TYPE "public"."BusinessType" AS ENUM ('TENANT', 'INDIVIDUAL', 'SME', 'ENTERPRISE', 'GOVERNMENT');
-
--- CreateEnum
 CREATE TYPE "public"."AddressType" AS ENUM ('HOME', 'WORK', 'OFFICE', 'BRANCH', 'PICKUP', 'DELIVERY', 'OTHER');
 
 -- CreateEnum
@@ -51,13 +48,10 @@ CREATE TYPE "public"."FailedReason" AS ENUM ('CUSTOMER_NOT_AVAILABLE', 'WRONG_AD
 CREATE TYPE "public"."RoleName" AS ENUM ('SUPER_ADMIN', 'ADMIN', 'DRIVER', 'PACKER', 'ACCOUNTANT', 'PICKER', 'OPERATION', 'CUSTOMER');
 
 -- CreateEnum
-CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'TENANT', 'ORDER', 'DRIVER', 'ROLE', 'PICKUP_REQUEST', 'PICKUP', 'TENANT_ORDER', 'TENANT_CUSTOMER', 'CUSTOMER_ORDER', 'BRANCH', 'SHIPMENT', 'PAYMENT', 'NOTIFICATION', 'ADDRESS', 'TRACKING');
+CREATE TYPE "public"."EntityType" AS ENUM ('USER', 'TENANT', 'ORDER', 'DRIVER', 'ROLE', 'PICKUP', 'TENANT_ORDER', 'TENANT_CUSTOMER', 'CUSTOMER_ORDER', 'BRANCH', 'SHIPMENT', 'PAYMENT', 'NOTIFICATION', 'ADDRESS', 'TRACKING', 'PRODUCT', 'INVENTORY', 'VEHICLE');
 
 -- CreateEnum
 CREATE TYPE "public"."ActionType" AS ENUM ('ALL', 'CREATE', 'READ', 'UPDATE', 'DELETE', 'ACTIVATE', 'DEACTIVATE', 'APPROVE', 'EXPORT', 'IMPORT', 'REJECT', 'ASSIGN', 'COMPLETE', 'CANCEL');
-
--- CreateEnum
-CREATE TYPE "public"."ShipmentStatus" AS ENUM ('DRAFT', 'PENDING', 'DISPATCHED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED', 'CANCELLED', 'LOST', 'DAMAGED');
 
 -- CreateEnum
 CREATE TYPE "public"."PickupType" AS ENUM ('REGULAR', 'EXPRESS', 'BULK', 'SCHEDULED', 'ON_DEMAND');
@@ -75,7 +69,7 @@ CREATE TYPE "public"."BranchCategory" AS ENUM ('WAREHOUSE', 'RETAIL', 'DISTRIBUT
 CREATE TYPE "public"."BranchType" AS ENUM ('MAIN', 'SUB', 'SATELLITE');
 
 -- CreateEnum
-CREATE TYPE "public"."PickUpStatus" AS ENUM ('CREATED', 'SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'FAILED', 'RESCHEDULED');
+CREATE TYPE "public"."PickUpStatus" AS ENUM ('CREATED', 'PENDING', 'SCHEDULED', 'APPROVED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'FAILED', 'RESCHEDULED');
 
 -- CreateTable
 CREATE TABLE "public"."users" (
@@ -88,7 +82,6 @@ CREATE TABLE "public"."users" (
     "avatar" TEXT,
     "status" "public"."Status" NOT NULL DEFAULT 'ACTIVE',
     "customerSubdomain" TEXT,
-    "businessType" "public"."BusinessType" DEFAULT 'TENANT',
     "roleId" UUID NOT NULL,
     "isVerified" BOOLEAN NOT NULL DEFAULT false,
     "lastLoginAt" TIMESTAMP(3),
@@ -130,7 +123,6 @@ CREATE TABLE "public"."user_tenants" (
     "userId" UUID NOT NULL,
     "tenantId" UUID NOT NULL,
     "branchId" UUID,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "endDate" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -170,7 +162,8 @@ CREATE TABLE "public"."user_permissions" (
     "id" UUID NOT NULL,
     "userTenantId" UUID NOT NULL,
     "entityType" "public"."EntityType" NOT NULL,
-    "actions" "public"."ActionType"[] DEFAULT ARRAY[]::"public"."ActionType"[],
+    "allowed" "public"."ActionType"[] DEFAULT ARRAY[]::"public"."ActionType"[],
+    "denied" "public"."ActionType"[] DEFAULT ARRAY[]::"public"."ActionType"[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -223,8 +216,7 @@ CREATE TABLE "public"."branches" (
     "code" TEXT NOT NULL DEFAULT gen_code('BR'::text),
     "status" "public"."BranchStatus" NOT NULL DEFAULT 'ACTIVE',
     "tenantId" UUID,
-    "customerId" UUID,
-    "addressId" UUID NOT NULL,
+    "addressId" UUID,
     "creatorId" UUID,
     "type" "public"."BranchType" NOT NULL DEFAULT 'MAIN',
     "category" "public"."BranchCategory" NOT NULL DEFAULT 'WAREHOUSE',
@@ -239,6 +231,40 @@ CREATE TABLE "public"."branches" (
 );
 
 -- CreateTable
+CREATE TABLE "public"."products" (
+    "id" UUID NOT NULL,
+    "sku" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "category" TEXT,
+    "weight" DECIMAL(8,3),
+    "dimensions" JSONB,
+    "isFragile" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "products_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."inventory" (
+    "id" UUID NOT NULL,
+    "productId" UUID NOT NULL,
+    "branchId" UUID NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 0,
+    "minStock" INTEGER NOT NULL DEFAULT 0,
+    "maxStock" INTEGER,
+    "reorderPoint" INTEGER NOT NULL DEFAULT 0,
+    "lastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "inventory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "public"."orders" (
     "id" UUID NOT NULL,
     "orderNumber" TEXT NOT NULL,
@@ -250,9 +276,8 @@ CREATE TABLE "public"."orders" (
     "status" "public"."OrderStatus" NOT NULL DEFAULT 'DRAFT',
     "failedReason" "public"."FailedReason",
     "priority" "public"."PriorityStatus" NOT NULL DEFAULT 'NORMAL',
+    "pickupId" UUID,
     "customerId" UUID,
-    "branchId" UUID,
-    "routeId" UUID,
     "estimatedDelivery" TIMESTAMP(3),
     "scheduledDelivery" TIMESTAMP(3),
     "deliveredAt" TIMESTAMP(3),
@@ -270,16 +295,10 @@ CREATE TABLE "public"."orders" (
 CREATE TABLE "public"."order_items" (
     "id" UUID NOT NULL,
     "orderId" UUID NOT NULL,
-    "sku" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT,
-    "category" TEXT,
+    "productId" UUID NOT NULL,
     "quantity" INTEGER NOT NULL DEFAULT 1,
     "unitPrice" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "total" DECIMAL(12,2) NOT NULL DEFAULT 0,
-    "weight" DECIMAL(8,3),
-    "dimensions" JSONB,
-    "isFragile" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -289,7 +308,7 @@ CREATE TABLE "public"."order_items" (
 -- CreateTable
 CREATE TABLE "public"."payments" (
     "id" UUID NOT NULL,
-    "orderId" UUID NOT NULL,
+    "pickupId" UUID NOT NULL,
     "paymentMethod" "public"."PaymentMethod" NOT NULL DEFAULT 'CASH',
     "codAmount" DECIMAL(12,2),
     "shippingCost" DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -371,39 +390,10 @@ CREATE TABLE "public"."pickups" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."pickup_requests" (
-    "id" UUID NOT NULL,
-    "pickupId" UUID NOT NULL,
-    "requestedBy" UUID NOT NULL,
-    "respondedBy" UUID,
-    "status" "public"."RequestStatus" NOT NULL DEFAULT 'PENDING',
-    "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "respondedAt" TIMESTAMP(3),
-    "notes" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "deletedAt" TIMESTAMP(3),
-
-    CONSTRAINT "pickup_requests_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "public"."pickup_orders" (
-    "id" UUID NOT NULL,
-    "pickupId" UUID NOT NULL,
-    "orderId" UUID NOT NULL,
-    "sequence" INTEGER NOT NULL DEFAULT 1,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deletedAt" TIMESTAMP(3),
-
-    CONSTRAINT "pickup_orders_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "public"."shipments" (
     "id" UUID NOT NULL,
     "shipmentNumber" TEXT NOT NULL,
-    "pickupId" UUID,
+    "pickupId" UUID NOT NULL,
     "originCountry" TEXT NOT NULL,
     "originCity" TEXT NOT NULL,
     "destinationCountry" TEXT NOT NULL,
@@ -430,7 +420,6 @@ CREATE TABLE "public"."shipments" (
     "insuranceRequired" BOOLEAN NOT NULL DEFAULT false,
     "signatureRequired" BOOLEAN NOT NULL DEFAULT false,
     "fragileItems" BOOLEAN NOT NULL DEFAULT false,
-    "status" "public"."ShipmentStatus" NOT NULL DEFAULT 'PENDING',
     "estimatedDelivery" TIMESTAMP(3),
     "actualDelivery" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -438,15 +427,6 @@ CREATE TABLE "public"."shipments" (
     "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "shipments_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "public"."shipment_orders" (
-    "id" UUID NOT NULL,
-    "shipmentId" UUID NOT NULL,
-    "orderId" UUID NOT NULL,
-
-    CONSTRAINT "shipment_orders_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -562,9 +542,6 @@ CREATE INDEX "users_customerSubdomain_idx" ON "public"."users"("customerSubdomai
 CREATE INDEX "users_status_idx" ON "public"."users"("status");
 
 -- CreateIndex
-CREATE INDEX "users_businessType_idx" ON "public"."users"("businessType");
-
--- CreateIndex
 CREATE INDEX "users_roleId_idx" ON "public"."users"("roleId");
 
 -- CreateIndex
@@ -575,6 +552,9 @@ CREATE UNIQUE INDEX "tenants_slug_key" ON "public"."tenants"("slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "tenants_subdomain_key" ON "public"."tenants"("subdomain");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tenants_addressId_key" ON "public"."tenants"("addressId");
 
 -- CreateIndex
 CREATE INDEX "tenants_slug_idx" ON "public"."tenants"("slug");
@@ -664,9 +644,6 @@ CREATE UNIQUE INDEX "user_addresses_userId_addressId_key" ON "public"."user_addr
 CREATE INDEX "branches_tenantId_idx" ON "public"."branches"("tenantId");
 
 -- CreateIndex
-CREATE INDEX "branches_customerId_idx" ON "public"."branches"("customerId");
-
--- CreateIndex
 CREATE INDEX "branches_addressId_idx" ON "public"."branches"("addressId");
 
 -- CreateIndex
@@ -682,6 +659,27 @@ CREATE INDEX "branches_deletedAt_idx" ON "public"."branches"("deletedAt");
 CREATE UNIQUE INDEX "branches_tenantId_code_key" ON "public"."branches"("tenantId", "code");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "products_sku_key" ON "public"."products"("sku");
+
+-- CreateIndex
+CREATE INDEX "products_sku_idx" ON "public"."products"("sku");
+
+-- CreateIndex
+CREATE INDEX "products_deletedAt_idx" ON "public"."products"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "inventory_productId_idx" ON "public"."inventory"("productId");
+
+-- CreateIndex
+CREATE INDEX "inventory_branchId_idx" ON "public"."inventory"("branchId");
+
+-- CreateIndex
+CREATE INDEX "inventory_deletedAt_idx" ON "public"."inventory"("deletedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "inventory_productId_branchId_key" ON "public"."inventory"("productId", "branchId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "orders_orderNumber_key" ON "public"."orders"("orderNumber");
 
 -- CreateIndex
@@ -689,6 +687,9 @@ CREATE INDEX "orders_orderNumber_idx" ON "public"."orders"("orderNumber");
 
 -- CreateIndex
 CREATE INDEX "orders_customerId_idx" ON "public"."orders"("customerId");
+
+-- CreateIndex
+CREATE INDEX "orders_pickupId_idx" ON "public"."orders"("pickupId");
 
 -- CreateIndex
 CREATE INDEX "orders_status_idx" ON "public"."orders"("status");
@@ -712,13 +713,13 @@ CREATE INDEX "orders_deletedAt_idx" ON "public"."orders"("deletedAt");
 CREATE INDEX "order_items_orderId_idx" ON "public"."order_items"("orderId");
 
 -- CreateIndex
-CREATE INDEX "order_items_sku_idx" ON "public"."order_items"("sku");
+CREATE INDEX "order_items_productId_idx" ON "public"."order_items"("productId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "order_items_orderId_sku_key" ON "public"."order_items"("orderId", "sku");
+CREATE UNIQUE INDEX "order_items_orderId_productId_key" ON "public"."order_items"("orderId", "productId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "payments_orderId_key" ON "public"."payments"("orderId");
+CREATE UNIQUE INDEX "payments_pickupId_key" ON "public"."payments"("pickupId");
 
 -- CreateIndex
 CREATE INDEX "payments_status_idx" ON "public"."payments"("status");
@@ -781,39 +782,6 @@ CREATE INDEX "pickups_addressId_idx" ON "public"."pickups"("addressId");
 CREATE INDEX "pickups_deletedAt_idx" ON "public"."pickups"("deletedAt");
 
 -- CreateIndex
-CREATE INDEX "pickup_requests_pickupId_idx" ON "public"."pickup_requests"("pickupId");
-
--- CreateIndex
-CREATE INDEX "pickup_requests_requestedBy_idx" ON "public"."pickup_requests"("requestedBy");
-
--- CreateIndex
-CREATE INDEX "pickup_requests_respondedBy_idx" ON "public"."pickup_requests"("respondedBy");
-
--- CreateIndex
-CREATE INDEX "pickup_requests_status_idx" ON "public"."pickup_requests"("status");
-
--- CreateIndex
-CREATE INDEX "pickup_requests_requestedAt_idx" ON "public"."pickup_requests"("requestedAt");
-
--- CreateIndex
-CREATE INDEX "pickup_requests_deletedAt_idx" ON "public"."pickup_requests"("deletedAt");
-
--- CreateIndex
-CREATE INDEX "pickup_orders_pickupId_idx" ON "public"."pickup_orders"("pickupId");
-
--- CreateIndex
-CREATE INDEX "pickup_orders_orderId_idx" ON "public"."pickup_orders"("orderId");
-
--- CreateIndex
-CREATE INDEX "pickup_orders_sequence_idx" ON "public"."pickup_orders"("sequence");
-
--- CreateIndex
-CREATE INDEX "pickup_orders_deletedAt_idx" ON "public"."pickup_orders"("deletedAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "pickup_orders_pickupId_orderId_key" ON "public"."pickup_orders"("pickupId", "orderId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "shipments_shipmentNumber_key" ON "public"."shipments"("shipmentNumber");
 
 -- CreateIndex
@@ -821,9 +789,6 @@ CREATE INDEX "shipments_shipmentNumber_idx" ON "public"."shipments"("shipmentNum
 
 -- CreateIndex
 CREATE INDEX "shipments_pickupId_idx" ON "public"."shipments"("pickupId");
-
--- CreateIndex
-CREATE INDEX "shipments_status_idx" ON "public"."shipments"("status");
 
 -- CreateIndex
 CREATE INDEX "shipments_serviceType_idx" ON "public"."shipments"("serviceType");
@@ -839,15 +804,6 @@ CREATE INDEX "shipments_estimatedDelivery_idx" ON "public"."shipments"("estimate
 
 -- CreateIndex
 CREATE INDEX "shipments_deletedAt_idx" ON "public"."shipments"("deletedAt");
-
--- CreateIndex
-CREATE INDEX "shipment_orders_orderId_idx" ON "public"."shipment_orders"("orderId");
-
--- CreateIndex
-CREATE INDEX "shipment_orders_shipmentId_idx" ON "public"."shipment_orders"("shipmentId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "shipment_orders_shipmentId_orderId_key" ON "public"."shipment_orders"("shipmentId", "orderId");
 
 -- CreateIndex
 CREATE INDEX "notifications_relatedId_relatedType_idx" ON "public"."notifications"("relatedId", "relatedType");
@@ -967,19 +923,28 @@ ALTER TABLE "public"."user_addresses" ADD CONSTRAINT "user_addresses_addressId_f
 ALTER TABLE "public"."branches" ADD CONSTRAINT "branches_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "public"."tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."branches" ADD CONSTRAINT "branches_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."branches" ADD CONSTRAINT "branches_addressId_fkey" FOREIGN KEY ("addressId") REFERENCES "public"."addresses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."branches" ADD CONSTRAINT "branches_addressId_fkey" FOREIGN KEY ("addressId") REFERENCES "public"."addresses"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."inventory" ADD CONSTRAINT "inventory_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."inventory" ADD CONSTRAINT "inventory_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "public"."branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."orders" ADD CONSTRAINT "orders_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."orders" ADD CONSTRAINT "orders_pickupId_fkey" FOREIGN KEY ("pickupId") REFERENCES "public"."pickups"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."order_items" ADD CONSTRAINT "order_items_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."payments" ADD CONSTRAINT "payments_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."order_items" ADD CONSTRAINT "order_items_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."payments" ADD CONSTRAINT "payments_pickupId_fkey" FOREIGN KEY ("pickupId") REFERENCES "public"."pickups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."tracking_events" ADD CONSTRAINT "tracking_events_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1003,34 +968,13 @@ ALTER TABLE "public"."pickups" ADD CONSTRAINT "pickups_addressId_fkey" FOREIGN K
 ALTER TABLE "public"."pickups" ADD CONSTRAINT "pickups_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "public"."branches"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."pickup_requests" ADD CONSTRAINT "pickup_requests_pickupId_fkey" FOREIGN KEY ("pickupId") REFERENCES "public"."pickups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."pickup_requests" ADD CONSTRAINT "pickup_requests_requestedBy_fkey" FOREIGN KEY ("requestedBy") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."pickup_requests" ADD CONSTRAINT "pickup_requests_respondedBy_fkey" FOREIGN KEY ("respondedBy") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."pickup_orders" ADD CONSTRAINT "pickup_orders_pickupId_fkey" FOREIGN KEY ("pickupId") REFERENCES "public"."pickups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."pickup_orders" ADD CONSTRAINT "pickup_orders_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."shipments" ADD CONSTRAINT "shipments_pickupId_fkey" FOREIGN KEY ("pickupId") REFERENCES "public"."pickups"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."shipments" ADD CONSTRAINT "shipments_pickupId_fkey" FOREIGN KEY ("pickupId") REFERENCES "public"."pickups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."shipments" ADD CONSTRAINT "shipments_senderAddressId_fkey" FOREIGN KEY ("senderAddressId") REFERENCES "public"."addresses"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."shipments" ADD CONSTRAINT "shipments_consigneeAddressId_fkey" FOREIGN KEY ("consigneeAddressId") REFERENCES "public"."addresses"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."shipment_orders" ADD CONSTRAINT "shipment_orders_shipmentId_fkey" FOREIGN KEY ("shipmentId") REFERENCES "public"."shipments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."shipment_orders" ADD CONSTRAINT "shipment_orders_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "public"."orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."notifications" ADD CONSTRAINT "notifications_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1052,3 +996,5 @@ ALTER TABLE "public"."requests" ADD CONSTRAINT "requests_senderId_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "public"."requests" ADD CONSTRAINT "requests_responderId_fkey" FOREIGN KEY ("responderId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- instead of we have creator we can make dynamic model for this to avoid null to using it when need tracking user creator

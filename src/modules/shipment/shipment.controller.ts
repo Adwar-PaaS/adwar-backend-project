@@ -20,7 +20,7 @@ import { Permissions } from '../../common/decorators/permission.decorator';
 import { EntityType, ActionType } from '@prisma/client';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
-import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+// import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 
 @Controller('shipments')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -62,16 +62,6 @@ export class ShipmentController {
   async update(@Param('id') id: string, @Body() dto: UpdateShipmentDto) {
     const shipment = await this.service.update(id, dto);
     return APIResponse.success({ shipment }, 'Shipment updated successfully');
-  }
-
-  @Patch(':id/status')
-  @Permissions(EntityType.SHIPMENT, ActionType.UPDATE)
-  async updateStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateShipmentStatusDto,
-  ) {
-    const shipment = await this.service.updateStatus(id, dto);
-    return APIResponse.success({ shipment }, 'Shipment status updated');
   }
 
   @Delete(':id')

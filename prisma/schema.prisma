@@ -8,47 +8,42 @@ datasource db {
 }
 
 model User {
-  id                String        @id @default(uuid()) @db.Uuid
-  email             String        @unique
+  id                String    @id @default(uuid()) @db.Uuid
+  email             String    @unique
   password          String
   firstName         String
   lastName          String
   phone             String?
   avatar            String?
-  status            Status        @default(ACTIVE)
-  customerSubdomain String?       @unique
-  businessType      BusinessType? @default(TENANT)
-  roleId            String        @db.Uuid
-  isVerified        Boolean       @default(false)
+  status            Status    @default(ACTIVE)
+  customerSubdomain String?   @unique
+  roleId            String    @db.Uuid
+  isVerified        Boolean   @default(false)
   lastLoginAt       DateTime?
-  joinedAt          DateTime      @default(now())
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  joinedAt          DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
 
   // Relations
-  role                   Role                    @relation(fields: [roleId], references: [id])
-  createdTenants         Tenant[]                @relation("UserCreatedTenants")
-  memberships            UserTenant[]
-  addresses              UserAddress[]
-  customerOrders         Order[]                 @relation("CustomerOrders")
-  pickUpDriver           PickUp[]                @relation("PickUpDriver")
-  customerBranches       Branch[]                @relation("CustomerBranch")
-  auditLogs              AuditLog[]              @relation("UserAuditLogs")
-  sentPickUpRequests     PickUpRequest[]         @relation("PickUpRequester")
-  receivedPickUpRequests PickUpRequest[]         @relation("PickUpResponder")
-  sentRequests           Request[]               @relation("RequestSender")
-  receivedRequests       Request[]               @relation("RequestResponder")
-  sentNotifications      Notification[]          @relation("SentNotifications")
-  receivedNotifications  NotificationRecipient[] @relation("ReceivedNotifications")
-  updatorTrackings       TrackingEvent[]         @relation("TrackingUpdater")
-  attachmentUploads      Attachment[]            @relation("AttachmentUploader")
-  orderNotes             OrderNote[]             @relation("OrderNoteAuthor")
+  role                  Role                    @relation(fields: [roleId], references: [id])
+  createdTenants        Tenant[]                @relation("UserCreatedTenants")
+  memberships           UserTenant[]
+  addresses             UserAddress[]
+  customerOrders        Order[]                 @relation("CustomerOrders")
+  pickUpDriver          PickUp[]                @relation("PickUpDriver")
+  auditLogs             AuditLog[]              @relation("UserAuditLogs")
+  sentRequests          Request[]               @relation("RequestSender")
+  receivedRequests      Request[]               @relation("RequestResponder")
+  sentNotifications     Notification[]          @relation("SentNotifications")
+  receivedNotifications NotificationRecipient[] @relation("ReceivedNotifications")
+  updatorTrackings      TrackingEvent[]         @relation("TrackingUpdater")
+  attachmentUploads     Attachment[]            @relation("AttachmentUploader")
+  orderNotes            OrderNote[]             @relation("OrderNoteAuthor")
 
   @@index([email])
   @@index([customerSubdomain])
   @@index([status])
-  @@index([businessType])
   @@index([roleId])
   @@index([deletedAt])
   @@map("users")
@@ -68,7 +63,7 @@ model Tenant {
   taxNumber     String? // Removed @unique - handle in app logic
   licenseNumber String? // Removed @unique - handle in app logic
   creatorId     String    @db.Uuid
-  addressId     String?   @db.Uuid // Removed @unique to allow address reuse
+  addressId     String?   @db.Uuid // Allow address reuse via app logic, but enforce 1:1 with unique
   settings      Json? // For tenant-specific configurations
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -81,6 +76,7 @@ model Tenant {
   branches    Branch[]
   memberships UserTenant[]
 
+  @@unique([addressId])
   @@index([slug])
   @@index([creatorId])
   @@index([status])
@@ -93,7 +89,6 @@ model UserTenant {
   userId    String    @db.Uuid
   tenantId  String    @db.Uuid
   branchId  String?   @db.Uuid
-  isActive  Boolean   @default(true)
   startDate DateTime  @default(now())
   endDate   DateTime?
   createdAt DateTime  @default(now())
@@ -141,13 +136,9 @@ model RolePermission {
   updatedAt  DateTime     @updatedAt
   deletedAt  DateTime?
 
-  // Relations
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, entityType])
-  @@index([roleId])
-  @@index([entityType])
-  @@index([deletedAt])
   @@map("role_permissions")
 }
 
@@ -155,18 +146,15 @@ model UserPermission {
   id           String       @id @default(uuid()) @db.Uuid
   userTenantId String       @db.Uuid
   entityType   EntityType
-  actions      ActionType[] @default([])
+  allowed      ActionType[] @default([]) // extra actions granted
+  denied       ActionType[] @default([]) // actions taken away
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   deletedAt    DateTime?
 
-  // Relations
   userTenant UserTenant @relation(fields: [userTenantId], references: [id], onDelete: Cascade)
 
   @@unique([userTenantId, entityType])
-  @@index([userTenantId])
-  @@index([entityType])
-  @@index([deletedAt])
   @@map("user_permissions")
 }
 
@@ -190,13 +178,12 @@ model Address {
   deletedAt    DateTime?
 
   // Relations
-  userAddresses UserAddress[]
-  tenantAddress Tenant[]      @relation("TenantAddress") // Multiple tenants can use same address
-  branches      Branch[]
-  pickups       PickUp[]      @relation("PickUpAddress")
-
-  shipmentsAsSender    Shipment[] @relation("SenderAddress")
-  shipmentsAsConsignee Shipment[] @relation("ConsigneeAddress")
+  users                UserAddress[]
+  tenantAddress        Tenant?       @relation("TenantAddress")
+  branches             Branch[]
+  pickups              PickUp[]      @relation("PickUpAddress")
+  shipmentsAsSender    Shipment[]    @relation("SenderAddress")
+  shipmentsAsConsignee Shipment[]    @relation("ConsigneeAddress")
 
   @@index([country, city])
   @@index([isActive])
@@ -233,9 +220,8 @@ model Branch {
   name           String
   code           String         @default(dbgenerated("gen_code('BR'::text)"))
   status         BranchStatus   @default(ACTIVE)
-  tenantId       String?        @db.Uuid
-  customerId     String?        @db.Uuid
-  addressId      String         @db.Uuid
+  tenantId       String         @db.Uuid
+  addressId      String?        @db.Uuid
   creatorId      String?        @db.Uuid
   type           BranchType     @default(MAIN)
   category       BranchCategory @default(WAREHOUSE)
@@ -247,20 +233,65 @@ model Branch {
   deletedAt      DateTime?
 
   // Relations
-  tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer    User?        @relation("CustomerBranch", fields: [customerId], references: [id], onDelete: SetNull)
-  address     Address      @relation(fields: [addressId], references: [id], onDelete: Restrict)
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  address     Address?     @relation(fields: [addressId], references: [id], onDelete: SetNull)
   userTenants UserTenant[]
   pickups     PickUp[]     @relation("PickupBranch")
+  inventories Inventory[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
-  @@index([customerId])
   @@index([addressId])
   @@index([status])
   @@index([type])
   @@index([deletedAt])
   @@map("branches")
+}
+
+model Product {
+  id          String    @id @default(uuid()) @db.Uuid
+  sku         String    @unique
+  name        String
+  description String?
+  category    String?
+  weight      Decimal?  @db.Decimal(8, 3)
+  dimensions  Json?
+  isFragile   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  orderItems  OrderItem[]
+  inventories Inventory[]
+
+  @@index([sku])
+  @@index([deletedAt])
+  @@map("products")
+}
+
+model Inventory {
+  id           String    @id @default(uuid()) @db.Uuid
+  productId    String    @db.Uuid
+  branchId     String    @db.Uuid
+  quantity     Int       @default(0)
+  minStock     Int       @default(0)
+  maxStock     Int?
+  reorderPoint Int       @default(0)
+  lastUpdated  DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, branchId])
+  @@index([productId])
+  @@index([branchId])
+  @@index([deletedAt])
+  @@map("inventory")
 }
 
 model Order {
@@ -271,12 +302,11 @@ model Order {
   totalValue          Decimal?       @db.Decimal(12, 2)
   packageCount        Int            @default(1)
   specialInstructions String?
-  status              OrderStatus    @default(DRAFT) // Added DRAFT status
+  status              OrderStatus    @default(DRAFT)
   failedReason        FailedReason?
   priority            PriorityStatus @default(NORMAL)
+  pickupId            String?        @db.Uuid
   customerId          String?        @db.Uuid
-  branchId            String?        @db.Uuid
-  routeId             String?        @db.Uuid
   estimatedDelivery   DateTime?
   scheduledDelivery   DateTime?
   deliveredAt         DateTime?
@@ -288,19 +318,19 @@ model Order {
   deletedAt           DateTime?
 
   // Relations
-  customer       User?           @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
-  payment        Payment?
-  pickUpOrders   PickUpOrder[]
-  shipmentOrders ShipmentOrder[]
-  items          OrderItem[]
-  tracking       TrackingEvent[]
-  notes          OrderNote[]
+  customer User?           @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
+  pickup   PickUp?         @relation("PickupOrders", fields: [pickupId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+  tracking TrackingEvent[]
+  notes    OrderNote[]
 
   @@index([orderNumber])
   @@index([customerId])
+  @@index([pickupId])
   @@index([status])
   @@index([priority])
   @@index([createdAt])
+  @@index([status, createdAt])
   @@index([estimatedDelivery])
   @@index([deliveredAt])
   @@index([deletedAt])
@@ -308,33 +338,28 @@ model Order {
 }
 
 model OrderItem {
-  id          String   @id @default(uuid()) @db.Uuid
-  orderId     String   @db.Uuid
-  sku         String
-  name        String
-  description String?
-  category    String?
-  quantity    Int      @default(1)
-  unitPrice   Decimal  @default(0) @db.Decimal(10, 2)
-  total       Decimal  @default(0) @db.Decimal(12, 2)
-  weight      Decimal? @db.Decimal(8, 3)
-  dimensions  Json?
-  isFragile   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  productId String   @db.Uuid
+  quantity  Int      @default(1)
+  unitPrice Decimal  @default(0) @db.Decimal(10, 2)
+  total     Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
-  @@unique([orderId, sku])
+  @@unique([orderId, productId])
   @@index([orderId])
-  @@index([sku])
+  @@index([productId])
   @@map("order_items")
 }
 
 model Payment {
   id                     String        @id @default(uuid()) @db.Uuid
-  orderId                String        @unique @db.Uuid
+  pickupId               String        @unique @db.Uuid
   paymentMethod          PaymentMethod @default(CASH)
   codAmount              Decimal?      @db.Decimal(12, 2)
   shippingCost           Decimal       @default(0) @db.Decimal(10, 2)
@@ -362,7 +387,7 @@ model Payment {
   deletedAt              DateTime?
 
   // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  pickup PickUp @relation("PickupPayment", fields: [pickupId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([paymentMethod])
@@ -434,12 +459,12 @@ model PickUp {
   deletedAt    DateTime?
 
   // Relations
-  orders    PickUpOrder[]
-  requests  PickUpRequest[]
-  shipments Shipment[]      @relation("PickUpShipments")
-  driver    User?           @relation("PickUpDriver", fields: [driverId], references: [id], onDelete: SetNull)
-  address   Address?        @relation("PickUpAddress", fields: [addressId], references: [id], onDelete: SetNull)
-  branch    Branch?         @relation("PickupBranch", fields: [branchId], references: [id], onDelete: SetNull)
+  driver    User?      @relation("PickUpDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  branch    Branch?    @relation("PickupBranch", fields: [branchId], references: [id], onDelete: SetNull)
+  address   Address?   @relation("PickUpAddress", fields: [addressId], references: [id], onDelete: SetNull)
+  orders    Order[]    @relation("PickupOrders")
+  payment   Payment?   @relation("PickupPayment")
+  shipments Shipment[] @relation("PickupShipment")
 
   @@index([status])
   @@index([scheduledFor])
@@ -450,68 +475,21 @@ model PickUp {
   @@map("pickups")
 }
 
-model PickUpRequest {
-  id          String        @id @default(uuid()) @db.Uuid
-  pickupId    String        @db.Uuid
-  requestedBy String        @db.Uuid
-  respondedBy String?       @db.Uuid
-  status      RequestStatus @default(PENDING)
-  requestedAt DateTime      @default(now())
-  respondedAt DateTime?
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  deletedAt   DateTime?
-
-  // Relations
-  pickup    PickUp @relation(fields: [pickupId], references: [id], onDelete: Cascade)
-  requester User   @relation("PickUpRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
-  responder User?  @relation("PickUpResponder", fields: [respondedBy], references: [id], onDelete: SetNull)
-
-  @@index([pickupId])
-  @@index([requestedBy])
-  @@index([respondedBy])
-  @@index([status])
-  @@index([requestedAt])
-  @@index([deletedAt])
-  @@map("pickup_requests")
-}
-
-model PickUpOrder {
-  id        String    @id @default(uuid()) @db.Uuid
-  pickupId  String    @db.Uuid
-  orderId   String    @db.Uuid
-  sequence  Int       @default(1)
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-
-  // Relations
-  pickup PickUp @relation(fields: [pickupId], references: [id], onDelete: Cascade)
-  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@unique([pickupId, orderId])
-  @@index([pickupId])
-  @@index([orderId])
-  @@index([sequence])
-  @@index([deletedAt])
-  @@map("pickup_orders")
-}
-
 model Shipment {
-  id                  String         @id @default(uuid()) @db.Uuid
-  shipmentNumber      String         @unique
-  pickupId            String?        @db.Uuid
+  id                  String      @id @default(uuid()) @db.Uuid
+  shipmentNumber      String      @unique
+  pickupId            String      @db.Uuid
   originCountry       String
   originCity          String
   destinationCountry  String
   destinationCity     String
-  serviceType         ServiceType    @default(STANDARD)
-  shipmentValue       Decimal        @default(0) @db.Decimal(12, 2)
-  declaredValue       Decimal?       @db.Decimal(12, 2)
-  weight              Decimal        @db.Decimal(10, 3)
-  volumetricWeight    Decimal?       @db.Decimal(10, 3)
+  serviceType         ServiceType @default(STANDARD)
+  shipmentValue       Decimal     @default(0) @db.Decimal(12, 2)
+  declaredValue       Decimal?    @db.Decimal(12, 2)
+  weight              Decimal     @db.Decimal(10, 3)
+  volumetricWeight    Decimal?    @db.Decimal(10, 3)
   dimensions          Json?
-  numberOfItems       Int            @default(1)
+  numberOfItems       Int         @default(1)
   senderAccountNumber String?
   senderName          String
   senderBusinessName  String?
@@ -521,49 +499,32 @@ model Shipment {
   consigneePhone1     String
   consigneePhone2     String?
   consigneeEmail      String?
-  senderAddressId     String         @db.Uuid
-  consigneeAddressId  String         @db.Uuid
+  senderAddressId     String      @db.Uuid
+  consigneeAddressId  String      @db.Uuid
   specialInstructions String?
-  insuranceRequired   Boolean        @default(false)
-  signatureRequired   Boolean        @default(false)
-  fragileItems        Boolean        @default(false)
-  status              ShipmentStatus @default(PENDING)
+  insuranceRequired   Boolean     @default(false)
+  signatureRequired   Boolean     @default(false)
+  fragileItems        Boolean     @default(false)
   estimatedDelivery   DateTime?
   actualDelivery      DateTime?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
   deletedAt           DateTime?
 
   // Relations
-  pickup           PickUp?         @relation("PickUpShipments", fields: [pickupId], references: [id], onDelete: SetNull)
-  senderAddress    Address         @relation("SenderAddress", fields: [senderAddressId], references: [id], onDelete: Restrict)
-  consigneeAddress Address         @relation("ConsigneeAddress", fields: [consigneeAddressId], references: [id], onDelete: Restrict)
-  shipmentOrders   ShipmentOrder[]
+  pickup           PickUp  @relation("PickupShipment", fields: [pickupId], references: [id], onDelete: Cascade)
+  senderAddress    Address @relation("SenderAddress", fields: [senderAddressId], references: [id], onDelete: Restrict)
+  consigneeAddress Address @relation("ConsigneeAddress", fields: [consigneeAddressId], references: [id], onDelete: Restrict)
 
   @@index([shipmentNumber])
   @@index([pickupId])
-  @@index([status])
   @@index([serviceType])
   @@index([originCountry, originCity])
   @@index([destinationCountry, destinationCity])
+  @@index([originCountry, destinationCountry])
   @@index([estimatedDelivery])
   @@index([deletedAt])
   @@map("shipments")
-}
-
-model ShipmentOrder {
-  id         String @id @default(uuid()) @db.Uuid
-  shipmentId String @db.Uuid
-  orderId    String @db.Uuid
-
-  // Relations
-  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@unique([shipmentId, orderId])
-  @@index([orderId])
-  @@index([shipmentId])
-  @@map("shipment_orders")
 }
 
 model Notification {
@@ -669,6 +630,7 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actionType])
   @@index([createdAt])
+  @@index([entityType, createdAt])
   @@map("audit_logs")
 }
 
@@ -707,14 +669,6 @@ model Request {
 enum Status {
   ACTIVE
   INACTIVE
-}
-
-enum BusinessType {
-  TENANT
-  INDIVIDUAL
-  SME
-  ENTERPRISE
-  GOVERNMENT
 }
 
 enum AddressType {
@@ -838,9 +792,6 @@ enum RoleName {
   PICKER
   OPERATION
   CUSTOMER
-  // BRANCH_MANAGER
-  // DISPATCHER
-  // FLEET_MANAGER
 }
 
 enum EntityType {
@@ -849,7 +800,6 @@ enum EntityType {
   ORDER
   DRIVER
   ROLE
-  PICKUP_REQUEST
   PICKUP
   TENANT_ORDER
   TENANT_CUSTOMER
@@ -860,6 +810,9 @@ enum EntityType {
   NOTIFICATION
   ADDRESS
   TRACKING
+  PRODUCT
+  INVENTORY
+  VEHICLE
 }
 
 enum ActionType {
@@ -877,20 +830,6 @@ enum ActionType {
   ASSIGN
   COMPLETE
   CANCEL
-}
-
-enum ShipmentStatus {
-  DRAFT
-  PENDING
-  DISPATCHED
-  IN_TRANSIT
-  OUT_FOR_DELIVERY
-  DELIVERED
-  FAILED
-  RETURNED
-  CANCELLED
-  LOST
-  DAMAGED
 }
 
 enum PickupType {
@@ -933,7 +872,9 @@ enum BranchType {
 
 enum PickUpStatus {
   CREATED
+  PENDING
   SCHEDULED
+  APPROVED
   ASSIGNED
   IN_PROGRESS
   COMPLETED

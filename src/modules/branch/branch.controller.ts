@@ -80,21 +80,6 @@ export class BranchController {
     );
   }
 
-  @Get('customer/:customerId')
-  @Permissions(EntityType.BRANCH, ActionType.READ)
-  async getCustomerBranches(
-    @Query() query: Record<string, any>,
-    @Param('customerId') customerId: string,
-  ): Promise<APIResponse<{ branches: IBranch[] } & Partial<PaginationResult>>> {
-    const { items, ...pagination } =
-      await this.branchService.getCustomerBranches(query, customerId);
-    return APIResponse.success(
-      { branches: items, ...pagination },
-      'Customer branches fetched successfully',
-      HttpStatus.OK,
-    );
-  }
-
   @Put(':id')
   @Permissions(EntityType.BRANCH, ActionType.UPDATE)
   @Audit({

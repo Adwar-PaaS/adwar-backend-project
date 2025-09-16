@@ -75,10 +75,6 @@ export class BranchService {
     return this.branchRepo.findOne({ id });
   }
 
-  async getCustomerBranches(query: Record<string, any>, customerId: string) {
-    return this.branchRepo.findAll({ ...query, customerId });
-  }
-
   async getTenantBranches(query: Record<string, any>, tenantId: string) {
     return this.branchRepo.findAll({ ...query, tenantId });
   }

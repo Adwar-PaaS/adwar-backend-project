@@ -1,13 +1,13 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   HttpStatus,
   Post,
   Req,
   Res,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
@@ -23,6 +23,8 @@ import { AuthUser } from './interfaces/auth-user.interface';
 import { AttachUserToTenantDto } from '../users/dto/attach-user-to-tenant.dto';
 import { UsersService } from '../users/users.service';
 import { Throttle, SkipThrottle, seconds } from '@nestjs/throttler';
+import { CsrfExempt } from 'src/common/decorators/csrf-exempt.decorator';
+import { CsrfRequest } from 'src/common/middleware/csrf.middleware';
 
 export interface AuthenticatedRequest extends Request {
   session: Session & {
@@ -151,12 +153,13 @@ export class AuthController {
     );
   }
 
+  @CsrfExempt()
   @Get('csrf-token')
   @Throttle({ default: { limit: 5, ttl: seconds(30) } })
   async getCsrfToken(
-    @Req() req: Request,
+    @Req() req: CsrfRequest,
   ): Promise<APIResponse<{ token: string }>> {
-    const token = req.cookies['XSRF-TOKEN'];
+    const token = req.csrfToken;
     if (!token) {
       throw new ForbiddenException('CSRF token not found');
     }

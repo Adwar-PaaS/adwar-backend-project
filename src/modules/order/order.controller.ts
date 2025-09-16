@@ -69,25 +69,15 @@ export class OrderController {
     return APIResponse.success({ order }, 'Order retrieved successfully');
   }
 
-  @Get('driver/:driverId')
-  @Permissions(EntityType.ORDER, ActionType.READ)
-  async getOrdersOfDriver(@Param('driverId') driverId: string) {
-    const orders = await this.orderService.getOrdersOfDriver(driverId);
-    return APIResponse.success(
-      { orders },
-      'Driver orders retrieved successfully',
-    );
-  }
-
-  @Get('customer/:customerId')
-  @Permissions(EntityType.ORDER, ActionType.READ)
-  async getOrdersOfCustomer(@Param('customerId') customerId: string) {
-    const orders = await this.orderService.getOrdersOfCustomer(customerId);
-    return APIResponse.success(
-      { orders },
-      'Customer orders retrieved successfully',
-    );
-  }
+  // @Get('customer/:customerId')
+  // @Permissions(EntityType.ORDER, ActionType.READ)
+  // async getOrdersOfCustomer(@Param('customerId') customerId: string) {
+  //   const orders = await this.orderService.getOrdersOfCustomer(customerId);
+  //   return APIResponse.success(
+  //     { orders },
+  //     'Customer orders retrieved successfully',
+  //   );
+  // }
 
   @Put(':id/status')
   @Permissions(EntityType.ORDER, ActionType.UPDATE)
@@ -123,12 +113,12 @@ export class OrderController {
     );
   }
 
-  @Get('scan/sku/:sku')
-  @Permissions(EntityType.ORDER, ActionType.READ)
-  async findBySku(@Param('sku') sku: string) {
-    const order = await this.orderService.findByItemSku(sku);
-    return APIResponse.success({ order }, 'Order retrieved by SKU');
-  }
+  // @Get('scan/sku/:sku')
+  // @Permissions(EntityType.ORDER, ActionType.READ)
+  // async findBySku(@Param('sku') sku: string) {
+  //   const order = await this.orderService.findByItemSku(sku);
+  //   return APIResponse.success({ order }, 'Order retrieved by SKU');
+  // }
 
   // Public/CSRF-exempt webhook endpoints for scanners/integrations
   @Post('scan/update-status')
