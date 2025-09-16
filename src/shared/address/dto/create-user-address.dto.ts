@@ -8,7 +8,7 @@ import {
   IsNumber,
 } from 'class-validator';
 
-export class CreateAddressDto {
+export class CreateAddressUserDto {
   @IsOptional()
   @IsString()
   label?: string;
@@ -24,6 +24,10 @@ export class CreateAddressDto {
   @IsOptional()
   @IsString()
   district?: string;
+
+  @IsOptional()
+  @IsEnum(AddressType)
+  type: AddressType = AddressType.HOME;
 
   @IsNotEmpty()
   @IsString()
