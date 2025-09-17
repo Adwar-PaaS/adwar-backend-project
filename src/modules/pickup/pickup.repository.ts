@@ -6,7 +6,7 @@ import { PickUp } from '@prisma/client';
 @Injectable()
 export class PickUpRepository extends BaseRepository<PickUp> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.pickUp, ['code'], {
+    super(prisma, 'pickUp', ['code'], {
       branch: true,
       driver: true,
     });

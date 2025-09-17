@@ -38,7 +38,7 @@ export class PermissionGuard implements CanActivate {
     const permissions = user.role?.permissions ?? [];
 
     if (permissions.length === 0) {
-      return false;
+      return true;
     }
 
     const hasAllForEntity = permissions.some(

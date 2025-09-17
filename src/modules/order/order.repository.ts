@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { IOrder } from './interfaces/order.interface';
-import { userWithRoleSelect } from 'src/common/utils/helpers.util';
 import { PrismaService } from 'src/db/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
@@ -10,19 +9,10 @@ import { AuthUser } from '../auth/interfaces/auth-user.interface';
 @Injectable()
 export class OrderRepository extends BaseRepository<IOrder> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.order, ['orderNumber'], {
+    super(prisma, 'order', ['orderNumber'], {
       pickUp: true,
       customer: true,
     });
-  }
-
-  async updateMany(where: Record<string, any>, data: Record<string, any>) {
-    return this.prisma.order.updateMany({ where, data });
-  }
-
-  async updateManyByIds(ids: string[], data: Record<string, any>) {
-    if (!ids || ids.length === 0) return { count: 0 } as any;
-    return this.updateMany({ id: { in: ids } }, data);
   }
 
   async createWithProducts(
@@ -92,5 +82,13 @@ export class OrderRepository extends BaseRepository<IOrder> {
     });
 
     return order as any;
+  }
+
+  async findOneBySku(sku: string) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { product: { sku }, order: { deletedAt: null } },
+      include: { order: true },
+    });
+    return orderItem?.order ?? null;
   }
 }

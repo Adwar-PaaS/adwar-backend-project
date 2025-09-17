@@ -6,7 +6,7 @@ import { BaseRepository } from '../../shared/factory/base.repository';
 @Injectable()
 export class RolesRepository extends BaseRepository<Role> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.role, ['name']);
+    super(prisma, 'role', ['name']);
   }
 
   async createRoleWithPermissions(

@@ -6,6 +6,6 @@ import { Address } from '@prisma/client';
 @Injectable()
 export class AddressRepository extends BaseRepository<Address> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.address, ['label', 'city', 'country']);
+    super(prisma, 'address', ['label', 'city', 'country']);
   }
 }

@@ -33,7 +33,9 @@ export class PickUpService {
       notes: dto.notes,
     });
 
-    await this.orderRepo.updateManyByIds(dto.orderIds, { pickupId: pickup.id });
+    for (const orderId of dto.orderIds) {
+      await this.orderRepo.update(orderId, { pickupId: pickup.id });
+    }
 
     return this.pickupRepo.findOne({ id: pickup.id });
   }

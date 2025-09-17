@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ApiError } from '../../common/exceptions/api-error.exception';
 import {
   ApiFeatures,
@@ -10,16 +11,6 @@ import {
 } from '../../common/utils/sanitize-user.util';
 import { PrismaService } from 'src/db/prisma/prisma.service';
 
-type PrismaDelegate = {
-  create: (args: any) => Promise<any>;
-  update: (args: any) => Promise<any>;
-  findUnique?: (args: any) => Promise<any>;
-  findFirst?: (args: any) => Promise<any>;
-  findMany: (args: any) => Promise<any[]>;
-  count: (args: any) => Promise<number>;
-  delete?: (args: any) => Promise<any>;
-};
-
 @Injectable()
 export class BaseRepository<
   T extends { id: string; password?: string; deletedAt?: Date | null },
@@ -28,11 +19,16 @@ export class BaseRepository<
 
   constructor(
     protected readonly prisma: PrismaService,
-    protected readonly model: PrismaDelegate,
+    private readonly modelKey: keyof PrismaService,
     protected readonly searchableFields: string[] = [],
-    protected readonly defaultInclude: Record<string, any> = {},
+    protected readonly defaultInclude: Prisma.Prisma__Pick<any, any> = {},
     protected readonly useSoftDelete = true,
+    protected readonly sanitizeFn: <U>(entity: U) => U = (x) => x, // no-op unless overridden
   ) {}
+
+  private get delegate() {
+    return this.prisma[this.modelKey] as any;
+  }
 
   private handleError(action: string, error: any, id?: string): never {
     if (error?.code === 'P2025') {
@@ -50,13 +46,34 @@ export class BaseRepository<
     throw new ApiError(`Failed to ${action}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
-  async create(data: any, include: any = this.defaultInclude): Promise<T> {
+  private async runTransaction<R>(
+    cb: (
+      tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$use'>,
+    ) => Promise<R>,
+  ): Promise<R> {
     try {
-      const newDoc = await this.model.create({ data, include });
-      return sanitizeUser(newDoc) as T;
+      return await this.prisma.$transaction(cb);
     } catch (error) {
-      this.handleError('create', error);
+      this.logger.error(`Transaction failed: ${error?.message}`, error?.stack);
+      throw new ApiError(
+        'Transaction failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
+  }
+
+  async create(data: any, include: any = this.defaultInclude): Promise<T> {
+    return this.runTransaction(async (tx) => {
+      try {
+        const newDoc = await (tx[this.modelKey] as any).create({
+          data,
+          include,
+        });
+        return this.sanitizeFn(newDoc) as T;
+      } catch (error) {
+        this.handleError('create', error);
+      }
+    });
   }
 
   async update(
@@ -64,27 +81,35 @@ export class BaseRepository<
     data: any,
     include: any = this.defaultInclude,
   ): Promise<T> {
-    try {
-      const updated = await this.model.update({ where: { id }, data, include });
-      return sanitizeUser(updated) as T;
-    } catch (error) {
-      this.handleError('update', error, id);
-    }
+    return this.runTransaction(async (tx) => {
+      try {
+        const updated = await (tx[this.modelKey] as any).update({
+          where: { id },
+          data,
+          include,
+        });
+        return this.sanitizeFn(updated) as T;
+      } catch (error) {
+        this.handleError('update', error, id);
+      }
+    });
   }
 
   async delete(id: string): Promise<void> {
-    try {
-      if (this.useSoftDelete) {
-        await this.model.update({
-          where: { id },
-          data: { deletedAt: new Date() },
-        });
-      } else if (this.model.delete) {
-        await this.model.delete({ where: { id } });
+    return this.runTransaction(async (tx) => {
+      try {
+        if (this.useSoftDelete) {
+          await (tx[this.modelKey] as any).update({
+            where: { id },
+            data: { deletedAt: new Date() },
+          });
+        } else {
+          await (tx[this.modelKey] as any).delete({ where: { id } });
+        }
+      } catch (error) {
+        this.handleError('delete', error, id);
       }
-    } catch (error) {
-      this.handleError('delete', error, id);
-    }
+    });
   }
 
   async findOne(
@@ -92,8 +117,10 @@ export class BaseRepository<
     include: any = this.defaultInclude,
   ): Promise<T> {
     try {
-      const finder = this.model.findUnique ?? this.model.findFirst;
-      const doc = await finder?.({ where, include });
+      const finder = (this.delegate.findUnique ?? this.delegate.findFirst).bind(
+        this.delegate,
+      );
+      const doc = await finder({ where, include });
 
       if (!doc || (this.useSoftDelete && doc.deletedAt)) {
         throw new ApiError(
@@ -102,7 +129,7 @@ export class BaseRepository<
         );
       }
 
-      return sanitizeUser(doc) as T;
+      return this.sanitizeFn(doc) as T;
     } catch (error) {
       this.handleError('find one', error);
     }
@@ -115,7 +142,7 @@ export class BaseRepository<
   ): Promise<{ items: T[] } & Partial<PaginationResult>> {
     try {
       const apiFeatures = new ApiFeatures(
-        this.model,
+        this.delegate,
         queryString,
         this.searchableFields,
       )

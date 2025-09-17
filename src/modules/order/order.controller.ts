@@ -113,12 +113,12 @@ export class OrderController {
     );
   }
 
-  // @Get('scan/sku/:sku')
-  // @Permissions(EntityType.ORDER, ActionType.READ)
-  // async findBySku(@Param('sku') sku: string) {
-  //   const order = await this.orderService.findByItemSku(sku);
-  //   return APIResponse.success({ order }, 'Order retrieved by SKU');
-  // }
+  @Get('scan/sku/:sku')
+  @Permissions(EntityType.ORDER, ActionType.READ)
+  async findBySku(@Param('sku') sku: string) {
+    const order = await this.orderService.findOneBySku(sku);
+    return APIResponse.success({ order }, 'Order retrieved by SKU');
+  }
 
   // Public/CSRF-exempt webhook endpoints for scanners/integrations
   @Post('scan/update-status')

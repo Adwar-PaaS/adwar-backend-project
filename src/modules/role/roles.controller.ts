@@ -26,7 +26,7 @@ export class RolesController {
   ) {}
 
   @Post()
-  @Permissions(EntityType.USER, ActionType.CREATE)
+  @Permissions(EntityType.ROLE, ActionType.CREATE)
   async createRole(@Body() body: CreateRoleDto) {
     const role = await this.rolesService.createRoleWithPermissions(
       body.name,
@@ -51,7 +51,7 @@ export class RolesController {
   }
 
   @Get()
-  @Permissions(EntityType.USER, ActionType.READ)
+  @Permissions(EntityType.ROLE, ActionType.READ)
   getAllRoles() {
     const roles = this.permissionService.getAllRolesExcludingSuperAdmin();
     return APIResponse.success(
@@ -62,6 +62,7 @@ export class RolesController {
   }
 
   @Get(':id')
+  @Permissions(EntityType.ROLE, ActionType.READ)
   async getRole(@Param('id') id: string) {
     const role = await this.rolesService.getRoleById(id);
     return APIResponse.success(

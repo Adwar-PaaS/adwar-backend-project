@@ -13,8 +13,8 @@ export class ScanUpdateStatusDto {
   code!: string; // Could be orderId or orderNumber
 
   @IsOptional()
-  @IsIn(['ORDER_ID', 'ORDER_NUMBER'])
-  codeType?: 'ORDER_ID' | 'ORDER_NUMBER' = 'ORDER_NUMBER';
+  @IsIn(['ORDER_ID', 'ORDER_NUMBER', 'SKU'])
+  codeType?: 'ORDER_ID' | 'ORDER_NUMBER' | 'SKU' = 'ORDER_NUMBER';
 
   @IsEnum(OrderStatus)
   status!: OrderStatus;

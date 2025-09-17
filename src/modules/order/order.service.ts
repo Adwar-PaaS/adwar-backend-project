@@ -100,9 +100,9 @@ export class OrderService {
     return this.orderRepo.delete(id);
   }
 
-  // async findByItemSku(sku: string) {
-  //   return this.orderRepo.findByItemSku(sku);
-  // }
+  async findOneBySku(sku: string) {
+    return this.orderRepo.findOneBySku(sku);
+  }
 
   async scanUpdateStatus(
     dto: ScanUpdateStatusDto,

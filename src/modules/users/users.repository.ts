@@ -31,7 +31,7 @@ type UserWithRelations = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.user, ['email', 'firstName', 'lastName'], userInclude);
+    super(prisma, 'user', ['email', 'firstName', 'lastName'], userInclude);
   }
 
   async createUser(data: CreateUserDto): Promise<UserWithRelations> {

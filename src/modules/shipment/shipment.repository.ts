@@ -6,7 +6,7 @@ import { IShipment } from './interfaces/shipment.interface';
 @Injectable()
 export class ShipmentRepository extends BaseRepository<IShipment> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.shipment, ['shipmentNumber'], {
+    super(prisma, 'shipment', ['shipmentNumber'], {
       senderAddress: {
         select: { id: true, address1: true, city: true, country: true },
       },

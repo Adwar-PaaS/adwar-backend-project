@@ -6,7 +6,7 @@ import { BaseRepository } from '../factory/base.repository';
 @Injectable()
 export class AttachmentRepository extends BaseRepository<Attachment> {
   constructor(protected readonly prisma: PrismaService) {
-    super(prisma, prisma.attachment, ['filename']);
+    super(prisma, 'attachment', ['filename']);
   }
 
   async findManyByEntity(
