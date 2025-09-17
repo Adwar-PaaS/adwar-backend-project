@@ -8,7 +8,6 @@ export class BranchRepository extends BaseRepository<IBranch> {
   constructor(protected readonly prisma: PrismaService) {
     super(prisma, 'branch', ['code', 'name'], {
       tenant: true,
-
       address: true,
     });
   }

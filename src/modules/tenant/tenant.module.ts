@@ -7,11 +7,13 @@ import { PermissionModule } from '../../shared/permission/permission.module';
 import { AddressModule } from 'src/shared/address/address.module';
 import { RolesModule } from '../role/roles.module';
 import { UserModule } from '../users/users.module';
+import { BranchModule } from '../branch/branch.module';
 
 @Module({
   imports: [
     CloudinaryModule,
     PermissionModule,
+    BranchModule,
     AddressModule,
     RolesModule,
     UserModule,

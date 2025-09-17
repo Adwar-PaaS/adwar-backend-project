@@ -29,11 +29,16 @@ import { PaginationResult } from '../../common/utils/api-features.util';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PermissionGuard } from '../../common/guards/permission.guard';
+import { BranchService } from '../branch/branch.service';
+import { IBranch } from '../branch/interfaces/branch.interface';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, PermissionGuard)
 export class TenantController {
-  constructor(private readonly service: TenantService) {}
+  constructor(
+    private readonly service: TenantService,
+    private readonly branchService: BranchService,
+  ) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('logoUrl'))
@@ -107,6 +112,22 @@ export class TenantController {
     return APIResponse.success(
       { tenant: mapTenantView(tenant as ITenant) },
       'Tenant updated successfully',
+    );
+  }
+
+  @Get(':tenantId/branches')
+  async getTenantBranches(
+    @Query() query: Record<string, any>,
+    @Param('tenantId') tenantId: string,
+  ): Promise<APIResponse<{ branches: IBranch[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } = await this.branchService.getTenantBranches(
+      query,
+      tenantId,
+    );
+    return APIResponse.success(
+      { branches: items, ...pagination },
+      'Tenant branches fetched successfully',
+      HttpStatus.OK,
     );
   }
 
