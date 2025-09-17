@@ -68,7 +68,7 @@ export class BranchService {
   }
 
   async getTenantBranches(query: Record<string, any>, tenantId: string) {
-    return this.branchRepo.findAll({ ...query, tenantId });
+    return this.branchRepo.findAll(query, { tenantId });
   }
 
   async delete(id: string) {

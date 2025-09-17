@@ -10,7 +10,7 @@ import { AuthUser } from '../auth/interfaces/auth-user.interface';
 export class OrderRepository extends BaseRepository<IOrder> {
   constructor(protected readonly prisma: PrismaService) {
     super(prisma, 'order', ['orderNumber'], {
-      pickUp: true,
+      pickup: true,
       customer: true,
     });
   }

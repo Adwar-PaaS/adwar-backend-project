@@ -104,6 +104,19 @@ export class OrderService {
     return this.orderRepo.findOneBySku(sku);
   }
 
+  async getTenantOrders(query: Record<string, any>, tenantId: string) {
+    return this.orderRepo.findAll(query, {
+      customer: {
+        is: {
+          memberships: {
+            some: { tenantId, deletedAt: null },
+          },
+          deletedAt: null,
+        },
+      },
+    });
+  }
+
   async scanUpdateStatus(
     dto: ScanUpdateStatusDto,
     signature?: string,

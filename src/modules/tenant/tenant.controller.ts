@@ -31,6 +31,8 @@ import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { BranchService } from '../branch/branch.service';
 import { IBranch } from '../branch/interfaces/branch.interface';
+import { IOrder } from '../order/interfaces/order.interface';
+import { OrderService } from '../order/order.service';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -38,6 +40,7 @@ export class TenantController {
   constructor(
     private readonly service: TenantService,
     private readonly branchService: BranchService,
+    private readonly orderService: OrderService,
   ) {}
 
   @Post()
@@ -127,6 +130,22 @@ export class TenantController {
     return APIResponse.success(
       { branches: items, ...pagination },
       'Tenant branches fetched successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Get(':tenantId/orders')
+  async getTenantOrders(
+    @Query() query: Record<string, any>,
+    @Param('tenantId') tenantId: string,
+  ): Promise<APIResponse<{ orders: IOrder[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } = await this.orderService.getTenantOrders(
+      query,
+      tenantId,
+    );
+    return APIResponse.success(
+      { orders: items, ...pagination },
+      'Tenant orders fetched successfully',
       HttpStatus.OK,
     );
   }

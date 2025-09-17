@@ -16,10 +16,14 @@ export class AuthRepository {
   // }
 
   async findUserByEmail(email: string) {
-    return this.usersRepo.findOne({ email });
+    return this.usersRepo.getByEmail(email);
   }
 
   async findUserById(userId: string) {
-    return this.usersRepo.findOne({ id: userId });
+    return this.usersRepo.findById(userId);
+  }
+
+  async findOne(where: Prisma.UserWhereUniqueInput) {
+    return this.usersRepo.findOne(where);
   }
 }

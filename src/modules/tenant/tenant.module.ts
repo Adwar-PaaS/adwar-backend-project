@@ -8,6 +8,7 @@ import { AddressModule } from 'src/shared/address/address.module';
 import { RolesModule } from '../role/roles.module';
 import { UserModule } from '../users/users.module';
 import { BranchModule } from '../branch/branch.module';
+import { OrderModule } from '../order/order.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { BranchModule } from '../branch/branch.module';
     PermissionModule,
     BranchModule,
     AddressModule,
+    OrderModule,
     RolesModule,
     UserModule,
   ],
