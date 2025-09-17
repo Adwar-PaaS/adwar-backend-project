@@ -23,7 +23,6 @@ export class BaseRepository<
     protected readonly searchableFields: string[] = [],
     protected readonly defaultInclude: Prisma.Prisma__Pick<any, any> = {},
     protected readonly useSoftDelete = true,
-    protected readonly sanitizeFn: <U>(entity: U) => U = (x) => x, // no-op unless overridden
   ) {}
 
   private get delegate() {
@@ -69,7 +68,7 @@ export class BaseRepository<
           data,
           include,
         });
-        return this.sanitizeFn(newDoc) as T;
+        return sanitizeUser(newDoc) as T;
       } catch (error) {
         this.handleError('create', error);
       }
@@ -88,7 +87,7 @@ export class BaseRepository<
           data,
           include,
         });
-        return this.sanitizeFn(updated) as T;
+        return sanitizeUser(updated) as T;
       } catch (error) {
         this.handleError('update', error, id);
       }
@@ -129,7 +128,7 @@ export class BaseRepository<
         );
       }
 
-      return this.sanitizeFn(doc) as T;
+      return sanitizeUser(doc) as T;
     } catch (error) {
       this.handleError('find one', error);
     }

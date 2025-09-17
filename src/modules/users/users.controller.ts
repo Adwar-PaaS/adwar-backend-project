@@ -64,7 +64,7 @@ export class UsersController {
     );
   }
 
-  @Post('tenant')
+  @Post('create-user-tenant')
   @UseInterceptors(InvalidateCacheInterceptor)
   @InvalidateCache('users:*')
   @Permissions(EntityType.USER, ActionType.CREATE)

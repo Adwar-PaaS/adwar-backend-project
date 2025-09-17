@@ -9,8 +9,10 @@ export class AddressService {
   constructor(private readonly addressRepo: AddressRepository) {}
 
   async create(dto: CreateAddressDto): Promise<Address> {
+    const { type, isPrimary, isDefault, ...addressData } = dto;
+
     return this.addressRepo.create({
-      ...dto,
+      ...addressData,
       latitude:
         dto.latitude !== undefined
           ? new Prisma.Decimal(dto.latitude)

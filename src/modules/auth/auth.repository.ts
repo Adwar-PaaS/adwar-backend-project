@@ -11,19 +11,15 @@ export class AuthRepository {
     return this.usersRepo.createUser(dto);
   }
 
-  async attachUserToTenant(dto: AttachUserToTenantDto) {
-    return this.usersRepo.attachUserToTenant(dto);
-  }
+  // async attachUserToTenant(dto: AttachUserToTenantDto) {
+  //   return this.usersRepo.attachUserToTenant(dto);
+  // }
 
   async findUserByEmail(email: string) {
-    return this.usersRepo.getByEmail(email);
+    return this.usersRepo.findOne({ email });
   }
 
   async findUserById(userId: string) {
-    return this.usersRepo.findById(userId);
-  }
-
-  async findOne(where: Prisma.UserWhereUniqueInput) {
-    return this.usersRepo.findOne(where);
+    return this.usersRepo.findOne({ id: userId });
   }
 }

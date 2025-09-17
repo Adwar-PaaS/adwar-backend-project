@@ -25,6 +25,18 @@ export class CreateAddressDto {
   @IsString()
   district?: string;
 
+  @IsOptional()
+  @IsEnum(AddressType)
+  type: AddressType = AddressType.HOME;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrimary: boolean = false;
+
+  @IsOptional()
+  @IsBoolean()
+  isDefault: boolean = false;
+
   @IsNotEmpty()
   @IsString()
   city: string;

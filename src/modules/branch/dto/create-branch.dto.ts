@@ -28,10 +28,6 @@ export class CreateBranchDto {
   @IsOptional()
   tenantId?: string;
 
-  @IsUUID()
-  @IsOptional()
-  customerId?: string;
-
   @IsEnum(BranchStatus)
   @IsOptional()
   status?: BranchStatus = BranchStatus.ACTIVE;

@@ -31,8 +31,12 @@ export class PermissionGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    if (user.role?.name === RoleName.SUPER_ADMIN) {
-      return true;
+    // if (user.role?.name === RoleName.SUPER_ADMIN) {
+    //   return true;
+    // }
+
+    if (user.role?.name === RoleName.CUSTOMER) {
+      return false;
     }
 
     const permissions = user.role?.permissions ?? [];

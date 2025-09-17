@@ -25,6 +25,7 @@ import { AppService } from './app.service';
 import { BranchModule } from './modules/branch/branch.module';
 import { CsrfMiddleware } from './common/middleware/csrf.middleware';
 import { RedisService } from './db/redis/redis.service';
+import { CustomerModule } from './modules/customer/customer.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { RedisService } from './db/redis/redis.service';
     ShipmentModule,
     MapModule,
     BranchModule,
+    CustomerModule,
     DbModule,
   ],
   controllers: [AppController],

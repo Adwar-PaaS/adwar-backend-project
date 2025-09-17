@@ -44,34 +44,34 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
-  @Post('register')
-  @UseGuards(CsrfGuard)
-  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  async register(
-    @Body() dto: RegisterDto,
-  ): Promise<APIResponse<{ user: AuthUser }>> {
-    const user = await this.auth.register(dto);
-    return APIResponse.success(
-      { user },
-      'Registration successful',
-      HttpStatus.CREATED,
-    );
-  }
+  // @Post('register')
+  // @UseGuards(CsrfGuard)
+  // @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  // async register(
+  //   @Body() dto: RegisterDto,
+  // ): Promise<APIResponse<{ user: AuthUser }>> {
+  //   const user = await this.auth.register(dto);
+  //   return APIResponse.success(
+  //     { user },
+  //     'Registration successful',
+  //     HttpStatus.CREATED,
+  //   );
+  // }
 
-  @Post('attach-to-tenant')
-  @UseGuards(CsrfGuard)
-  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  async attachUserToTenant(
-    @Body() dto: AttachUserToTenantDto,
-  ): Promise<APIResponse<{ user: AuthUser }>> {
-    const user = await this.auth.attachUserToTenant(dto);
+  // @Post('attach-to-tenant')
+  // @UseGuards(CsrfGuard)
+  // @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  // async attachUserToTenant(
+  //   @Body() dto: AttachUserToTenantDto,
+  // ): Promise<APIResponse<{ user: AuthUser }>> {
+  //   const user = await this.auth.attachUserToTenant(dto);
 
-    return APIResponse.success(
-      { user },
-      'User attached to tenant successfully',
-      HttpStatus.CREATED,
-    );
-  }
+  //   return APIResponse.success(
+  //     { user },
+  //     'User attached to tenant successfully',
+  //     HttpStatus.CREATED,
+  //   );
+  // }
 
   @Post('login')
   @UseGuards(CsrfGuard)

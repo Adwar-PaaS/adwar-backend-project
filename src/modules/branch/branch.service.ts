@@ -23,10 +23,6 @@ export class BranchService {
       branchData.tenant = { connect: { id: dto.tenantId } };
     }
 
-    if (dto.customerId) {
-      branchData.customer = { connect: { id: dto.customerId } };
-    }
-
     if (dto.addressId) {
       branchData.address = { connect: { id: dto.addressId } };
     } else if (dto.address) {
@@ -51,10 +47,6 @@ export class BranchService {
 
     if (dto.tenantId) {
       updateData.tenant = { connect: { id: dto.tenantId } };
-    }
-
-    if (dto.customerId) {
-      updateData.customer = { connect: { id: dto.customerId } };
     }
 
     if (dto.addressId) {

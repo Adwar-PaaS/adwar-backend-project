@@ -22,13 +22,13 @@ export class UsersService {
         const address = await this.addressService.create(addr);
         await this.usersRepo.attachAddressToUser(user.id, address.id, {
           type: addr.type,
-          isPrimary: false,
-          isDefault: false,
+          isPrimary: addr.isPrimary,
+          isDefault: addr.isDefault,
         });
       }
     }
 
-    return user;
+    return this.usersRepo.findOne({ id: user.id });
   }
 
   findAll(query: Record<string, any>) {
@@ -36,7 +36,7 @@ export class UsersService {
   }
 
   findById(id: string) {
-    return this.usersRepo.findById(id);
+    return this.usersRepo.findOne({ id });
   }
 
   async update(id: string, dto: UpdateUserDto) {
@@ -44,7 +44,26 @@ export class UsersService {
       dto.password = await hashPassword(dto.password);
     }
 
-    return this.usersRepo.updateUser(id, dto);
+    const { addresses, ...cleanDto } = dto;
+
+    const user = await this.usersRepo.updateUser(id, cleanDto);
+
+    if (addresses && addresses.length) {
+      for (const addr of addresses) {
+        if (addr.id) {
+          await this.addressService.update(addr.id, addr);
+        } else {
+          const newAddress = await this.addressService.create(addr);
+          await this.usersRepo.attachAddressToUser(user.id, newAddress.id, {
+            type: addr.type,
+            isPrimary: addr.isPrimary,
+            isDefault: addr.isDefault,
+          });
+        }
+      }
+    }
+
+    return this.usersRepo.findOne({ id: user.id });
   }
 
   async createUserViaSuperAdminWithRole(dto: CreateUserDto) {
@@ -55,8 +74,20 @@ export class UsersService {
 
   async createTenantUser(dto: CreateUserDto) {
     dto.password = await hashPassword(dto.password);
+    const user = await this.usersRepo.createTenantUser(dto);
 
-    return this.usersRepo.createTenantUser(dto);
+    if (dto.addresses?.length) {
+      for (const addr of dto.addresses) {
+        const address = await this.addressService.create(addr);
+        await this.usersRepo.attachAddressToUser(user.id, address.id, {
+          type: addr.type,
+          isPrimary: addr.isPrimary,
+          isDefault: addr.isDefault,
+        });
+      }
+    }
+
+    return this.usersRepo.findOne({ id: user.id });
   }
 
   async delete(id: string): Promise<void> {
@@ -64,7 +95,7 @@ export class UsersService {
   }
 
   findByEmail(email: string) {
-    return this.usersRepo.getByEmail(email);
+    return this.usersRepo.findOne({ email });
   }
 
   async updateStatus(id: string, status: Status) {

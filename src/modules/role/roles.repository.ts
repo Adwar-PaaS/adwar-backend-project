@@ -14,20 +14,14 @@ export class RolesRepository extends BaseRepository<Role> {
     tenantId: string | null,
     permissions: { entityType: EntityType; actionTypes: ActionType[] }[],
   ) {
-    if (name !== RoleName.CUSTOMER) {
-      const existingRole = await this.prisma.role.findFirst({
-        where: {
-          name,
-          tenantId,
-          deletedAt: null,
-        },
-      });
+    const existingRole = await this.prisma.role.findFirst({
+      where: { name, tenantId, deletedAt: null },
+    });
 
-      if (existingRole) {
-        throw new BadRequestException(
-          `Role "${name}" already exists for this tenant.`,
-        );
-      }
+    if (existingRole) {
+      throw new BadRequestException(
+        `Role "${name}" already exists for this tenant.`,
+      );
     }
 
     return this.prisma.role.create({
@@ -37,18 +31,16 @@ export class RolesRepository extends BaseRepository<Role> {
         permissions: {
           create: permissions.map((p) => ({
             entityType: p.entityType,
-            actionType: p.actionTypes,
+            actions: p.actionTypes,
           })),
         },
       },
-      include: {
-        permissions: true,
-      },
+      include: { permissions: true },
     });
   }
 
   async findById(id: string) {
-    const role = await this.prisma.role.findUnique({
+    return this.prisma.role.findUnique({
       where: { id },
       include: {
         permissions: {
@@ -59,17 +51,6 @@ export class RolesRepository extends BaseRepository<Role> {
         },
       },
     });
-
-    if (!role) return null;
-
-    role.permissions = role.permissions.map((p) => ({
-      ...p,
-      actionType: Array.isArray(p.actions)
-        ? (p.actions as ActionType[])
-        : [p.actions as ActionType],
-    }));
-
-    return role;
   }
 
   async deleteRole(id: string) {

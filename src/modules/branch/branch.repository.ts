@@ -7,9 +7,9 @@ import { IBranch } from './interfaces/branch.interface';
 export class BranchRepository extends BaseRepository<IBranch> {
   constructor(protected readonly prisma: PrismaService) {
     super(prisma, 'branch', ['code', 'name'], {
-      address: true,
       tenant: true,
-      customer: true,
+
+      address: true,
     });
   }
 }

@@ -23,6 +23,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
 
     const order = await this.prisma.$transaction(async (tx) => {
       const productIdForSku: Record<string, string> = {};
+
       for (const item of items) {
         if (!item.sku) continue;
         const product = await tx.product.upsert({
@@ -30,34 +31,37 @@ export class OrderRepository extends BaseRepository<IOrder> {
           update: {
             name: item.name,
             description: item.description,
-            weight: (item.weight as any) ?? undefined,
+            weight: item.weight ?? undefined,
           },
           create: {
             sku: item.sku,
             name: item.name,
             description: item.description,
-            weight: (item.weight as any) ?? undefined,
+            weight: item.weight ?? undefined,
           },
         });
         productIdForSku[item.sku] = product.id;
       }
 
-      const itemsForCreate = items.map((i) => ({
+      const validItems = items.filter((i) => i.sku && productIdForSku[i.sku]);
+
+      const itemsForCreate = validItems.map((i) => ({
         productId: productIdForSku[i.sku],
         quantity: i.quantity,
-        unitPrice: i.unitPrice as any,
-        total: (i.quantity * i.unitPrice) as any,
+        unitPrice: i.unitPrice,
+        total: i.quantity * i.unitPrice,
       }));
 
-      const totalValue = itemsForCreate.reduce(
-        (acc, item) => acc + Number(item.total),
-        0,
-      );
+      const totalValue =
+        dto.totalValue ??
+        itemsForCreate.reduce((acc, item) => acc + Number(item.total), 0);
 
-      const totalWeight = items.reduce(
-        (acc, i) => acc + Number(i.weight || 0) * i.quantity,
-        0,
-      );
+      const totalWeight =
+        dto.totalWeight ??
+        validItems.reduce(
+          (acc, i) => acc + Number(i.weight || 0) * i.quantity,
+          0,
+        );
 
       const created = await tx.order.create({
         data: {
@@ -67,13 +71,12 @@ export class OrderRepository extends BaseRepository<IOrder> {
           status: dto.status ?? OrderStatus.PENDING,
           failedReason: dto.failedReason,
           priority: dto.priority,
-          totalValue: (dto.totalValue ?? totalValue) as any,
-          totalWeight: (dto.totalWeight ?? totalWeight) as any,
+          totalValue,
+          totalWeight,
           estimatedDelivery: dto.estimatedDelivery
-            ? new Date(dto.estimatedDelivery as any)
+            ? new Date(dto.estimatedDelivery)
             : undefined,
-          items:
-            itemsForCreate.length > 0 ? { create: itemsForCreate } : undefined,
+          items: itemsForCreate.length ? { create: itemsForCreate } : undefined,
         },
         include: { items: true, customer: true },
       });
@@ -81,7 +84,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
       return created as any;
     });
 
-    return order as any;
+    return order;
   }
 
   async findOneBySku(sku: string) {
