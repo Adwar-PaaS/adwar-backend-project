@@ -9,6 +9,7 @@ import { RolesModule } from '../role/roles.module';
 import { UserModule } from '../users/users.module';
 import { BranchModule } from '../branch/branch.module';
 import { OrderModule } from '../order/order.module';
+import { PickUpModule } from '../pickup/pickup.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { OrderModule } from '../order/order.module';
     BranchModule,
     AddressModule,
     OrderModule,
+    PickUpModule,
     RolesModule,
     UserModule,
   ],

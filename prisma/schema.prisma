@@ -302,7 +302,7 @@ model Order {
   totalValue          Decimal?       @db.Decimal(12, 2)
   packageCount        Int            @default(1)
   specialInstructions String?
-  status              OrderStatus    @default(DRAFT)
+  status              OrderStatus    @default(PENDING)
   failedReason        FailedReason?
   priority            PriorityStatus @default(NORMAL)
   pickupId            String?        @db.Uuid

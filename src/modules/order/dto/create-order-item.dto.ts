@@ -17,16 +17,16 @@ export class CreateOrderItemDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @IsPositive()
+  weight?: number;
+
   @IsNumber()
-  @Min(1)
+  @IsPositive()
   quantity: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   unitPrice: number;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @IsPositive()
-  weight?: number;
 }

@@ -33,6 +33,8 @@ import { BranchService } from '../branch/branch.service';
 import { IBranch } from '../branch/interfaces/branch.interface';
 import { IOrder } from '../order/interfaces/order.interface';
 import { OrderService } from '../order/order.service';
+import { PickUpService } from '../pickup/pickup.service';
+import { PickUp } from '@prisma/client';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -41,6 +43,7 @@ export class TenantController {
     private readonly service: TenantService,
     private readonly branchService: BranchService,
     private readonly orderService: OrderService,
+    private readonly pickupService: PickUpService,
   ) {}
 
   @Post()
@@ -147,6 +150,20 @@ export class TenantController {
       { orders: items, ...pagination },
       'Tenant orders fetched successfully',
       HttpStatus.OK,
+    );
+  }
+
+  @Get(':tenantId/pickups')
+  async getTenantPickups(
+    @Param('tenantId') tenantId: string,
+    @Query() query: Record<string, any>,
+  ): Promise<APIResponse<{ pickups: PickUp[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } =
+      await this.pickupService.getPickupsOfTenant(tenantId, query);
+
+    return APIResponse.success(
+      { pickups: items, ...pagination },
+      'Tenant pickups retrieved successfully',
     );
   }
 

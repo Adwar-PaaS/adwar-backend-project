@@ -7,13 +7,15 @@ import {
   HttpStatus,
   UseGuards,
   Delete,
+  Patch,
+  Put,
 } from '@nestjs/common';
 import { PickUpService } from './pickup.service';
 import { CreatePickupDto } from './dto/create-pickup.dto';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../auth/guards/session.guard';
+import { UpdatePickupAndOrdersStatusDto } from './dto/update-pickup-and-orders-status.dto';
+import { UpdatePickupDto } from './dto/update-pickup.dto';
 
 @Controller('pickups')
 @UseGuards(SessionGuard)
@@ -36,6 +38,32 @@ export class PickUpController {
     return APIResponse.success(
       null,
       'Pickup deleted successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() dto: UpdatePickupDto) {
+    const pickup = await this.pickupService.updatePickup(id, dto);
+    return APIResponse.success(
+      { pickup },
+      'Pickup updated successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdatePickupAndOrdersStatusDto,
+  ) {
+    const pickup = await this.pickupService.updatePickupStatusAndOrders(
+      id,
+      dto,
+    );
+    return APIResponse.success(
+      { pickup },
+      'Pickup and related orders status updated successfully',
       HttpStatus.OK,
     );
   }

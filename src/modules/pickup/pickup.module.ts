@@ -9,5 +9,6 @@ import { OrderModule } from '../order/order.module';
   imports: [NotificationModule, OrderModule],
   controllers: [PickUpController],
   providers: [PickUpService, PickUpRepository],
+  exports: [PickUpService, PickUpRepository],
 })
 export class PickUpModule {}

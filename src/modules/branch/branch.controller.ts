@@ -13,7 +13,7 @@ import {
 import { BranchService } from './branch.service';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { Permissions } from '../../common/decorators/permission.decorator';
-import { EntityType, ActionType } from '@prisma/client';
+import { EntityType, ActionType, PickUp } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateBranchDto } from './dto/create-branch.dto';
@@ -21,11 +21,15 @@ import { UpdateBranchDto } from './dto/update-branch.dto';
 import { Audit } from 'src/common/decorators/audit.decorator';
 import { PaginationResult } from '../../common/utils/api-features.util';
 import { IBranch } from './interfaces/branch.interface';
+import { PickUpService } from '../pickup/pickup.service';
 
 @Controller('branches')
 @UseGuards(SessionGuard, PermissionGuard)
 export class BranchController {
-  constructor(private readonly branchService: BranchService) {}
+  constructor(
+    private readonly branchService: BranchService,
+    private readonly pickupService: PickUpService,
+  ) {}
 
   @Post()
   @Permissions(EntityType.BRANCH, ActionType.CREATE)
@@ -74,6 +78,20 @@ export class BranchController {
   async update(@Param('id') id: string, @Body() dto: UpdateBranchDto) {
     const branch = await this.branchService.update(id, dto);
     return APIResponse.success({ branch }, 'Branch updated successfully');
+  }
+
+  @Get(':branchId/pickups')
+  async getPickupsOfCustomer(
+    @Query() query: Record<string, any>,
+    @Param('branchId') branchId: string,
+  ): Promise<APIResponse<{ pickups: PickUp[] } & Partial<PaginationResult>>> {
+    const { items, ...pagination } =
+      await this.pickupService.getPickupsOfBranch(branchId, query);
+
+    return APIResponse.success(
+      { pickups: items, ...pagination },
+      'Branch pickups retrieved successfully',
+    );
   }
 
   @Delete(':id')

@@ -1,21 +1,21 @@
 import {
   IsString,
   IsOptional,
-  IsUUID,
   IsEnum,
   IsNumber,
   IsPositive,
   ValidateNested,
   Min,
+  IsDateString,
+  ArrayMinSize,
 } from 'class-validator';
 import { FailedReason, PriorityStatus, OrderStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { CreateOrderItemDto } from './order-item.dto';
+import { CreateOrderItemDto } from './create-order-item.dto';
 
 export class CreateOrderDto {
-  @IsOptional()
   @IsString()
-  orderNumber?: string;
+  orderNumber: string;
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 3 })
@@ -33,7 +33,7 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsEnum(OrderStatus)
-  status?: OrderStatus = OrderStatus.DRAFT;
+  status?: OrderStatus = OrderStatus.PENDING;
 
   @IsOptional()
   @IsEnum(FailedReason)
@@ -44,17 +44,11 @@ export class CreateOrderDto {
   priority?: PriorityStatus = PriorityStatus.NORMAL;
 
   @IsOptional()
-  @IsUUID()
-  customerId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  branchId?: string;
-
-  @IsOptional()
-  estimatedDelivery?: Date;
+  @IsDateString()
+  estimatedDelivery?: string;
 
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
-  items?: CreateOrderItemDto[];
+  @ArrayMinSize(1)
+  items: CreateOrderItemDto[];
 }
