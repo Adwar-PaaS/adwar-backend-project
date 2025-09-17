@@ -36,9 +36,7 @@ export class PickUpService {
       notes: dto.notes,
     });
 
-    for (const orderId of dto.orderIds) {
-      await this.orderRepo.update(orderId, { pickupId: pickup.id });
-    }
+    await this.orderRepo.updateMany(dto.orderIds, { pickupId: pickup.id });
 
     return this.pickupRepo.findOne({ id: pickup.id });
   }
@@ -58,9 +56,10 @@ export class PickUpService {
 
     await this.pickupRepo.update(pickupId, { status: dto.pickupStatus });
 
-    const { items: orders } = await this.orderRepo.findAll({}, { pickupId });
-    for (const order of orders) {
-      await this.orderRepo.update(order.id, { status: dto.orderStatus });
+    const orders = await this.orderRepo.findMany({ pickupId });
+    const orderIds = orders.map((o) => o.id);
+    if (orderIds.length) {
+      await this.orderRepo.updateMany(orderIds, { status: dto.orderStatus });
     }
 
     return this.pickupRepo.findOne({ id: pickupId });

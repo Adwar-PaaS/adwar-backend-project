@@ -94,6 +94,33 @@ export class BaseRepository<
     });
   }
 
+  async updateMany(
+    ids: string[],
+    data: any,
+    include: any = this.defaultInclude,
+  ): Promise<T[]> {
+    return this.runTransaction(async (tx) => {
+      try {
+        await (tx[this.modelKey] as any).updateMany({
+          where: { id: { in: ids } },
+          data,
+        });
+
+        const updated = await (tx[this.modelKey] as any).findMany({
+          where: {
+            id: { in: ids },
+            ...(this.useSoftDelete ? { deletedAt: null } : {}),
+          },
+          include,
+        });
+
+        return sanitizeUsers(updated) as T[];
+      } catch (error) {
+        this.handleError('update many', error);
+      }
+    });
+  }
+
   async delete(id: string): Promise<void> {
     return this.runTransaction(async (tx) => {
       try {
