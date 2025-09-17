@@ -1,4 +1,12 @@
-import { IsUUID, IsOptional, IsDateString, IsString } from 'class-validator';
+import {
+  IsUUID,
+  IsOptional,
+  IsDateString,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { CreateAddressDto } from '../../../shared/address/dto/create-address.dto';
+import { Type } from 'class-transformer';
 
 export class CreatePickupDto {
   @IsUUID('all', { each: true })
@@ -19,4 +27,9 @@ export class CreatePickupDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateAddressDto)
+  address?: CreateAddressDto;
 }

@@ -26,6 +26,7 @@ import { PaginationResult } from '../../common/utils/api-features.util';
 import { CsrfExempt } from '../../common/decorators/csrf-exempt.decorator';
 import { ScanUpdateStatusDto } from './dto/scan-update-status.dto';
 import { ScanCreateOrderDto } from './dto/scan-create-order.dto';
+import { IOrder } from './interfaces/order.interface';
 
 @Controller('orders')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -54,7 +55,7 @@ export class OrderController {
   @Get()
   async findAll(
     @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ orders: any[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ orders: IOrder[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.orderService.findAll(query);
     return APIResponse.success(
       { orders: items, ...pagination },

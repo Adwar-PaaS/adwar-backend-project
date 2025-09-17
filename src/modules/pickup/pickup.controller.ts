@@ -16,6 +16,7 @@ import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../auth/guards/session.guard';
 import { UpdatePickupAndOrdersStatusDto } from './dto/update-pickup-and-orders-status.dto';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
+import { IOrder } from '../order/interfaces/order.interface';
 
 @Controller('pickups')
 @UseGuards(SessionGuard)
@@ -29,6 +30,18 @@ export class PickUpController {
       { pickup },
       'Pickup created successfully',
       HttpStatus.CREATED,
+    );
+  }
+
+  @Get(':id/orders')
+  async getPickupOrders(
+    @Param('id') id: string,
+  ): Promise<APIResponse<{ orders: IOrder[] }>> {
+    const orders = await this.pickupService.getPickupOrders(id);
+    return APIResponse.success(
+      { orders },
+      'Pickup orders retrieved successfully',
+      HttpStatus.OK,
     );
   }
 

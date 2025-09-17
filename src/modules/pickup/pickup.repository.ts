@@ -9,6 +9,7 @@ export class PickUpRepository extends BaseRepository<PickUp> {
     super(prisma, 'pickUp', ['code'], {
       branch: true,
       driver: true,
+      address: true,
     });
   }
 }

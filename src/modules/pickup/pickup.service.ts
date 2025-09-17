@@ -6,6 +6,7 @@ import { CreatePickupDto } from './dto/create-pickup.dto';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
 import { OrderRepository } from '../order/order.repository';
 import { UpdatePickupAndOrdersStatusDto } from './dto/update-pickup-and-orders-status.dto';
+import { AddressService } from 'src/shared/address/address.service';
 
 @Injectable()
 export class PickUpService {
@@ -13,6 +14,7 @@ export class PickUpService {
     private readonly pickupRepo: PickUpRepository,
     private readonly orderRepo: OrderRepository,
     private readonly notificationService: NotificationService,
+    private readonly addressService: AddressService,
   ) {}
 
   async createPickup(dto: CreatePickupDto) {
@@ -20,10 +22,17 @@ export class PickUpService {
       throw new BadRequestException('orderIds is required and cannot be empty');
     }
 
+    let addressId: string | undefined;
+    if (dto.address) {
+      const address = await this.addressService.create(dto.address);
+      addressId = address.id;
+    }
+
     const pickup = await this.pickupRepo.create({
       scheduledFor: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
       driverId: dto.driverId,
       branchId: dto.branchId,
+      addressId,
       notes: dto.notes,
     });
 
@@ -61,8 +70,8 @@ export class PickUpService {
     return this.pickupRepo.findAll(query);
   }
 
-  async getPickupOrders(pickupId: string, query: Record<string, any> = {}) {
-    return this.orderRepo.findAll({ pickupId, ...query });
+  async getPickupOrders(pickupId: string) {
+    return this.orderRepo.findMany({ pickupId });
   }
 
   async getPickupsOfBranch(branchId: string, query: Record<string, any> = {}) {

@@ -134,6 +134,25 @@ export class BaseRepository<
     }
   }
 
+  async findMany(
+    where: Record<string, any> = {},
+    include: Record<string, any> = this.defaultInclude,
+  ): Promise<T[]> {
+    try {
+      const docs = await this.delegate.findMany({
+        where: {
+          ...where,
+          ...(this.useSoftDelete ? { deletedAt: null } : {}),
+        },
+        include,
+      });
+
+      return sanitizeUsers(docs) as T[];
+    } catch (error) {
+      this.handleError('find many', error);
+    }
+  }
+
   async findAll(
     queryString: Record<string, any> = {},
     where: Record<string, any> = {},
