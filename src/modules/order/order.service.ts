@@ -28,37 +28,10 @@ export class OrderService {
   }
 
   async update(id: string, dto: UpdateOrderDto): Promise<IOrder> {
-    const updateData: any = { ...dto };
-
     if (dto.items !== undefined) {
-      const itemsWithTotal = (dto.items || []).map((item) => ({
-        sku: item.sku,
-        name: item.name,
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        weight: item.weight,
-        total: item.quantity * item.unitPrice,
-      }));
-
-      updateData.items = {
-        deleteMany: {},
-        create: itemsWithTotal,
-      };
-
-      updateData.totalValue =
-        dto.totalValue ??
-        itemsWithTotal.reduce((acc, item) => acc + item.total, 0);
-
-      updateData.totalWeight =
-        dto.totalWeight ??
-        itemsWithTotal.reduce(
-          (acc, item) => acc + (item.weight || 0) * item.quantity,
-          0,
-        );
+      return this.orderRepo.updateWithProducts(id, dto);
     }
-
-    return this.orderRepo.update(id, updateData, { items: true });
+    return this.orderRepo.update(id, dto, { items: true });
   }
 
   async findAll(query: Record<string, any>) {
@@ -71,29 +44,6 @@ export class OrderService {
 
   async getCustomerOrders(customerId: string, query: Record<string, any> = {}) {
     return this.orderRepo.findAll(query, { customerId });
-  }
-
-  async updateStatus(id: string, dto: UpdateOrderStatusDto): Promise<IOrder> {
-    const updates: any = { status: dto.status };
-
-    switch (dto.status) {
-      case 'ASSIGNED_FOR_PICKUP':
-        updates.assignedAt = new Date();
-        break;
-      case 'PICKED_UP':
-        updates.pickedAt = new Date();
-        break;
-      case 'DELIVERED':
-        updates.deliveredAt = new Date();
-        break;
-      case 'FAILED':
-        updates.failedReason = dto.failedReason;
-        break;
-    }
-
-    if (dto.notes) updates.notes = dto.notes;
-
-    return this.orderRepo.update(id, updates);
   }
 
   async delete(id: string): Promise<void> {

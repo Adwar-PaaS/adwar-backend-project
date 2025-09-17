@@ -80,15 +80,15 @@ export class OrderController {
   //   );
   // }
 
-  @Put(':id/status')
-  @Permissions(EntityType.ORDER, ActionType.UPDATE)
-  async updateStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateOrderStatusDto,
-  ) {
-    const order = await this.orderService.updateStatus(id, dto);
-    return APIResponse.success({ order }, 'Order status updated successfully');
-  }
+  // @Put(':id/status')
+  // @Permissions(EntityType.ORDER, ActionType.UPDATE)
+  // async updateStatus(
+  //   @Param('id') id: string,
+  //   @Body() dto: UpdateOrderStatusDto,
+  // ) {
+  //   const order = await this.orderService.updateStatus(id, dto);
+  //   return APIResponse.success({ order }, 'Order status updated successfully');
+  // }
 
   @Put(':id')
   @Audit({
@@ -97,7 +97,7 @@ export class OrderController {
     entityIdParam: 'id',
     description: 'Updated order status',
   })
-  @Permissions(EntityType.ORDER, ActionType.UPDATE)
+  // @Permissions(EntityType.ORDER, ActionType.UPDATE)
   async update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
     const order = await this.orderService.update(id, dto);
     return APIResponse.success({ order }, 'Order updated successfully');
