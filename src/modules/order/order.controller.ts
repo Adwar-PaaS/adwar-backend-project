@@ -26,6 +26,7 @@ import { CsrfExempt } from '../../common/decorators/csrf-exempt.decorator';
 import { ScanUpdateStatusDto } from './dto/scan-update-status.dto';
 import { ScanCreateOrderDto } from './dto/scan-create-order.dto';
 import { IOrder } from './interfaces/order.interface';
+import { mapOrderView, mapOrderViews, OrderView } from './mappers/order.mapper';
 
 @Controller('orders')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -50,14 +51,15 @@ export class OrderController {
   }
 
   @Get()
-  @Permissions(EntityType.ORDER, ActionType.READ)
+  // @Permissions(EntityType.ORDER, ActionType.READ)
   @Get()
   async findAll(
     @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ orders: IOrder[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ orders: OrderView[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.orderService.findAll(query);
+    const orders = mapOrderViews(items as unknown as IOrder[]);
     return APIResponse.success(
-      { orders: items, ...pagination },
+      { orders, ...pagination },
       'Orders retrieved successfully',
     );
   }

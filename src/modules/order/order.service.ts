@@ -50,7 +50,7 @@ export class OrderService {
   }
 
   async findOneBySku(sku: string) {
-    return this.orderRepo.findOneBySku(sku);
+    return this.orderRepo.findOne({ sku });
   }
 
   async getTenantOrders(query: Record<string, any>, tenantId: string) {

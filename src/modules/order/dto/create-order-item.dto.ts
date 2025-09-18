@@ -20,7 +20,7 @@ export class CreateOrderItemDto {
 
   @IsOptional()
   @IsBoolean()
-  isFragile?: Boolean;
+  isFragile?: boolean;
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 3 })
