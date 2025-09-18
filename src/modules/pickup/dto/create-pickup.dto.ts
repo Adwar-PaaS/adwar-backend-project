@@ -4,9 +4,11 @@ import {
   IsDateString,
   IsString,
   ValidateNested,
+  IsEnum,
 } from 'class-validator';
 import { CreateAddressDto } from '../../../shared/address/dto/create-address.dto';
 import { Type } from 'class-transformer';
+import { PickUpStatus } from '@prisma/client';
 
 export class CreatePickupDto {
   @IsUUID('all', { each: true })
@@ -23,6 +25,10 @@ export class CreatePickupDto {
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @IsOptional()
+  @IsEnum(PickUpStatus)
+  status?: PickUpStatus;
 
   @IsOptional()
   @IsString()

@@ -273,7 +273,7 @@ CREATE TABLE "public"."orders" (
     "totalValue" DECIMAL(12,2),
     "packageCount" INTEGER NOT NULL DEFAULT 1,
     "specialInstructions" TEXT,
-    "status" "public"."OrderStatus" NOT NULL DEFAULT 'DRAFT',
+    "status" "public"."OrderStatus" NOT NULL DEFAULT 'CREATED',
     "failedReason" "public"."FailedReason",
     "priority" "public"."PriorityStatus" NOT NULL DEFAULT 'NORMAL',
     "pickupId" UUID,
@@ -301,6 +301,7 @@ CREATE TABLE "public"."order_items" (
     "total" DECIMAL(12,2) NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "scannedAt" TIMESTAMP(3),
 
     CONSTRAINT "order_items_pkey" PRIMARY KEY ("id")
 );
@@ -714,6 +715,9 @@ CREATE INDEX "order_items_orderId_idx" ON "public"."order_items"("orderId");
 
 -- CreateIndex
 CREATE INDEX "order_items_productId_idx" ON "public"."order_items"("productId");
+
+-- CreateIndex
+CREATE INDEX "order_items_scannedAt_idx" ON "public"."order_items"("scannedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "order_items_orderId_productId_key" ON "public"."order_items"("orderId", "productId");

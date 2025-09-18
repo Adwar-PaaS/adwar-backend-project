@@ -8,17 +8,9 @@ import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { EntityType, ActionType } from '@prisma/client';
 import { AuthUser } from '../../modules/auth/interfaces/auth-user.interface';
 import { AUDIT_METADATA_KEY } from '../decorators/audit.decorator';
-
-interface AuditOptions {
-  entityType: EntityType;
-  actionType: ActionType;
-  entityIdParam?: string;
-  description?: string;
-  snapshotFields?: string[];
-}
+import { AuditOptions } from '../interfaces/audit-options.interface';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
@@ -33,9 +25,7 @@ export class AuditInterceptor implements NestInterceptor {
       context.getHandler(),
     );
 
-    if (!options) {
-      return next.handle();
-    }
+    if (!options) return next.handle();
 
     const req = context.switchToHttp().getRequest();
     const user: AuthUser | undefined = req.user;
@@ -51,15 +41,22 @@ export class AuditInterceptor implements NestInterceptor {
             entityId = this.extractEntityId(response);
           }
 
-          const oldValues = this.filterSnapshot(
-            req._oldEntity ?? null,
-            options.snapshotFields,
-          );
+          const delegate = this.getDelegate(options.entityType);
 
-          const newValues = this.filterSnapshot(
-            this.unwrapResponse(response),
-            options.snapshotFields,
-          );
+          let oldValues: any = null;
+          let newValues: any = null;
+
+          if (delegate && entityId) {
+            oldValues = await delegate.findUnique({
+              where: { id: entityId },
+              select: this.buildSelect(options.snapshotFields),
+            });
+
+            newValues = await delegate.findUnique({
+              where: { id: entityId },
+              select: this.buildSelect(options.snapshotFields),
+            });
+          }
 
           await this.prisma.auditLog.create({
             data: {
@@ -81,40 +78,25 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
-  private filterSnapshot(data: any, fields?: string[]): any {
-    if (!data) return null;
-    if (!fields || fields.length === 0) return data;
-
-    const filtered: Record<string, any> = {};
-    for (const field of fields) {
-      if (data[field] !== undefined) {
-        filtered[field] = data[field];
-      }
-    }
-    return filtered;
+  private getDelegate(entityType: string): any {
+    const key = entityType.toLowerCase();
+    return (this.prisma as any)[key] ?? null;
   }
 
-  private unwrapResponse(response: any): any {
-    if (!response) return null;
-    if (response.data) {
-      return response.data;
-    }
-    return response;
+  private buildSelect(fields?: string[]) {
+    if (!fields?.length) return undefined;
+    return fields.reduce((acc, f) => ({ ...acc, [f]: true }), {});
   }
 
   private extractEntityId(response: any): string | null {
     if (!response) return null;
 
     const data = response.data ?? response;
+    if (typeof data !== 'object') return null;
 
-    if (typeof data === 'object') {
-      if (data.id) return String(data.id);
-
-      for (const key of Object.keys(data)) {
-        if (data[key]?.id) {
-          return String(data[key].id);
-        }
-      }
+    if (data.id) return String(data.id);
+    for (const key of Object.keys(data)) {
+      if (data[key]?.id) return String(data[key].id);
     }
 
     return null;

@@ -18,7 +18,6 @@ import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { Audit } from '../../common/decorators/audit.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';

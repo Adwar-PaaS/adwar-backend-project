@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsPositive,
   Min,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateOrderItemDto {
@@ -16,6 +17,10 @@ export class CreateOrderItemDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isFragile?: Boolean;
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 3 })

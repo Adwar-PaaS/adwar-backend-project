@@ -65,7 +65,7 @@ export class PickUpController {
     );
   }
 
-  @Patch(':id/status')
+  @Patch(':id/request')
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdatePickupAndOrdersStatusDto,
@@ -76,7 +76,7 @@ export class PickUpController {
     );
     return APIResponse.success(
       { pickup },
-      'Pickup and related orders status updated successfully',
+      'Pickup request sent successfully',
       HttpStatus.OK,
     );
   }

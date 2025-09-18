@@ -1,12 +1,13 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, HttpStatus } from '@nestjs/common';
 import { PickUpRepository } from './pickup.repository';
-import { PickUp } from '@prisma/client';
+import { PickUp, PickUpStatus } from '@prisma/client';
 import { NotificationService } from 'src/shared/notification/notification.service';
 import { CreatePickupDto } from './dto/create-pickup.dto';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
 import { OrderRepository } from '../order/order.repository';
 import { UpdatePickupAndOrdersStatusDto } from './dto/update-pickup-and-orders-status.dto';
 import { AddressService } from 'src/shared/address/address.service';
+import { ApiError } from '../../common/exceptions/api-error.exception';
 
 @Injectable()
 export class PickUpService {
@@ -20,6 +21,20 @@ export class PickUpService {
   async createPickup(dto: CreatePickupDto) {
     if (!dto.orderIds || dto.orderIds.length === 0) {
       throw new BadRequestException('orderIds is required and cannot be empty');
+    }
+
+    const existingOrders = await this.orderRepo.findMany({
+      id: { in: dto.orderIds },
+      pickupId: { not: null },
+    });
+
+    if (existingOrders.length > 0) {
+      const assignedIds = existingOrders.map((o) => o.id).join(', ');
+
+      throw new ApiError(
+        'Some orders are already assigned to a pickup',
+        HttpStatus.BAD_REQUEST,
+      ); // : ${assignedIds}
     }
 
     let addressId: string | undefined;
@@ -42,7 +57,43 @@ export class PickUpService {
   }
 
   async updatePickup(pickupId: string, dto: UpdatePickupDto) {
-    return this.pickupRepo.update(pickupId, dto);
+    const pickup = await this.pickupRepo.findOne({ id: pickupId });
+    if (!pickup) {
+      throw new BadRequestException('Pickup not found');
+    }
+
+    if (pickup.status !== PickUpStatus.CREATED) {
+      throw new BadRequestException(
+        `You can only update pickups in CREATED status. Current status: ${pickup.status}`,
+      );
+    }
+
+    if (dto.orderIds && dto.orderIds.length > 0) {
+      const existingOrders = await this.orderRepo.findMany({
+        id: { in: dto.orderIds },
+        pickupId: { not: pickupId },
+      });
+
+      if (existingOrders.length > 0) {
+        const assignedIds = existingOrders.map((o) => o.id).join(', ');
+        throw new ApiError(
+          `Some orders are already assigned to another pickup: ${assignedIds}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const currentOrders = await this.orderRepo.findMany({ pickupId });
+      const currentOrderIds = currentOrders.map((o) => o.id);
+
+      if (currentOrderIds.length > 0) {
+        await this.orderRepo.updateMany(currentOrderIds, { pickupId: null });
+      }
+
+      await this.orderRepo.updateMany(dto.orderIds, { pickupId });
+    }
+
+    const { orderIds, ...rest } = dto;
+    return this.pickupRepo.update(pickupId, rest);
   }
 
   async updatePickupStatusAndOrders(
@@ -78,7 +129,18 @@ export class PickUpService {
   }
 
   async getPickupsOfTenant(tenantId: string, query: Record<string, any> = {}) {
-    return this.pickupRepo.findAll(query, { branch: { tenantId } });
+    return this.pickupRepo.findAll(query, {
+      orders: {
+        some: {
+          customer: {
+            memberships: {
+              some: { tenantId },
+            },
+          },
+        },
+      },
+      NOT: { status: PickUpStatus.CREATED },
+    });
   }
 
   async getPickupsOfCustomer(

@@ -4,7 +4,6 @@ import { hashPassword, comparePasswords } from '../../common/utils/crypto.util';
 import { RoleName } from '@prisma/client';
 import { AuthRepository } from './auth.repository';
 import { mapPrismaUserToAuthUser } from './mappers/auth.mapper';
-import { AttachUserToTenantDto } from '../users/dto/attach-user-to-tenant.dto';
 
 @Injectable()
 export class AuthService {
