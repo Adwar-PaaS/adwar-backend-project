@@ -1,12 +1,43 @@
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from '../factory/base.repository';
 import { PrismaService } from 'src/db/prisma/prisma.service';
-import { Address } from '@prisma/client';
+import { Address, AddressType } from '@prisma/client';
 
 @Injectable()
 export class AddressRepository extends BaseRepository<Address> {
   constructor(protected readonly prisma: PrismaService) {
     super(prisma, 'address', ['label', 'city', 'country']);
+  }
+
+  attachToUser(
+    userId: string,
+    addressId: string,
+    meta: { type?: string; isPrimary?: boolean; isDefault?: boolean },
+  ) {
+    return this.prisma.userAddress.create({
+      data: {
+        userId,
+        addressId,
+        type: meta.type as AddressType,
+        isPrimary: meta.isPrimary ?? false,
+        isDefault: meta.isDefault ?? false,
+      },
+    });
+  }
+
+  updateAttachToUser(
+    userId: string,
+    addressId: string,
+    meta: { type?: string; isPrimary?: boolean; isDefault?: boolean },
+  ) {
+    return this.prisma.userAddress.updateMany({
+      where: { userId, addressId },
+      data: {
+        type: meta.type as AddressType,
+        isPrimary: meta.isPrimary ?? false,
+        isDefault: meta.isDefault ?? false,
+      },
+    });
   }
 }
 

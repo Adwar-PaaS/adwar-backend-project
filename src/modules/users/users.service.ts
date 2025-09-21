@@ -18,14 +18,11 @@ export class UsersService {
     const user = await this.usersRepo.createUser(dto);
 
     if (dto.addresses?.length) {
-      for (const addr of dto.addresses) {
-        const address = await this.addressService.create(addr);
-        await this.usersRepo.attachAddressToUser(user.id, address.id, {
-          type: addr.type,
-          isPrimary: addr.isPrimary,
-          isDefault: addr.isDefault,
-        });
-      }
+      const addressesWithUserId = dto.addresses.map((addr) => ({
+        ...addr,
+        userId: user.id,
+      }));
+      await this.addressService.createMany(addressesWithUserId);
     }
 
     return this.usersRepo.findOne({ id: user.id });
@@ -49,17 +46,16 @@ export class UsersService {
     const user = await this.usersRepo.updateUser(id, cleanDto);
 
     if (addresses && addresses.length) {
-      for (const addr of addresses) {
-        if (addr.id) {
-          await this.addressService.update(addr.id, addr);
-        } else {
-          const newAddress = await this.addressService.create(addr);
-          await this.usersRepo.attachAddressToUser(user.id, newAddress.id, {
-            type: addr.type,
-            isPrimary: addr.isPrimary,
-            isDefault: addr.isDefault,
-          });
-        }
+      const updates = addresses.filter((a) => a.id);
+      const creates = addresses
+        .filter((a) => !a.id)
+        .map((a) => ({ ...a, userId: id }));
+
+      if (updates.length) {
+        await this.addressService.updateMany(updates);
+      }
+      if (creates.length) {
+        await this.addressService.createMany(creates);
       }
     }
 
@@ -77,14 +73,11 @@ export class UsersService {
     const user = await this.usersRepo.createTenantUser(dto);
 
     if (dto.addresses?.length) {
-      for (const addr of dto.addresses) {
-        const address = await this.addressService.create(addr);
-        await this.usersRepo.attachAddressToUser(user.id, address.id, {
-          type: addr.type,
-          isPrimary: addr.isPrimary,
-          isDefault: addr.isDefault,
-        });
-      }
+      const addressesWithUserId = dto.addresses.map((addr) => ({
+        ...addr,
+        userId: user.id,
+      }));
+      await this.addressService.createMany(addressesWithUserId);
     }
 
     return this.usersRepo.findOne({ id: user.id });

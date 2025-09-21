@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsEnum,
   IsNumber,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateAddressDto {
@@ -68,4 +69,8 @@ export class CreateAddressDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
 }

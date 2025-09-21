@@ -149,22 +149,6 @@ export class UsersRepository extends BaseRepository<User> {
     return sanitizeUser(user) as UserWithRelations;
   }
 
-  async attachAddressToUser(
-    userId: string,
-    addressId: string,
-    options?: { isPrimary?: boolean; isDefault?: boolean; type: AddressType },
-  ) {
-    return this.prisma.userAddress.create({
-      data: {
-        userId,
-        addressId,
-        type: options?.type ?? AddressType.HOME,
-        isPrimary: options?.isPrimary ?? false,
-        isDefault: options?.isDefault ?? false,
-      },
-    });
-  }
-
   async updateUser(
     id: string,
     data: UpdateUserDto,

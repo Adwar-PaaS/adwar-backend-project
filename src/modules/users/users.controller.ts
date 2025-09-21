@@ -41,7 +41,7 @@ export class UsersController {
   @Post()
   @UseInterceptors(InvalidateCacheInterceptor)
   @InvalidateCache('users:*')
-  @Permissions(EntityType.USER, ActionType.CREATE)
+  // @Permissions(EntityType.USER, ActionType.CREATE)
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
     return APIResponse.success(
@@ -67,7 +67,7 @@ export class UsersController {
   @Post('create-user-tenant')
   @UseInterceptors(InvalidateCacheInterceptor)
   @InvalidateCache('users:*')
-  @Permissions(EntityType.USER, ActionType.CREATE)
+  // @Permissions(EntityType.USER, ActionType.CREATE)
   async createTenantUser(
     @Body() dto: CreateUserDto,
     @CurrentUser() authUser: AuthUser,
@@ -99,7 +99,7 @@ export class UsersController {
   @Get(':id')
   @UseInterceptors(CacheInterceptor)
   @Cacheable((req) => `users:${req.params.id}`, 60)
-  @Permissions(EntityType.USER, ActionType.READ)
+  // @Permissions(EntityType.USER, ActionType.READ)
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
     return APIResponse.success({ user }, 'User retrieved successfully');
