@@ -4,7 +4,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantRepository } from './tenant.repository';
 import { ITenant } from './interfaces/tenant.interface';
 import { UploadService } from '../../shared/upload/upload.service';
-import { Status } from '@prisma/client';
+import { RoleName, Status } from '@prisma/client';
 import { AddressService } from 'src/shared/address/address.service';
 import slugify from 'slugify';
 import { checkUnique } from '../../common/utils/check-unique.util';
@@ -123,6 +123,15 @@ export class TenantService {
       existing.status === Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE;
 
     return this.tenantRepo.update(id, { status: newStatus });
+  }
+
+  async getAllOperationsUsers(tenantId: string) {
+    return this.userRepo.findMany({
+      status: Status.ACTIVE,
+      role: { name: RoleName.OPERATION },
+      memberships: { some: { tenantId } },
+      deletedAt: null,
+    });
   }
 
   async getTenantUsers(query: Record<string, any>, tenantId: string) {

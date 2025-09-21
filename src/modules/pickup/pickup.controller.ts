@@ -9,6 +9,7 @@ import {
   Delete,
   Patch,
   Put,
+  Req,
 } from '@nestjs/common';
 import { PickUpService } from './pickup.service';
 import { CreatePickupDto } from './dto/create-pickup.dto';
@@ -17,6 +18,8 @@ import { SessionGuard } from '../auth/guards/session.guard';
 import { UpdatePickupAndOrdersStatusDto } from './dto/update-pickup-and-orders-status.dto';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
 import { IOrder } from '../order/interfaces/order.interface';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Controller('pickups')
 @UseGuards(SessionGuard)
@@ -69,10 +72,12 @@ export class PickUpController {
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdatePickupAndOrdersStatusDto,
+    @CurrentUser() user: AuthUser,
   ) {
     const pickup = await this.pickupService.updatePickupStatusAndOrders(
       id,
       dto,
+      user,
     );
     return APIResponse.success(
       { pickup },

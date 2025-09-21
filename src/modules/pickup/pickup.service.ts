@@ -1,6 +1,14 @@
 import { BadRequestException, Injectable, HttpStatus } from '@nestjs/common';
 import { PickUpRepository } from './pickup.repository';
-import { PickUp, PickUpStatus } from '@prisma/client';
+import {
+  EntityType,
+  NotificationCategory,
+  NotificationChannel,
+  PickUp,
+  PickUpStatus,
+  PriorityStatus,
+  RoleName,
+} from '@prisma/client';
 import { NotificationService } from 'src/shared/notification/notification.service';
 import { CreatePickupDto } from './dto/create-pickup.dto';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
@@ -8,6 +16,8 @@ import { OrderRepository } from '../order/order.repository';
 import { UpdatePickupAndOrdersStatusDto } from './dto/update-pickup-and-orders-status.dto';
 import { AddressService } from 'src/shared/address/address.service';
 import { ApiError } from '../../common/exceptions/api-error.exception';
+import { TenantService } from '../tenant/tenant.service';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Injectable()
 export class PickUpService {
@@ -16,6 +26,7 @@ export class PickUpService {
     private readonly orderRepo: OrderRepository,
     private readonly notificationService: NotificationService,
     private readonly addressService: AddressService,
+    private readonly tenantService: TenantService,
   ) {}
 
   async createPickup(dto: CreatePickupDto) {
@@ -99,6 +110,7 @@ export class PickUpService {
   async updatePickupStatusAndOrders(
     pickupId: string,
     dto: UpdatePickupAndOrdersStatusDto,
+    user: AuthUser,
   ) {
     const pickup = await this.pickupRepo.findOne({ id: pickupId });
     if (!pickup) {
@@ -111,6 +123,27 @@ export class PickUpService {
     const orderIds = orders.map((o) => o.id);
     if (orderIds.length) {
       await this.orderRepo.updateMany(orderIds, { status: dto.orderStatus });
+
+      const tenantId = user.tenant.id;
+      if (tenantId) {
+        const operationUsers =
+          await this.tenantService.getAllOperationsUsers(tenantId);
+
+        const recipientIds = operationUsers.map((u) => u.id);
+        if (recipientIds.length) {
+          await this.notificationService.create({
+            senderId: user.id,
+            title: `Pickup is waiting for your action`,
+            message: `Pickup ${pickup.pickupNumber} has been marked as ${dto.pickupStatus}. Please take the necessary actions.`,
+            relatedId: pickupId,
+            relatedType: EntityType.PICKUP,
+            category: NotificationCategory.ACTION,
+            priority: PriorityStatus.HIGH,
+            channels: [NotificationChannel.IN_APP],
+            recipientIds,
+          });
+        }
+      }
     }
 
     return this.pickupRepo.findOne({ id: pickupId });
