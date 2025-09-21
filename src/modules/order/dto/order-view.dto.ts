@@ -1,47 +1,46 @@
 import { Expose, Type, Transform } from 'class-transformer';
-
-class ProductViewDto {
-  @Expose()
-  id!: string;
-
-  @Expose()
-  sku!: string;
-
-  @Expose()
-  name!: string;
-
-  @Expose()
-  description!: string;
-
-  @Expose()
-  category?: string;
-
-  @Expose()
-  @Transform(({ value }) => value?.toString() ?? null)
-  weight?: string | null;
-
-  @Expose()
-  isFragile!: boolean;
-}
+import {
+  decimalToString,
+  dateToISOString,
+} from 'src/common/utils/helpers.util';
 
 class OrderItemViewDto {
   @Expose()
   id!: string;
 
   @Expose()
+  sku?: string | null;
+
+  @Expose()
   quantity!: number;
 
   @Expose()
-  @Transform(({ value }) => value?.toString() ?? null)
+  @Transform(decimalToString)
   unitPrice!: string;
 
   @Expose()
-  @Transform(({ value }) => value?.toString() ?? null)
+  @Transform(decimalToString)
   total!: string;
 
   @Expose()
-  @Type(() => ProductViewDto)
-  product!: ProductViewDto;
+  name?: string | null;
+
+  @Expose()
+  description?: string | null;
+
+  @Expose()
+  category?: string | null;
+
+  @Expose()
+  @Transform(decimalToString)
+  weight?: string | null;
+
+  @Expose()
+  isFragile!: boolean;
+
+  @Expose()
+  @Transform(dateToISOString)
+  scannedAt!: string | null;
 }
 
 class CustomerViewDto {
@@ -53,9 +52,6 @@ class CustomerViewDto {
 
   @Expose()
   lastName!: string;
-
-  @Expose()
-  email!: string | null;
 }
 
 export class OrderViewDto {
@@ -65,15 +61,16 @@ export class OrderViewDto {
   @Expose()
   orderNumber!: string;
 
+  // ✅ Explicitly nullable for Prisma String?
   @Expose()
-  referenceNumber?: string;
+  referenceNumber?: string | null;
 
   @Expose()
-  @Transform(({ value }) => value?.toString() ?? null)
+  @Transform(decimalToString)
   totalWeight?: string;
 
   @Expose()
-  @Transform(({ value }) => value?.toString() ?? null)
+  @Transform(decimalToString)
   totalValue?: string;
 
   @Expose()
@@ -86,10 +83,12 @@ export class OrderViewDto {
   priority!: string;
 
   @Expose()
-  createdAt!: Date;
+  @Transform(dateToISOString)
+  createdAt!: string;
 
   @Expose()
-  updatedAt!: Date;
+  @Transform(dateToISOString)
+  updatedAt!: string;
 
   @Expose()
   @Type(() => CustomerViewDto)

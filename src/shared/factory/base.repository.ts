@@ -75,6 +75,32 @@ export class BaseRepository<
     });
   }
 
+  async bulkInsert(
+    data: any[],
+    include: any = this.defaultInclude,
+  ): Promise<T[]> {
+    return this.runTransaction(async (tx) => {
+      try {
+        await (tx[this.modelKey] as any).createMany({
+          data,
+          skipDuplicates: true,
+        });
+
+        const inserted = await (tx[this.modelKey] as any).findMany({
+          where: {
+            id: { in: data.map((d) => d.id).filter(Boolean) },
+            ...(this.useSoftDelete ? { deletedAt: null } : {}),
+          },
+          include,
+        });
+
+        return sanitizeUsers(inserted) as T[];
+      } catch (error) {
+        this.handleError('bulk insert', error);
+      }
+    });
+  }
+
   async update(
     id: string,
     data: any,

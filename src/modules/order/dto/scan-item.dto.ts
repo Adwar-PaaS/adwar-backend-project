@@ -52,4 +52,8 @@ export class ScanItemDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 }

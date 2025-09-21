@@ -26,6 +26,7 @@ import { BranchModule } from './modules/branch/branch.module';
 import { CsrfMiddleware } from './common/middleware/csrf.middleware';
 import { RedisService } from './db/redis/redis.service';
 import { CustomerModule } from './modules/customer/customer.module';
+import { ScannerModule } from './modules/scanner-device/scanner.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { CustomerModule } from './modules/customer/customer.module';
     MapModule,
     BranchModule,
     CustomerModule,
+    ScannerModule,
     DbModule,
   ],
   controllers: [AppController],

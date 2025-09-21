@@ -59,40 +59,6 @@ export class UsersRepository extends BaseRepository<User> {
     return sanitizeUser(user) as UserWithRelations;
   }
 
-  // async attachUserToTenant(data: {
-  //   userId: string;
-  //   tenantId: string;
-  //   branchId?: string | null;
-  // }): Promise<UserWithRelations> {
-  //   await this.prisma.userTenant.upsert({
-  //     where: {
-  //       userId_tenantId: {
-  //         userId: data.userId,
-  //         tenantId: data.tenantId,
-  //       },
-  //     },
-  //     update: {
-  //       ...(data.branchId ? { branchId: data.branchId } : {}),
-  //     },
-  //     create: {
-  //       userId: data.userId,
-  //       tenantId: data.tenantId,
-  //       ...(data.branchId ? { branchId: data.branchId } : {}),
-  //     },
-  //   });
-
-  //   const user = await this.prisma.user.findUnique({
-  //     where: { id: data.userId },
-  //     include: userInclude,
-  //   });
-
-  //   if (!user) {
-  //     throw new NotFoundException(`User ${data.userId} not found`);
-  //   }
-
-  //   return sanitizeUser(user) as UserWithRelations;
-  // }
-
   async createUserViaSuperAdminWithRole(
     data: CreateUserDto,
   ): Promise<UserWithRelations> {

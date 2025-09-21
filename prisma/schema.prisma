@@ -233,11 +233,12 @@ model Branch {
   deletedAt      DateTime?
 
   // Relations
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  address     Address?     @relation(fields: [addressId], references: [id], onDelete: SetNull)
-  userTenants UserTenant[]
-  pickups     PickUp[]     @relation("PickupBranch")
-  inventories Inventory[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  address        Address?        @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  userTenants    UserTenant[]
+  pickups        PickUp[]        @relation("PickupBranch")
+  inventories    Inventory[]
+  scannerDevices ScannerDevice[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -338,25 +339,47 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(uuid()) @db.Uuid
-  orderId   String   @db.Uuid
-  productId String   @db.Uuid
-  quantity  Int      @default(1)
-  unitPrice Decimal  @default(0) @db.Decimal(10, 2)
-  total     Decimal  @default(0) @db.Decimal(12, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid()) @db.Uuid
+  orderId   String    @db.Uuid
+  productId String    @db.Uuid
+  quantity  Int       @default(1)
+  unitPrice Decimal   @default(0) @db.Decimal(10, 2)
+  total     Decimal   @default(0) @db.Decimal(12, 2)
   scannedAt DateTime?
 
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
   // Relations
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@unique([orderId, productId])
   @@index([orderId])
   @@index([productId])
   @@index([scannedAt])
   @@map("order_items")
+}
+
+model ScannerDevice {
+  id           String    @id @default(uuid()) @db.Uuid
+  deviceId     String    @unique
+  deviceName   String
+  description  String?
+  branchId     String?   @db.Uuid
+  isActive     Boolean   @default(true)
+  registeredAt DateTime  @default(now())
+  lastSeenAt   DateTime?
+
+  // Relations
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId])
+  @@map("scanner_devices")
 }
 
 model Payment {

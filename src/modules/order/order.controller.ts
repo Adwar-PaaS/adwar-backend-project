@@ -9,11 +9,12 @@ import {
   Query,
   HttpStatus,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { Permissions } from '../../common/decorators/permission.decorator';
-import { EntityType, ActionType } from '@prisma/client';
+import { EntityType, ActionType, Order } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -23,10 +24,12 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PaginationResult } from '../../common/utils/api-features.util';
 import { CsrfExempt } from '../../common/decorators/csrf-exempt.decorator';
-import { ScanUpdateStatusDto } from './dto/scan-update-status.dto';
-import { ScanCreateOrderDto } from './dto/scan-create-order.dto';
-import { IOrder } from './interfaces/order.interface';
+import {
+  BulkScanUpdateDto,
+  ScanUpdateStatusDto,
+} from './dto/scan-update-status.dto';
 import { mapOrderView, mapOrderViews, OrderView } from './mappers/order.mapper';
+import { UpdateItemsInOrderDto } from './dto/update-order-items.dto';
 
 @Controller('orders')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -57,7 +60,7 @@ export class OrderController {
     @Query() query: Record<string, any>,
   ): Promise<APIResponse<{ orders: OrderView[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.orderService.findAll(query);
-    const orders = mapOrderViews(items as unknown as IOrder[]);
+    const orders = mapOrderViews(items as unknown as Order[]);
     return APIResponse.success(
       { orders, ...pagination },
       'Orders retrieved successfully',
@@ -71,26 +74,6 @@ export class OrderController {
     return APIResponse.success({ order }, 'Order retrieved successfully');
   }
 
-  // @Get('customer/:customerId')
-  // @Permissions(EntityType.ORDER, ActionType.READ)
-  // async getOrdersOfCustomer(@Param('customerId') customerId: string) {
-  //   const orders = await this.orderService.getCustomerOrders(customerId);
-  //   return APIResponse.success(
-  //     { orders },
-  //     'Customer orders retrieved successfully',
-  //   );
-  // }
-
-  // @Put(':id/status')
-  // @Permissions(EntityType.ORDER, ActionType.UPDATE)
-  // async updateStatus(
-  //   @Param('id') id: string,
-  //   @Body() dto: UpdateOrderStatusDto,
-  // ) {
-  //   const order = await this.orderService.updateStatus(id, dto);
-  //   return APIResponse.success({ order }, 'Order status updated successfully');
-  // }
-
   @Put(':id')
   @Audit({
     entityType: EntityType.ORDER,
@@ -102,6 +85,21 @@ export class OrderController {
   async update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
     const order = await this.orderService.update(id, dto);
     return APIResponse.success({ order }, 'Order updated successfully');
+  }
+
+  @Put(':id/items')
+  @Audit({
+    entityType: EntityType.ORDER,
+    actionType: ActionType.UPDATE,
+    entityIdParam: 'id',
+    description: 'Updated multiple items in order',
+  })
+  async updateItemsInOrder(
+    @Param('id') id: string,
+    @Body() dto: UpdateItemsInOrderDto,
+  ) {
+    const order = await this.orderService.updateItemsInOrder(id, dto.items);
+    return APIResponse.success({ order }, 'Order items updated successfully');
   }
 
   @Delete(':id')
@@ -122,42 +120,72 @@ export class OrderController {
     return APIResponse.success({ order }, 'Order retrieved by SKU');
   }
 
-  // Public/CSRF-exempt webhook endpoints for scanners/integrations
-  @Post('scan/update-status')
+  @Post('scan/update-status') // scan each item individually
   @CsrfExempt()
-  async scanUpdateStatus(
-    @Body() dto: ScanUpdateStatusDto,
-    @Param() _p: any,
-    @Query() _q: any,
-    req?: any,
-  ) {
+  async scanUpdateStatus(@Body() dto: ScanUpdateStatusDto, @Req() req?: any) {
     const signature = req?.headers['x-webhook-signature'] as string | undefined;
-    const order = await this.orderService.scanUpdateStatus(
-      dto,
-      signature,
-      req?.rawBody,
-    );
-    return APIResponse.success({ order }, 'Order status updated via scan');
+
+    try {
+      const order = await this.orderService.scanUpdateStatus(
+        dto,
+        signature,
+        req?.rawBody,
+      );
+      return APIResponse.success(
+        {
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status,
+            updatedAt: order.updatedAt,
+          },
+        },
+        'Order status updated via scan',
+      );
+    } catch (error) {
+      return APIResponse.error(
+        error.message || 'Scan update failed',
+        HttpStatus.BAD_REQUEST,
+        {
+          code: dto.code,
+          codeType: dto.codeType,
+          attemptedStatus: dto.status,
+        },
+      );
+    }
   }
 
-  @Post('scan/create')
+  @Post('scan/bulk-update') // scan whole order at once by order number
   @CsrfExempt()
-  async scanCreateOrder(
-    @Body() dto: ScanCreateOrderDto,
-    @Param() _p: any,
-    @Query() _q: any,
-    req?: any,
-  ) {
+  async bulkScanUpdate(@Body() dto: BulkScanUpdateDto, @Req() req?: any) {
     const signature = req?.headers['x-webhook-signature'] as string | undefined;
-    const order = await this.orderService.scanCreateOrder(
-      dto,
-      signature,
-      req?.rawBody,
-    );
-    return APIResponse.success(
-      { order },
-      'Order created via scan',
-      HttpStatus.CREATED,
-    );
+
+    try {
+      const results = await this.orderService.bulkScanUpdate(
+        dto,
+        signature,
+        req?.rawBody,
+      );
+
+      const hasFailures = results.failed.length > 0;
+      const statusCode =
+        hasFailures && results.success.length === 0
+          ? HttpStatus.BAD_REQUEST
+          : hasFailures
+            ? HttpStatus.PARTIAL_CONTENT
+            : HttpStatus.OK;
+
+      return APIResponse.success(
+        results,
+        `Bulk scan completed. ${results.success.length} succeeded, ${results.failed.length} failed`,
+        statusCode,
+      );
+    } catch (error) {
+      return APIResponse.error(
+        error.message || 'Bulk scan failed',
+        HttpStatus.BAD_REQUEST,
+        { itemCount: dto.items?.length || 0 },
+      );
+    }
   }
 }

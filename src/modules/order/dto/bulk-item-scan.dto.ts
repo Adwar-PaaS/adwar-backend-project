@@ -46,4 +46,8 @@ export class BulkItemScanDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 }

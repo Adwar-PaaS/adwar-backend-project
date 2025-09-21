@@ -299,11 +299,30 @@ CREATE TABLE "public"."order_items" (
     "quantity" INTEGER NOT NULL DEFAULT 1,
     "unitPrice" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "total" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "scannedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "scannedAt" TIMESTAMP(3),
+    "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "order_items_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."scanner_devices" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "deviceId" TEXT NOT NULL,
+    "deviceName" TEXT NOT NULL,
+    "description" TEXT,
+    "branchId" UUID,
+    "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
+    "registeredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastSeenAt" TIMESTAMP(3),
+
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "scanner_devices_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -526,6 +545,12 @@ CREATE TABLE "public"."requests" (
 
     CONSTRAINT "requests_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "scanner_devices_deviceId_key" ON "public"."scanner_devices"("deviceId");
+
+-- CreateIndex
+CREATE INDEX "scanner_devices_branchId_idx" ON "public"."scanner_devices"("branchId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "public"."users"("email");
@@ -1000,5 +1025,8 @@ ALTER TABLE "public"."requests" ADD CONSTRAINT "requests_senderId_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "public"."requests" ADD CONSTRAINT "requests_responderId_fkey" FOREIGN KEY ("responderId") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."scanner_devices" ADD CONSTRAINT "scanner_devices_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "public"."branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- instead of we have creator we can make dynamic model for this to avoid null to using it when need tracking user creator

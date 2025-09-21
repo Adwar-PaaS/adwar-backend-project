@@ -1,3 +1,5 @@
+import { formatISO } from 'date-fns';
+
 export const userWithRoleSelect = {
   id: true,
   email: true,
@@ -12,3 +14,8 @@ export const userWithRoleSelect = {
     },
   },
 };
+
+export const decimalToString = ({ value }: { value: any }) =>
+  value?.toString() ?? null;
+export const dateToISOString = ({ value }: { value: Date | null }) =>
+  value ? formatISO(value) : null;

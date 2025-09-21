@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { IOrder } from './interfaces/order.interface';
@@ -6,6 +10,7 @@ import { PrismaService } from 'src/db/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { UpdateItemsInOrderDto } from './dto/update-order-items.dto';
 
 @Injectable()
 export class OrderRepository extends BaseRepository<IOrder> {
@@ -125,30 +130,122 @@ export class OrderRepository extends BaseRepository<IOrder> {
   }
 
   async updateWithProducts(id: string, dto: UpdateOrderDto): Promise<IOrder> {
-    const { validItems, itemsForCreate } = await this.prepareOrderItems(
-      dto.items || [],
-    );
+    return this.prisma.$transaction(async (tx) => {
+      const { validItems, itemsForCreate } = await this.prepareOrderItems(
+        dto.items || [],
+      );
 
-    const { totalValue, totalWeight } = this.calculateTotals(
-      dto,
-      itemsForCreate,
-      validItems,
-    );
+      const { totalValue, totalWeight } = this.calculateTotals(
+        dto,
+        itemsForCreate,
+        validItems,
+      );
 
-    const { items: _omit, ...restDto } = dto as any;
+      const { items: _omit, ...restDto } = dto as any;
 
-    return this.prisma.order.update({
-      where: { id },
-      data: {
-        ...restDto,
-        totalValue,
-        totalWeight,
-        items: {
-          deleteMany: {},
-          ...(itemsForCreate.length ? { create: itemsForCreate } : {}),
+      return tx.order.update({
+        where: { id },
+        data: {
+          ...restDto,
+          totalValue,
+          totalWeight,
+          items: {
+            deleteMany: {
+              orderId: id,
+            },
+            ...(itemsForCreate.length
+              ? {
+                  create: itemsForCreate.map((item) => ({
+                    ...item,
+                    orderId: id,
+                  })),
+                }
+              : {}),
+          },
         },
-      },
-      include: { items: true, customer: true },
-    }) as any;
+        include: {
+          items: {
+            include: { product: true },
+          },
+          customer: true,
+        },
+      }) as any;
+    });
+  }
+
+  async updateItemsInOrder(
+    orderId: string,
+    items: Partial<UpdateItemsInOrderDto['items'][0]>[],
+  ): Promise<IOrder> {
+    return this.prisma.$transaction(async (tx) => {
+      for (const dto of items) {
+        if (!dto.id) continue;
+
+        const existingItem = await tx.orderItem.findFirst({
+          where: { id: dto.id, orderId },
+          include: { product: true },
+        });
+        if (!existingItem) {
+          throw new NotFoundException(`Order item ${dto.id} not found`);
+        }
+
+        let productId = existingItem.productId;
+        if (dto.sku) {
+          const product = await tx.product.upsert({
+            where: { sku: dto.sku },
+            update: {
+              name: dto.name ?? undefined,
+              description: dto.description ?? undefined,
+              weight: dto.weight ?? undefined,
+              isFragile: dto.isFragile ?? undefined,
+            },
+            create: {
+              sku: dto.sku,
+              name: dto.name!,
+              description: dto.description,
+              weight: dto.weight ?? undefined,
+              isFragile: dto.isFragile ?? false,
+            },
+          });
+          productId = product.id;
+        }
+
+        const quantity = dto.quantity ?? existingItem.quantity;
+        const unitPrice = dto.unitPrice ?? Number(existingItem.unitPrice);
+        const total = quantity * unitPrice;
+
+        await tx.orderItem.update({
+          where: { id: dto.id },
+          data: {
+            productId,
+            quantity,
+            unitPrice,
+            total,
+          },
+        });
+      }
+
+      const allItems = await tx.orderItem.findMany({
+        where: { orderId },
+        include: { product: true },
+      });
+      const totalValue = allItems.reduce(
+        (acc, item) => acc + Number(item.total),
+        0,
+      );
+      const totalWeight = allItems.reduce(
+        (acc, item) =>
+          acc +
+          (item.product?.weight ? Number(item.product.weight) : 0) *
+            item.quantity,
+        0,
+      );
+
+      return tx.order.update({
+        where: { id: orderId },
+        data: { totalValue, totalWeight },
+        include: { items: { include: { product: true } }, customer: true },
+      }) as any;
+    });
   }
 }
