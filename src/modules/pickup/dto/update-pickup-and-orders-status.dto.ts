@@ -8,5 +8,3 @@ export class UpdatePickupAndOrdersStatusDto {
   @IsEnum(OrderStatus)
   orderStatus!: OrderStatus;
 }
-
-

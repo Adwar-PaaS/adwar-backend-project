@@ -85,4 +85,25 @@ export class PickUpController {
       HttpStatus.OK,
     );
   }
+
+  @Get()
+  async findAll(@Req() req: any) {
+    const pickups = await this.pickupService.findAll(req.query);
+    return APIResponse.success(
+      pickups,
+      'Pickups retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  @Get('notifications/ops')
+  async getPickupNotificationsForOPS(@CurrentUser() user: AuthUser) {
+    const opsNotifications =
+      await this.pickupService.getPickupNotificationsForOPS(user);
+    return APIResponse.success(
+      { opsNotifications },
+      'Pickup notifications for OPS retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
 }

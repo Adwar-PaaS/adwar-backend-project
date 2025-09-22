@@ -124,7 +124,7 @@ export class PickUpService {
     if (orderIds.length) {
       await this.orderRepo.updateMany(orderIds, { status: dto.orderStatus });
 
-      const tenantId = user.tenant.id;
+      const tenantId = user.tenant?.id;
       if (tenantId) {
         const operationUsers =
           await this.tenantService.getAllOperationsUsers(tenantId);
@@ -147,6 +147,54 @@ export class PickUpService {
     }
 
     return this.pickupRepo.findOne({ id: pickupId });
+  }
+
+  async getPickupNotificationsForOPS(user: AuthUser) {
+    if (!user.tenant?.id) {
+      throw new BadRequestException('User tenant not found');
+    }
+
+    if (user.role?.name !== RoleName.OPERATION) {
+      throw new BadRequestException('Only operation users can access this');
+    }
+
+    const pickups = await this.pickupRepo.findMany({
+      status: PickUpStatus.PENDING,
+      orders: {
+        some: {
+          customer: {
+            memberships: {
+              some: { tenantId: user.tenant.id },
+            },
+          },
+        },
+      },
+    });
+
+    if (!pickups.length) return [];
+
+    const pickupIds = pickups
+      .map((p) => p.id)
+      .filter((id): id is string => !!id);
+
+    const notifications = await this.notificationService.listForUser(user.id);
+
+    return notifications
+      .filter(
+        (n) =>
+          n.notification.relatedType === EntityType.PICKUP &&
+          n.notification.relatedId &&
+          pickupIds.includes(n.notification.relatedId) &&
+          n.notification.category === NotificationCategory.ACTION,
+      )
+      .map((n) => ({
+        notificationId: n.id,
+        pickupId: n.notification.relatedId,
+        title: n.notification.title,
+        message: n.notification.message,
+        readAt: n.readAt,
+        createdAt: n.notification.createdAt,
+      }));
   }
 
   async findAll(query: Record<string, any>) {

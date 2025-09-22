@@ -12,7 +12,9 @@ import { checkUnique } from '../../common/utils/check-unique.util';
 import { sanitizeUser } from '../../common/utils/sanitize-user.util';
 
 const userInclude = {
-  role: true,
+  role: {
+    include: { permissions: true },
+  },
   memberships: {
     include: {
       tenant: true,

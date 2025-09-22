@@ -14,11 +14,13 @@ export class PermissionGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const { entity, action } =
+    const required =
       this.reflector.get<{ entity: EntityType; action: ActionType }>(
         PERMISSIONS_KEY,
         context.getHandler(),
       ) || {};
+
+    const { entity, action } = required;
 
     if (!entity || !action) {
       return true;
@@ -36,7 +38,7 @@ export class PermissionGuard implements CanActivate {
     // }
 
     if (user.role?.name === RoleName.CUSTOMER) {
-      return false;
+      throw new ForbiddenException('Customers cannot access this resource');
     }
 
     const permissions = user.role?.permissions ?? [];
@@ -45,16 +47,15 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const hasAllForEntity = permissions.some(
-      (p) => p.entity === entity && p.action === ActionType.ALL,
-    );
-    if (hasAllForEntity) {
-      return true;
+    const entityPerm = permissions.find((p) => p.entity === entity);
+
+    if (!entityPerm) {
+      throw new ForbiddenException(`No permissions for entity ${entity}`);
     }
 
-    const hasPermission = permissions.some(
-      (p) => p.entity === entity && p.action === action,
-    );
+    const hasPermission =
+      entityPerm.actions.includes(ActionType.ALL) ||
+      entityPerm.actions.includes(action);
 
     if (!hasPermission) {
       throw new ForbiddenException(

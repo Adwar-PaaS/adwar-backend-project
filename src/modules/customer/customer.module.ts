@@ -4,7 +4,7 @@ import { OrderModule } from '../order/order.module';
 import { PickUpModule } from '../pickup/pickup.module';
 
 @Module({
-  imports: [OrderModule, PickUpModule], 
+  imports: [OrderModule, PickUpModule],
   controllers: [CustomerController],
 })
 export class CustomerModule {}

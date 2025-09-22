@@ -10,6 +10,7 @@ import { Request } from 'express';
 import type { AuthUser } from '../../modules/auth/interfaces/auth-user.interface';
 import { DomainType } from '../enums/domain.enum';
 import { DOMAIN_TYPE_KEY } from '../decorators/domain-type.decorator';
+import { RoleName } from '@prisma/client';
 
 @Injectable()
 export class DomainAccessGuard implements CanActivate {
@@ -21,40 +22,41 @@ export class DomainAccessGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredDomainType) {
-      return true; // No domain restriction specified
-    }
-
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: AuthUser }>();
     const host = request.get('host') || request.hostname;
-
-    const actualDomainType = this.extractDomainType(host);
     const user = request.user;
 
-    // Check if user is authenticated
     if (!user) {
       throw new UnauthorizedException('User not authenticated');
     }
 
-    // Validate domain access
-    this.validateDomainAccess(actualDomainType, requiredDomainType, user);
+    const actualDomainType = this.extractDomainType(host);
+
+    this.validateDomainAccess(actualDomainType, user, host);
+
+    if (requiredDomainType && actualDomainType !== requiredDomainType) {
+      throw new ForbiddenException(
+        `Access denied. Requires ${requiredDomainType} domain`,
+      );
+    }
 
     return true;
   }
 
   private extractDomainType(host: string): DomainType {
-    // Remove port if present
-    const domain = host.split(':')[0];
+    const domain = host.split(':')[0].toLowerCase();
+    const parts = domain.split('.');
 
-    // Check if it's a customer domain (customer.logisticsTech.com)
     if (domain.startsWith('customer.')) {
       return DomainType.CUSTOMER;
     }
 
-    // tenant domains have format: {slug}.logisticsTech.com
-    const parts = domain.split('.');
+    if (parts.length === 2) {
+      return DomainType.ROOT; // e.g. sitename.com
+    }
+
     if (parts.length >= 3 && !domain.startsWith('customer.')) {
       return DomainType.TENANT;
     }
@@ -62,45 +64,63 @@ export class DomainAccessGuard implements CanActivate {
     throw new ForbiddenException('Invalid domain format');
   }
 
+  private extractTenantSlugFromHost(host: string): string {
+    const domain = host.split(':')[0].toLowerCase();
+    const parts = domain.split('.');
+    if (parts.length >= 3 && !domain.startsWith('customer.')) {
+      return parts[0];
+    }
+    throw new ForbiddenException('Invalid tenant domain');
+  }
+
   private validateDomainAccess(
     actualDomainType: DomainType,
-    requiredDomainType: DomainType,
-    user: any,
+    user: AuthUser,
+    host: string,
   ): void {
-    // Check if domain types match
-    if (actualDomainType !== requiredDomainType) {
-      throw new ForbiddenException(
-        `Access denied. This endpoint requires ${requiredDomainType} domain access`,
-      );
-    }
-
-    // Additional validation based on domain type
-    if (actualDomainType === DomainType.CUSTOMER) {
-      this.validateCustomerAccess(user);
-    } else if (actualDomainType === DomainType.TENANT) {
-      this.validateTenantAccess(user);
+    switch (actualDomainType) {
+      case DomainType.ROOT:
+        this.validateRootAccess(user);
+        break;
+      case DomainType.CUSTOMER:
+        this.validateCustomerAccess(user);
+        break;
+      case DomainType.TENANT:
+        this.validateTenantAccess(user, host);
+        break;
+      default:
+        throw new ForbiddenException('Invalid domain type');
     }
   }
 
-  private validateCustomerAccess(user: any): void {
-    // Validate that user has customer role
-    if (user.role?.name !== 'CUSTOMER') {
+  private validateRootAccess(user: AuthUser): void {
+    if (user.role.name !== RoleName.SUPER_ADMIN) {
+      throw new ForbiddenException('Only super admins can access root domain');
+    }
+  }
+
+  private validateCustomerAccess(user: AuthUser): void {
+    if (user.role.name !== RoleName.CUSTOMER) {
       throw new ForbiddenException('Only customers can access customer domain');
     }
 
-    // Validate that user has customerSubdomain set
-    if (!user.customerSubdomain) {
+    if (user.tenant) {
       throw new ForbiddenException(
-        'Customer account not properly configured for subdomain access',
+        'Customers cannot access customer domain while having tenant membership',
       );
     }
   }
 
-  private validateTenantAccess(user: any): void {
-    // Validate that user is not a customer or has tenant membership
-    if (user.role?.name === 'CUSTOMER' && !user.memberships?.length) {
+  private validateTenantAccess(user: AuthUser, host: string): void {
+    if (user.role.name === RoleName.CUSTOMER) {
+      throw new ForbiddenException('Customers cannot access tenant domains');
+    }
+
+    const tenantSlug = this.extractTenantSlugFromHost(host);
+
+    if (!user.tenant || user.tenant.slug !== tenantSlug) {
       throw new ForbiddenException(
-        'Customers cannot access tenant domains directly',
+        `Access denied. User does not belong to tenant '${tenantSlug}'`,
       );
     }
   }

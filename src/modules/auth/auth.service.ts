@@ -33,11 +33,6 @@ export class AuthService {
     return mapPrismaUserToAuthUser(created);
   }
 
-  // async attachUserToTenant(dto: AttachUserToTenantDto) {
-  //   const user = await this.authRepo.attachUserToTenant(dto);
-  //   return mapPrismaUserToAuthUser(user);
-  // }
-
   async login(email: string, password: string) {
     const user = await this.authRepo.findUserByEmail(email);
     if (!user || !(await comparePasswords(password, user.password))) {

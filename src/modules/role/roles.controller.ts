@@ -26,7 +26,7 @@ export class RolesController {
   ) {}
 
   @Post()
-  @Permissions(EntityType.ROLE, ActionType.CREATE)
+  // @Permissions(EntityType.ROLE, ActionType.CREATE)
   async createRole(@Body() body: CreateRoleDto) {
     const role = await this.rolesService.createRoleWithPermissions(
       body.name,

@@ -8,12 +8,11 @@ export interface AuthUser {
     id: string;
     name: RoleName;
     permissions: {
-      // user permission that allowed
       entity: EntityType;
-      action: ActionType;
+      actions: ActionType[];
     }[];
   };
-  tenant: {
+  tenant?: {
     id: string | null;
     slug: string | null;
   };

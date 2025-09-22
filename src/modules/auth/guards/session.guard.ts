@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma/prisma.service';
 import { mapPrismaUserToAuthUser } from '../mappers/auth.mapper';
+import { Status, RoleName } from '@prisma/client';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -14,32 +15,101 @@ export class SessionGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
 
-    if (!req?.session?.userId) {
+    const userId = req?.session?.userId;
+    if (!userId) {
       throw new UnauthorizedException('Not authenticated');
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: req.session.userId },
+    const user = await this.findUserWithRelations(userId);
+
+    if (!user || user.status !== Status.ACTIVE) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    const { domain, tenantSlug, isCustomerDomain } =
+      this.extractDomainInfo(req);
+
+    // this.validateAccess(user, tenantSlug, isCustomerDomain);
+
+    req.user = mapPrismaUserToAuthUser(user);
+    return true;
+  }
+
+  private async findUserWithRelations(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
       include: {
-        role: {
-          include: {
-            permissions: true,
-          },
-        },
+        role: { include: { permissions: true } },
         memberships: {
+          where: {
+            deletedAt: null,
+            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+            tenant: { status: Status.ACTIVE, deletedAt: null },
+          },
           include: {
             tenant: true,
-            permissions: true,
+            permissions: { where: { deletedAt: null } },
           },
         },
       },
     });
+  }
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+  private extractDomainInfo(req: any) {
+    const host = req.get('host') || req.hostname;
+    const domain = host.split(':')[0].toLowerCase();
+    const parts = domain.split('.');
+
+    const isCustomerDomain = domain.startsWith('customer.');
+    const isTenantDomain = parts.length >= 3 && !isCustomerDomain;
+    const tenantSlug = isTenantDomain ? parts[0] : null;
+
+    return { domain, tenantSlug, isCustomerDomain };
+  }
+
+  private validateAccess(
+    user: any,
+    tenantSlug: string | null,
+    isCustomerDomain: boolean,
+  ) {
+    if (tenantSlug) {
+      this.validateTenantAccess(user, tenantSlug);
+    } else if (isCustomerDomain) {
+      this.validateCustomerDomainAccess(user);
+    } else {
+      this.validateRootDomainAccess(user);
     }
+  }
 
-    req.user = mapPrismaUserToAuthUser(user);
-    return true;
+  private validateTenantAccess(user: any, tenantSlug: string) {
+    const activeMembership = user.memberships.find(
+      (m) =>
+        m.tenant?.slug === tenantSlug && m.tenant?.status === Status.ACTIVE,
+    );
+
+    if (!activeMembership && user.role.name !== RoleName.SUPER_ADMIN) {
+      throw new UnauthorizedException(`No access to tenant '${tenantSlug}'`);
+    }
+  }
+
+  private validateCustomerDomainAccess(user: any) {
+    if (user.role.name !== RoleName.CUSTOMER) {
+      throw new UnauthorizedException(
+        'Only customers can access customer domain',
+      );
+    }
+    if (user.memberships.length > 0) {
+      throw new UnauthorizedException(
+        'Customers with tenant memberships cannot access customer domain',
+      );
+    }
+  }
+
+  private validateRootDomainAccess(user: any) {
+    if (user.role.name !== RoleName.SUPER_ADMIN) {
+      throw new UnauthorizedException(
+        'Only super admins can access the root domain',
+      );
+    }
   }
 }

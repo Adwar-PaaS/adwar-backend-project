@@ -15,6 +15,8 @@ import { PrismaService } from '../../db/prisma/prisma.service';
 import { mapPrismaUserToAuthUser } from '../../modules/auth/mappers/auth.mapper';
 import { UnauthorizedException } from '@nestjs/common';
 import * as cookie from 'cookie';
+import * as cookieSignature from 'cookie-signature';
+import { ConfigService } from '@nestjs/config';
 
 @WebSocketGateway({
   cors: {
@@ -31,6 +33,7 @@ export class WebsocketGateway
     private readonly wsService: WebsocketService,
     private readonly redisService: RedisService,
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
   afterInit(server: Server) {
@@ -44,14 +47,31 @@ export class WebsocketGateway
         }
 
         const parsedCookies = cookie.parse(cookies);
-        const sessionName = process.env.SESSION_COOKIE_NAME || 'session_id';
-        const sessionID = parsedCookies[sessionName];
-        if (!sessionID) {
+        const sessionName = this.config.get<string>(
+          'SESSION_COOKIE_NAME',
+          'session_id',
+        );
+        const signedSession = parsedCookies[sessionName];
+        if (!signedSession) {
           return next(new UnauthorizedException('No session cookie'));
         }
 
+        const secret = this.config.get<string>('SESSION_SECRET');
+        if (!secret) {
+          return next(new UnauthorizedException('Secret not configured'));
+        }
+
+        if (!signedSession.startsWith('s:')) {
+          return next(new UnauthorizedException('Invalid session format'));
+        }
+
+        const unsigned = cookieSignature.unsign(signedSession.slice(2), secret);
+        if (!unsigned) {
+          return next(new UnauthorizedException('Invalid session signature'));
+        }
+
         const redis = this.redisService.getConnection();
-        const sessionData = await redis.get(`sess:${sessionID}`);
+        const sessionData = await redis.get(`sess:${unsigned}`);
         if (!sessionData) {
           return next(new UnauthorizedException('Invalid session'));
         }
