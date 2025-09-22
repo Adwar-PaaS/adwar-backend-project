@@ -1,4 +1,11 @@
-import { Controller, Get, UseGuards, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Param,
+  Query,
+  HttpStatus,
+} from '@nestjs/common';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../auth/guards/session.guard';
 import { OrderService } from '../order/order.service';
@@ -6,6 +13,8 @@ import { PickUpService } from '../pickup/pickup.service';
 import { IOrder } from '../order/interfaces/order.interface';
 import { PaginationResult } from '../../common/utils/api-features.util';
 import { PickUp } from '@prisma/client';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
 @Controller('customers')
 @UseGuards(SessionGuard)
@@ -42,6 +51,17 @@ export class CustomerController {
     return APIResponse.success(
       { pickups: items, ...pagination },
       'Customer pickups retrieved successfully',
+    );
+  }
+
+  @Get('pickup/notifications')
+  async getPickupNotificationsForOPS(@CurrentUser() user: AuthUser) {
+    const notifications =
+      await this.pickupService.getCustomerPickupNotifications(user);
+    return APIResponse.success(
+      { notifications },
+      'Customer pickup notifications retrieved successfully',
+      HttpStatus.OK,
     );
   }
 }

@@ -86,6 +86,24 @@ export class PickUpController {
     );
   }
 
+  @Patch(':id/respond')
+  async opsRespond(
+    @Param('id') id: string,
+    @Body() dto: UpdatePickupAndOrdersStatusDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const pickup = await this.pickupService.opsRespondOnPickupRequest(
+      id,
+      dto,
+      user,
+    );
+    return APIResponse.success(
+      { pickup },
+      'Pickup request sent successfully',
+      HttpStatus.OK,
+    );
+  }
+
   @Get()
   async findAll(@Req() req: any) {
     const pickups = await this.pickupService.findAll(req.query);
@@ -98,10 +116,10 @@ export class PickUpController {
 
   @Get('notifications/ops')
   async getPickupNotificationsForOPS(@CurrentUser() user: AuthUser) {
-    const opsNotifications =
+    const notifications =
       await this.pickupService.getPickupNotificationsForOPS(user);
     return APIResponse.success(
-      { opsNotifications },
+      { notifications },
       'Pickup notifications for OPS retrieved successfully',
       HttpStatus.OK,
     );

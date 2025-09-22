@@ -29,6 +29,56 @@ export class PickUpService {
     private readonly tenantService: TenantService,
   ) {}
 
+  private async sendNotification({
+    senderId,
+    recipientIds,
+    title,
+    message,
+    relatedId,
+    relatedType = EntityType.PICKUP,
+    category = NotificationCategory.ACTION,
+    priority = PriorityStatus.HIGH,
+    channels = [NotificationChannel.IN_APP],
+  }: {
+    senderId: string;
+    recipientIds: string[];
+    title: string;
+    message: string;
+    relatedId: string;
+    relatedType?: EntityType;
+    category?: NotificationCategory;
+    priority?: PriorityStatus;
+    channels?: NotificationChannel[];
+  }) {
+    if (recipientIds.length) {
+      await this.notificationService.create({
+        senderId,
+        recipientIds,
+        title,
+        message,
+        relatedId,
+        relatedType,
+        category,
+        priority,
+        channels,
+      });
+    }
+  }
+
+  private async updatePickupAndOrdersStatus(
+    pickupId: string,
+    pickupStatus: PickUpStatus,
+    orderStatus: string,
+  ) {
+    await this.pickupRepo.update(pickupId, { status: pickupStatus });
+    const orders = await this.orderRepo.findMany({ pickupId });
+    const orderIds = orders.map((o) => o.id);
+    if (orderIds.length) {
+      await this.orderRepo.updateMany(orderIds, { status: orderStatus });
+    }
+    return orders;
+  }
+
   async createPickup(dto: CreatePickupDto) {
     if (!dto.orderIds || dto.orderIds.length === 0) {
       throw new BadRequestException('orderIds is required and cannot be empty');
@@ -40,12 +90,10 @@ export class PickUpService {
     });
 
     if (existingOrders.length > 0) {
-      const assignedIds = existingOrders.map((o) => o.id).join(', ');
-
       throw new ApiError(
         'Some orders are already assigned to a pickup',
         HttpStatus.BAD_REQUEST,
-      ); // : ${assignedIds}
+      );
     }
 
     let addressId: string | undefined;
@@ -69,10 +117,7 @@ export class PickUpService {
 
   async updatePickup(pickupId: string, dto: UpdatePickupDto) {
     const pickup = await this.pickupRepo.findOne({ id: pickupId });
-    if (!pickup) {
-      throw new BadRequestException('Pickup not found');
-    }
-
+    if (!pickup) throw new BadRequestException('Pickup not found');
     if (pickup.status !== PickUpStatus.CREATED) {
       throw new BadRequestException(
         `You can only update pickups in CREATED status. Current status: ${pickup.status}`,
@@ -86,9 +131,8 @@ export class PickUpService {
       });
 
       if (existingOrders.length > 0) {
-        const assignedIds = existingOrders.map((o) => o.id).join(', ');
         throw new ApiError(
-          `Some orders are already assigned to another pickup: ${assignedIds}`,
+          `Some orders are already assigned to another pickup: ${existingOrders.map((o) => o.id).join(', ')}`,
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -113,36 +157,54 @@ export class PickUpService {
     user: AuthUser,
   ) {
     const pickup = await this.pickupRepo.findOne({ id: pickupId });
-    if (!pickup) {
-      throw new BadRequestException('Pickup not found');
+    if (!pickup) throw new BadRequestException('Pickup not found');
+
+    const orders = await this.updatePickupAndOrdersStatus(
+      pickupId,
+      dto.pickupStatus,
+      dto.orderStatus,
+    );
+
+    const tenantId = user.tenant?.id;
+    if (tenantId) {
+      const operationUsers =
+        await this.tenantService.getAllOperationsUsers(tenantId);
+      const recipientIds = operationUsers.map((u) => u.id);
+      await this.sendNotification({
+        senderId: user.id,
+        recipientIds,
+        title: `Pickup is waiting for your action`,
+        message: `Pickup ${pickup.pickupNumber} has been marked as ${dto.pickupStatus}. Please take the necessary actions.`,
+        relatedId: pickupId,
+      });
     }
 
-    await this.pickupRepo.update(pickupId, { status: dto.pickupStatus });
+    return this.pickupRepo.findOne({ id: pickupId });
+  }
 
-    const orders = await this.orderRepo.findMany({ pickupId });
-    const orderIds = orders.map((o) => o.id);
-    if (orderIds.length) {
-      await this.orderRepo.updateMany(orderIds, { status: dto.orderStatus });
+  async opsRespondOnPickupRequest(
+    pickupId: string,
+    dto: UpdatePickupAndOrdersStatusDto,
+    user: AuthUser,
+  ) {
+    const pickup = await this.pickupRepo.findOne({ id: pickupId });
+    if (!pickup) throw new BadRequestException('Pickup not found');
 
-      const tenantId = user.tenant?.id;
-      if (tenantId) {
-        const operationUsers =
-          await this.tenantService.getAllOperationsUsers(tenantId);
+    const orders = await this.updatePickupAndOrdersStatus(
+      pickupId,
+      dto.pickupStatus,
+      dto.orderStatus,
+    );
 
-        const recipientIds = operationUsers.map((u) => u.id);
-        if (recipientIds.length) {
-          await this.notificationService.create({
-            senderId: user.id,
-            title: `Pickup is waiting for your action`,
-            message: `Pickup ${pickup.pickupNumber} has been marked as ${dto.pickupStatus}. Please take the necessary actions.`,
-            relatedId: pickupId,
-            relatedType: EntityType.PICKUP,
-            category: NotificationCategory.ACTION,
-            priority: PriorityStatus.HIGH,
-            channels: [NotificationChannel.IN_APP],
-            recipientIds,
-          });
-        }
+    for (const order of orders) {
+      if (order.customerId) {
+        await this.sendNotification({
+          senderId: user.id,
+          recipientIds: [order.customerId],
+          title: `Your pickup request has been processed`,
+          message: `Pickup ${pickup.pickupNumber} has been updated to ${dto.pickupStatus}. Your order status is now ${dto.orderStatus}.`,
+          relatedId: pickupId,
+        });
       }
     }
 
@@ -150,13 +212,10 @@ export class PickUpService {
   }
 
   async getPickupNotificationsForOPS(user: AuthUser) {
-    if (!user.tenant?.id) {
+    if (!user.tenant?.id)
       throw new BadRequestException('User tenant not found');
-    }
-
-    if (user.role?.name !== RoleName.OPERATION) {
+    if (user.role?.name !== RoleName.OPERATION)
       throw new BadRequestException('Only operation users can access this');
-    }
 
     const pickups = await this.pickupRepo.findMany({
       status: PickUpStatus.PENDING,
@@ -176,7 +235,39 @@ export class PickUpService {
     const pickupIds = pickups
       .map((p) => p.id)
       .filter((id): id is string => !!id);
+    const notifications = await this.notificationService.listForUser(user.id);
 
+    return notifications
+      .filter(
+        (n) =>
+          n.notification.relatedType === EntityType.PICKUP &&
+          n.notification.relatedId &&
+          pickupIds.includes(n.notification.relatedId) &&
+          n.notification.category === NotificationCategory.ACTION,
+      )
+      .map((n) => ({
+        notificationId: n.id,
+        pickupId: n.notification.relatedId,
+        title: n.notification.title,
+        message: n.notification.message,
+        readAt: n.readAt,
+        createdAt: n.notification.createdAt,
+      }));
+  }
+
+  async getCustomerPickupNotifications(user: AuthUser) {
+    if (user.role?.name !== RoleName.CUSTOMER)
+      throw new BadRequestException('Only customers can access this');
+
+    const pickups = await this.pickupRepo.findMany({
+      orders: { some: { customerId: user.id } },
+      NOT: { status: PickUpStatus.CREATED },
+    });
+    if (!pickups.length) return [];
+
+    const pickupIds = pickups
+      .map((p) => p.id)
+      .filter((id): id is string => !!id);
     const notifications = await this.notificationService.listForUser(user.id);
 
     return notifications
