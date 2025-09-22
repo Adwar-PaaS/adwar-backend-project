@@ -29,40 +29,53 @@ export class PickUpService {
     private readonly tenantService: TenantService,
   ) {}
 
-  private async sendNotification({
-    senderId,
-    recipientIds,
-    title,
-    message,
-    relatedId,
-    relatedType = EntityType.PICKUP,
-    category = NotificationCategory.ACTION,
-    priority = PriorityStatus.HIGH,
-    channels = [NotificationChannel.IN_APP],
-  }: {
-    senderId: string;
-    recipientIds: string[];
-    title: string;
-    message: string;
-    relatedId: string;
-    relatedType?: EntityType;
-    category?: NotificationCategory;
-    priority?: PriorityStatus;
-    channels?: NotificationChannel[];
-  }) {
-    if (recipientIds.length) {
-      await this.notificationService.create({
-        senderId,
-        recipientIds,
-        title,
-        message,
-        relatedId,
-        relatedType,
-        category,
-        priority,
-        channels,
-      });
-    }
+  private async sendNotificationToUsers(
+    senderId: string,
+    recipientIds: string[],
+    title: string,
+    message: string,
+    relatedId: string,
+    options?: Partial<{
+      relatedType: EntityType;
+      category: NotificationCategory;
+      priority: PriorityStatus;
+      channels: NotificationChannel[];
+    }>,
+  ) {
+    if (!recipientIds.length) return;
+    await this.notificationService.create({
+      senderId,
+      recipientIds,
+      title,
+      message,
+      relatedId,
+      relatedType: options?.relatedType ?? EntityType.PICKUP,
+      category: options?.category ?? NotificationCategory.ACTION,
+      priority: options?.priority ?? PriorityStatus.HIGH,
+      channels: options?.channels ?? [NotificationChannel.IN_APP],
+    });
+  }
+
+  private mapNotificationsForPickups(
+    notifications: any[],
+    pickupIds: string[],
+  ) {
+    return notifications
+      .filter(
+        (n) =>
+          n.notification.relatedType === EntityType.PICKUP &&
+          n.notification.relatedId &&
+          pickupIds.includes(n.notification.relatedId) &&
+          n.notification.category === NotificationCategory.ACTION,
+      )
+      .map((n) => ({
+        notificationId: n.id,
+        pickupId: n.notification.relatedId,
+        title: n.notification.title,
+        message: n.notification.message,
+        readAt: n.readAt,
+        createdAt: n.notification.createdAt,
+      }));
   }
 
   private async updatePickupAndOrdersStatus(
@@ -80,7 +93,7 @@ export class PickUpService {
   }
 
   async createPickup(dto: CreatePickupDto) {
-    if (!dto.orderIds || dto.orderIds.length === 0) {
+    if (!dto.orderIds?.length) {
       throw new BadRequestException('orderIds is required and cannot be empty');
     }
 
@@ -124,7 +137,7 @@ export class PickUpService {
       );
     }
 
-    if (dto.orderIds && dto.orderIds.length > 0) {
+    if (dto.orderIds?.length) {
       const existingOrders = await this.orderRepo.findMany({
         id: { in: dto.orderIds },
         pickupId: { not: pickupId },
@@ -140,7 +153,7 @@ export class PickUpService {
       const currentOrders = await this.orderRepo.findMany({ pickupId });
       const currentOrderIds = currentOrders.map((o) => o.id);
 
-      if (currentOrderIds.length > 0) {
+      if (currentOrderIds.length) {
         await this.orderRepo.updateMany(currentOrderIds, { pickupId: null });
       }
 
@@ -159,7 +172,7 @@ export class PickUpService {
     const pickup = await this.pickupRepo.findOne({ id: pickupId });
     if (!pickup) throw new BadRequestException('Pickup not found');
 
-    const orders = await this.updatePickupAndOrdersStatus(
+    await this.updatePickupAndOrdersStatus(
       pickupId,
       dto.pickupStatus,
       dto.orderStatus,
@@ -170,13 +183,13 @@ export class PickUpService {
       const operationUsers =
         await this.tenantService.getAllOperationsUsers(tenantId);
       const recipientIds = operationUsers.map((u) => u.id);
-      await this.sendNotification({
-        senderId: user.id,
+      await this.sendNotificationToUsers(
+        user.id,
         recipientIds,
-        title: `Pickup is waiting for your action`,
-        message: `Pickup ${pickup.pickupNumber} has been marked as ${dto.pickupStatus}. Please take the necessary actions.`,
-        relatedId: pickupId,
-      });
+        `Pickup is waiting for your action`,
+        `Pickup ${pickup.pickupNumber} has been marked as ${dto.pickupStatus}. Please take the necessary actions.`,
+        pickupId,
+      );
     }
 
     return this.pickupRepo.findOne({ id: pickupId });
@@ -198,13 +211,13 @@ export class PickUpService {
 
     for (const order of orders) {
       if (order.customerId) {
-        await this.sendNotification({
-          senderId: user.id,
-          recipientIds: [order.customerId],
-          title: `Your pickup request has been processed`,
-          message: `Pickup ${pickup.pickupNumber} has been updated to ${dto.pickupStatus}. Your order status is now ${dto.orderStatus}.`,
-          relatedId: pickupId,
-        });
+        await this.sendNotificationToUsers(
+          user.id,
+          [order.customerId],
+          `Your pickup request has been processed`,
+          `Pickup ${pickup.pickupNumber} has been updated to ${dto.pickupStatus}. Your order status is now ${dto.orderStatus}.`,
+          pickupId,
+        );
       }
     }
 
@@ -232,27 +245,10 @@ export class PickUpService {
 
     if (!pickups.length) return [];
 
-    const pickupIds = pickups
-      .map((p) => p.id)
-      .filter((id): id is string => !!id);
+    const pickupIds = pickups.map((p) => p.id).filter(Boolean);
     const notifications = await this.notificationService.listForUser(user.id);
 
-    return notifications
-      .filter(
-        (n) =>
-          n.notification.relatedType === EntityType.PICKUP &&
-          n.notification.relatedId &&
-          pickupIds.includes(n.notification.relatedId) &&
-          n.notification.category === NotificationCategory.ACTION,
-      )
-      .map((n) => ({
-        notificationId: n.id,
-        pickupId: n.notification.relatedId,
-        title: n.notification.title,
-        message: n.notification.message,
-        readAt: n.readAt,
-        createdAt: n.notification.createdAt,
-      }));
+    return this.mapNotificationsForPickups(notifications, pickupIds);
   }
 
   async getCustomerPickupNotifications(user: AuthUser) {
@@ -265,27 +261,10 @@ export class PickUpService {
     });
     if (!pickups.length) return [];
 
-    const pickupIds = pickups
-      .map((p) => p.id)
-      .filter((id): id is string => !!id);
+    const pickupIds = pickups.map((p) => p.id).filter(Boolean);
     const notifications = await this.notificationService.listForUser(user.id);
 
-    return notifications
-      .filter(
-        (n) =>
-          n.notification.relatedType === EntityType.PICKUP &&
-          n.notification.relatedId &&
-          pickupIds.includes(n.notification.relatedId) &&
-          n.notification.category === NotificationCategory.ACTION,
-      )
-      .map((n) => ({
-        notificationId: n.id,
-        pickupId: n.notification.relatedId,
-        title: n.notification.title,
-        message: n.notification.message,
-        readAt: n.readAt,
-        createdAt: n.notification.createdAt,
-      }));
+    return this.mapNotificationsForPickups(notifications, pickupIds);
   }
 
   async findAll(query: Record<string, any>) {
