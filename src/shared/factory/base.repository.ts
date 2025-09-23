@@ -70,7 +70,7 @@ export class BaseRepository<
     throw new ApiError(`Failed to ${action}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
-  private async runTransaction<R>(
+  async transaction<R>(
     cb: (
       tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$use'>,
     ) => Promise<R>,
@@ -87,7 +87,7 @@ export class BaseRepository<
   }
 
   async create(data: any, include: any = this.defaultInclude): Promise<T> {
-    return this.runTransaction(async (tx) => {
+    return this.transaction(async (tx) => {
       try {
         const newDoc = await (tx[this.modelKey] as any).create({
           data,
@@ -105,7 +105,7 @@ export class BaseRepository<
     data: any[],
     include: any = this.defaultInclude,
   ): Promise<T[]> {
-    return this.runTransaction(async (tx) => {
+    return this.transaction(async (tx) => {
       try {
         await (tx[this.modelKey] as any).createMany({
           data,
@@ -142,7 +142,7 @@ export class BaseRepository<
     data: any,
     include: any = this.defaultInclude,
   ): Promise<T> {
-    return this.runTransaction(async (tx) => {
+    return this.transaction(async (tx) => {
       try {
         const updated = await (tx[this.modelKey] as any).update({
           where: { id },
@@ -164,7 +164,7 @@ export class BaseRepository<
     data: any,
     include: any = this.defaultInclude,
   ): Promise<T[]> {
-    return this.runTransaction(async (tx) => {
+    return this.transaction(async (tx) => {
       try {
         await (tx[this.modelKey] as any).updateMany({
           where: { id: { in: ids } },
@@ -196,7 +196,7 @@ export class BaseRepository<
   }
 
   async delete(id: string): Promise<void> {
-    return this.runTransaction(async (tx) => {
+    return this.transaction(async (tx) => {
       try {
         if (this.useSoftDelete) {
           await (tx[this.modelKey] as any).update({

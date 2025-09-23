@@ -5,6 +5,7 @@ import {
   IsString,
   IsUUID,
   MaxLength,
+  IsDate,
 } from 'class-validator';
 import {
   EntityType,
@@ -12,6 +13,7 @@ import {
   NotificationChannel,
   PriorityStatus,
 } from '@prisma/client';
+import { Type } from 'class-transformer';
 
 export class CreateNotificationDto {
   @IsOptional()
@@ -52,8 +54,72 @@ export class CreateNotificationDto {
   priority?: PriorityStatus;
 
   @IsOptional()
+  @Type(() => Date)
+  @IsDate()
   scheduledFor?: Date;
 
   @IsOptional()
+  @Type(() => Date)
+  @IsDate()
   expiresAt?: Date;
 }
+
+// import {
+//   IsArray,
+//   IsEnum,
+//   IsOptional,
+//   IsString,
+//   IsUUID,
+//   MaxLength,
+// } from 'class-validator';
+// import {
+//   EntityType,
+//   NotificationCategory,
+//   NotificationChannel,
+//   PriorityStatus,
+// } from '@prisma/client';
+
+// export class CreateNotificationDto {
+//   @IsOptional()
+//   @IsUUID()
+//   senderId?: string;
+
+//   @IsArray()
+//   @IsUUID('4', { each: true })
+//   recipientIds: string[];
+
+//   @IsString()
+//   @MaxLength(120)
+//   title: string;
+
+//   @IsString()
+//   @MaxLength(2000)
+//   message: string;
+
+//   @IsOptional()
+//   @IsUUID()
+//   relatedId?: string;
+
+//   @IsOptional()
+//   @IsEnum(EntityType)
+//   relatedType?: EntityType;
+
+//   @IsOptional()
+//   @IsEnum(NotificationCategory)
+//   category?: NotificationCategory;
+
+//   @IsOptional()
+//   @IsArray()
+//   @IsEnum(NotificationChannel, { each: true })
+//   channels?: NotificationChannel[];
+
+//   @IsOptional()
+//   @IsEnum(PriorityStatus)
+//   priority?: PriorityStatus;
+
+//   @IsOptional()
+//   scheduledFor?: Date;
+
+//   @IsOptional()
+//   expiresAt?: Date;
+// }
