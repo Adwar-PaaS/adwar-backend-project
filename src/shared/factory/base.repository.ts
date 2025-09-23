@@ -25,7 +25,9 @@ export class BaseRepository<
     protected readonly searchableFields: string[] = [],
     protected readonly defaultInclude: Prisma.Prisma__Pick<any, any> = {},
     protected readonly useSoftDelete = true,
-    private readonly cacheTTL = 60,
+    private readonly cacheTTL = process.env.NODE_ENV === 'production'
+      ? 3600
+      : 30,
   ) {}
 
   private get delegate() {
