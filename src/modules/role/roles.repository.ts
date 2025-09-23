@@ -2,11 +2,15 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
 import { EntityType, ActionType, RoleName, Role } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
+import { RedisService } from 'src/db/redis/redis.service';
 
 @Injectable()
 export class RolesRepository extends BaseRepository<Role> {
-  constructor(protected readonly prisma: PrismaService) {
-    super(prisma, 'role', ['name']);
+  constructor(
+    protected readonly prisma: PrismaService,
+    protected readonly redis: RedisService,
+  ) {
+    super(prisma, redis, 'role', ['name']);
   }
 
   async createRoleWithPermissions(

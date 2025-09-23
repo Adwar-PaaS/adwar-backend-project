@@ -10,6 +10,7 @@ import {
   sanitizeUser,
 } from '../../common/utils/sanitize-user.util';
 import { PrismaService } from 'src/db/prisma/prisma.service';
+import { RedisService } from 'src/db/redis/redis.service';
 
 @Injectable()
 export class BaseRepository<
@@ -19,14 +20,36 @@ export class BaseRepository<
 
   constructor(
     protected readonly prisma: PrismaService,
+    protected readonly redis: RedisService,
     private readonly modelKey: keyof PrismaService,
     protected readonly searchableFields: string[] = [],
     protected readonly defaultInclude: Prisma.Prisma__Pick<any, any> = {},
     protected readonly useSoftDelete = true,
+    private readonly cacheTTL = 60,
   ) {}
 
   private get delegate() {
     return this.prisma[this.modelKey] as any;
+  }
+
+  private async cacheGet<T = any>(key: string): Promise<T | null> {
+    return this.redis.get<T>(key);
+  }
+
+  private async cacheSet(key: string, value: any, ttl = this.cacheTTL) {
+    await this.redis.set(key, value, ttl);
+  }
+
+  private async cacheDel(key: string) {
+    await this.redis.del(key);
+  }
+
+  private async cacheDelByPattern(pattern: string) {
+    await this.redis.delByPattern(pattern);
+  }
+
+  private buildCacheKey(action: string, extra: any = {}): string {
+    return `${String(this.modelKey)}:${action}:${JSON.stringify(extra)}`;
   }
 
   private handleError(action: string, error: any, id?: string): never {
@@ -68,6 +91,7 @@ export class BaseRepository<
           data,
           include,
         });
+        await this.cacheDelByPattern(`${String(this.modelKey)}:*`);
         return sanitizeUser(newDoc) as T;
       } catch (error) {
         this.handleError('create', error);
@@ -86,13 +110,23 @@ export class BaseRepository<
           skipDuplicates: true,
         });
 
+        const ids = data.map((d) => d.id).filter(Boolean);
         const inserted = await (tx[this.modelKey] as any).findMany({
           where: {
-            id: { in: data.map((d) => d.id).filter(Boolean) },
+            id: { in: ids },
             ...(this.useSoftDelete ? { deletedAt: null } : {}),
           },
           include,
         });
+
+        for (const id of ids) {
+          await this.cacheDel(
+            `${String(this.modelKey)}:findOne:{"id":"${id}"}`,
+          );
+        }
+
+        await this.cacheDelByPattern(`${String(this.modelKey)}:findMany*`);
+        await this.cacheDelByPattern(`${String(this.modelKey)}:findAll*`);
 
         return sanitizeUsers(inserted) as T[];
       } catch (error) {
@@ -113,6 +147,9 @@ export class BaseRepository<
           data,
           include,
         });
+
+        await this.cacheDel(`${String(this.modelKey)}:findOne:${id}`);
+        await this.cacheDelByPattern(`${String(this.modelKey)}:*`);
         return sanitizeUser(updated) as T;
       } catch (error) {
         this.handleError('update', error, id);
@@ -140,6 +177,15 @@ export class BaseRepository<
           include,
         });
 
+        for (const id of ids) {
+          await this.cacheDel(
+            `${String(this.modelKey)}:findOne:{"id":"${id}"}`,
+          );
+        }
+
+        await this.cacheDelByPattern(`${String(this.modelKey)}:findMany*`);
+        await this.cacheDelByPattern(`${String(this.modelKey)}:findAll*`);
+
         return sanitizeUsers(updated) as T[];
       } catch (error) {
         this.handleError('update many', error);
@@ -158,6 +204,9 @@ export class BaseRepository<
         } else {
           await (tx[this.modelKey] as any).delete({ where: { id } });
         }
+
+        await this.cacheDel(`${String(this.modelKey)}:findOne:${id}`);
+        await this.cacheDelByPattern(`${String(this.modelKey)}:*`);
       } catch (error) {
         this.handleError('delete', error, id);
       }
@@ -168,6 +217,10 @@ export class BaseRepository<
     where: Record<string, any>,
     include: any = this.defaultInclude,
   ): Promise<T> {
+    const cacheKey = this.buildCacheKey('findOne', where);
+    const cached = await this.cacheGet<T>(cacheKey);
+    if (cached) return cached;
+
     try {
       const finder = (this.delegate.findUnique ?? this.delegate.findFirst).bind(
         this.delegate,
@@ -181,7 +234,9 @@ export class BaseRepository<
         );
       }
 
-      return sanitizeUser(doc) as T;
+      const sanitized = sanitizeUser(doc) as T;
+      await this.cacheSet(cacheKey, sanitized);
+      return sanitized;
     } catch (error) {
       this.handleError('find one', error);
     }
@@ -189,18 +244,21 @@ export class BaseRepository<
 
   async findMany(
     where: Record<string, any> = {},
-    include: Record<string, any> = this.defaultInclude,
+    include: any = this.defaultInclude,
   ): Promise<T[]> {
+    const cacheKey = this.buildCacheKey('findMany', where);
+    const cached = await this.cacheGet<T[]>(cacheKey);
+    if (cached) return cached;
+
     try {
       const docs = await this.delegate.findMany({
-        where: {
-          ...where,
-          ...(this.useSoftDelete ? { deletedAt: null } : {}),
-        },
+        where: { ...where, ...(this.useSoftDelete ? { deletedAt: null } : {}) },
         include,
       });
 
-      return sanitizeUsers(docs) as T[];
+      const sanitized = sanitizeUsers(docs) as T[];
+      await this.cacheSet(cacheKey, sanitized);
+      return sanitized;
     } catch (error) {
       this.handleError('find many', error);
     }
@@ -211,6 +269,12 @@ export class BaseRepository<
     where: Record<string, any> = {},
     include: Record<string, any> = this.defaultInclude,
   ): Promise<{ items: T[] } & Partial<PaginationResult>> {
+    const cacheKey = this.buildCacheKey('findAll', { queryString, where });
+    const cached = await this.cacheGet<
+      { items: T[] } & Partial<PaginationResult>
+    >(cacheKey);
+    if (cached) return cached;
+
     try {
       const apiFeatures = new ApiFeatures(
         this.delegate,
@@ -231,10 +295,13 @@ export class BaseRepository<
 
       const { data, pagination } = await apiFeatures.query();
 
-      return {
+      const result = {
         items: sanitizeUsers(data) as T[],
         ...(pagination ?? {}),
       };
+
+      await this.cacheSet(cacheKey, result);
+      return result;
     } catch (error) {
       this.handleError('find all', error);
     }

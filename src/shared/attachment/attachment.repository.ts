@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/db/prisma/prisma.service';
 import { Attachment, EntityType } from '@prisma/client';
+import { RedisService } from 'src/db/redis/redis.service';
+
 import { BaseRepository } from '../factory/base.repository';
 
 @Injectable()
 export class AttachmentRepository extends BaseRepository<Attachment> {
-  constructor(protected readonly prisma: PrismaService) {
-    super(prisma, 'attachment', ['filename']);
+  constructor(
+    protected readonly prisma: PrismaService,
+    protected readonly redis: RedisService,
+  ) {
+    super(prisma, redis, 'attachment', ['filename']);
   }
 
   async findManyByEntity(

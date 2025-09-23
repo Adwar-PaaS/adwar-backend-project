@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../db/prisma/prisma.service';
 import { Prisma, User, RoleName, Status, AddressType } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
+import { RedisService } from 'src/db/redis/redis.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { checkUnique } from '../../common/utils/check-unique.util';
@@ -32,8 +33,17 @@ type UserWithRelations = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
-  constructor(protected readonly prisma: PrismaService) {
-    super(prisma, 'user', ['email', 'firstName', 'lastName'], userInclude);
+  constructor(
+    protected readonly prisma: PrismaService,
+    protected readonly redis: RedisService,
+  ) {
+    super(
+      prisma,
+      redis,
+      'user',
+      ['email', 'firstName', 'lastName'],
+      userInclude,
+    );
   }
 
   async createUser(data: CreateUserDto): Promise<UserWithRelations> {

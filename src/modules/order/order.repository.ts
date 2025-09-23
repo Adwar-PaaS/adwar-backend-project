@@ -11,11 +11,15 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateItemsInOrderDto } from './dto/update-order-items.dto';
+import { RedisService } from 'src/db/redis/redis.service';
 
 @Injectable()
 export class OrderRepository extends BaseRepository<IOrder> {
-  constructor(protected readonly prisma: PrismaService) {
-    super(prisma, 'order', ['orderNumber'], {
+  constructor(
+    protected readonly prisma: PrismaService,
+    protected readonly redis: RedisService,
+  ) {
+    super(prisma, redis, 'order', ['orderNumber'], {
       pickup: true,
       customer: true,
       items: {
@@ -130,47 +134,31 @@ export class OrderRepository extends BaseRepository<IOrder> {
   }
 
   async updateWithProducts(id: string, dto: UpdateOrderDto): Promise<IOrder> {
-    return this.prisma.$transaction(async (tx) => {
-      const { validItems, itemsForCreate } = await this.prepareOrderItems(
-        dto.items || [],
-      );
+    const { validItems, itemsForCreate } = await this.prepareOrderItems(
+      dto.items || [],
+    );
 
-      const { totalValue, totalWeight } = this.calculateTotals(
-        dto,
-        itemsForCreate,
-        validItems,
-      );
+    const { totalValue, totalWeight } = this.calculateTotals(
+      dto,
+      itemsForCreate,
+      validItems,
+    );
 
-      const { items: _omit, ...restDto } = dto as any;
+    const { items: _omit, ...restDto } = dto as any;
 
-      return tx.order.update({
-        where: { id },
-        data: {
-          ...restDto,
-          totalValue,
-          totalWeight,
-          items: {
-            deleteMany: {
-              orderId: id,
-            },
-            ...(itemsForCreate.length
-              ? {
-                  create: itemsForCreate.map((item) => ({
-                    ...item,
-                    orderId: id,
-                  })),
-                }
-              : {}),
-          },
+    return this.prisma.order.update({
+      where: { id },
+      data: {
+        ...restDto,
+        totalValue,
+        totalWeight,
+        items: {
+          deleteMany: {},
+          ...(itemsForCreate.length ? { create: itemsForCreate } : {}),
         },
-        include: {
-          items: {
-            include: { product: true },
-          },
-          customer: true,
-        },
-      }) as any;
-    });
+      },
+      include: { items: true, customer: true },
+    }) as any;
   }
 
   async updateItemsInOrder(
