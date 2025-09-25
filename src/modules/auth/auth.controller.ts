@@ -121,14 +121,9 @@ export class AuthController {
   @UseGuards(SessionGuard)
   @Throttle({ default: { limit: 30, ttl: seconds(300) } })
   async me(
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: AuthUser,
   ): Promise<APIResponse<{ user: AuthUser }>> {
-    const currentUser = await this.auth.getCurrentUser(user.id);
-    return APIResponse.success(
-      { user: currentUser },
-      'Authenticated user',
-      HttpStatus.OK,
-    );
+    return APIResponse.success({ user }, 'Authenticated user', HttpStatus.OK);
   }
 
   @Post('refresh')

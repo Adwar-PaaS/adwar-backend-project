@@ -20,7 +20,7 @@ export class AuthRepository {
   }
 
   async findUserById(userId: string) {
-    return this.usersRepo.findOne({ userId });
+    return this.usersRepo.findOne({ id: userId });
   }
 
   async findOne(where: Prisma.UserWhereUniqueInput) {
