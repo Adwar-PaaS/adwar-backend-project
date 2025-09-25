@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
 import { Prisma, User, RoleName, Status } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
@@ -11,45 +7,9 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { checkUnique } from '../../common/utils/check-unique.util';
 import { sanitizeUser } from '../../common/utils/sanitize-user.util';
+import { userSelector } from '../../common/selectors/user.selector';
 
-const userSelect = {
-  id: true,
-  email: true,
-  password: true,
-  firstName: true,
-  lastName: true,
-  role: {
-    select: {
-      id: true,
-      name: true,
-      permissions: {
-        select: {
-          entityType: true,
-          actions: true,
-        },
-      },
-    },
-  },
-  memberships: {
-    select: {
-      tenant: {
-        select: {
-          id: true,
-          slug: true,
-        },
-      },
-      permissions: {
-        select: {
-          entityType: true,
-          allowed: true,
-          denied: true,
-        },
-      },
-    },
-  },
-} satisfies Prisma.UserSelect;
-
-type UserWithRelations = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+type UserWithRelations = Prisma.UserGetPayload<{ select: typeof userSelector }>;
 
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
@@ -62,7 +22,7 @@ export class UsersRepository extends BaseRepository<User> {
       redis,
       'user',
       ['email', 'firstName', 'lastName'],
-      userSelect,
+      userSelector,
     );
   }
 
@@ -85,7 +45,7 @@ export class UsersRepository extends BaseRepository<User> {
         phone: data.phone,
         role: { connect: { id: role.id } },
       },
-      select: userSelect,
+      select: userSelector,
     });
 
     return sanitizeUser(user) as UserWithRelations;
@@ -137,7 +97,7 @@ export class UsersRepository extends BaseRepository<User> {
           },
         },
       },
-      select: userSelect,
+      select: userSelector,
     });
 
     return sanitizeUser(user) as UserWithRelations;
@@ -176,7 +136,7 @@ export class UsersRepository extends BaseRepository<User> {
           },
         },
       },
-      select: userSelect,
+      select: userSelector,
     });
 
     return sanitizeUser(user) as UserWithRelations;
@@ -196,7 +156,7 @@ export class UsersRepository extends BaseRepository<User> {
       const updatedUser = await tx.user.update({
         where: { id },
         data: userData as any,
-        select: userSelect,
+        select: userSelector,
       });
 
       if (tenantId) {
@@ -211,11 +171,18 @@ export class UsersRepository extends BaseRepository<User> {
     });
   }
 
+  async getByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: userSelector,
+    });
+  }
+
   async updateStatus(id: string, status: Status): Promise<UserWithRelations> {
     return this.prisma.user.update({
       where: { id },
       data: { status },
-      select: userSelect,
+      select: userSelector,
     });
   }
 }

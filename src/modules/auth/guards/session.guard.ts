@@ -9,6 +9,7 @@ import { mapPrismaUserToAuthUser } from '../mappers/auth.mapper';
 import { Status, RoleName } from '@prisma/client';
 import { RedisService } from 'src/db/redis/redis.service';
 import { AuthUser } from '../interfaces/auth-user.interface';
+import { userSelector } from '../../../common/selectors/user.selector';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -45,20 +46,7 @@ export class SessionGuard implements CanActivate {
   private async findUserWithRelations(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId, deletedAt: null },
-      include: {
-        role: { include: { permissions: true } },
-        memberships: {
-          where: {
-            deletedAt: null,
-            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-            tenant: { status: Status.ACTIVE, deletedAt: null },
-          },
-          include: {
-            tenant: true,
-            permissions: { where: { deletedAt: null } },
-          },
-        },
-      },
+      select: userSelector,
     });
   }
 

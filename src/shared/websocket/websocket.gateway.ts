@@ -18,6 +18,7 @@ import * as cookie from 'cookie';
 import * as cookieSignature from 'cookie-signature';
 import { ConfigService } from '@nestjs/config';
 import type { AuthUser } from '../../modules/auth/interfaces/auth-user.interface';
+import { userSelector } from '../../common/selectors/user.selector';
 
 export interface SocketWithUser extends Socket {
   data: {
@@ -90,15 +91,7 @@ export class WebsocketGateway
 
         const user = await this.prisma.user.findUnique({
           where: { id: session.userId },
-          include: {
-            role: { include: { permissions: true } },
-            memberships: {
-              include: {
-                tenant: true,
-                permissions: true,
-              },
-            },
-          },
+          select: userSelector,
         });
         if (!user) throw new UnauthorizedException('User not found');
 
