@@ -18,25 +18,19 @@ export class PrismaService
 
   constructor() {
     super({
-      log:
-        process.env.NODE_ENV === 'production'
-          ? ['error', 'warn']
-          : ['query', 'info', 'warn', 'error'],
+      log: ['query', 'info', 'warn', 'error'],
     });
   }
 
   async onModuleInit() {
     await this.connect();
 
-    if (
-      process.env.DEBUG_QUERIES === 'true' &&
-      process.env.NODE_ENV !== 'production'
-    ) {
+    if (process.env.DEBUG_QUERIES === 'true') {
       this.$on(
         'query' as never,
         (e: { query: string; params: string; duration: number }) => {
           this.logger.debug(
-            `[Prisma Query] ${e.query}\nParams: ${e.params}\nDuration: ${e.duration}ms`,
+            `Query: ${e.query}\nParams: ${e.params}\nDuration: ${e.duration}ms`,
           );
         },
       );
@@ -54,8 +48,8 @@ export class PrismaService
         this.connected = true;
         this.logger.log('[Prisma] Connected');
       } catch (err) {
-        this.logger.error('[Prisma] Connection failed', err.stack || err);
-        throw err;
+        this.logger.error('[Prisma] Connection failed:', err);
+        throw new Error('Failed to connect to Prisma');
       }
     }
   }
@@ -70,10 +64,10 @@ export class PrismaService
 
   async isHealthy(): Promise<boolean> {
     try {
-      await this.$queryRawUnsafe(`SELECT 1`);
+      await this.$queryRaw`SELECT 1`;
       return true;
     } catch (err) {
-      this.logger.error('[Prisma] Health check failed', err.stack || err);
+      this.logger.error('[Prisma] Health check failed:', err);
       return false;
     }
   }

@@ -96,7 +96,7 @@ async function setupSession(
     const redisService = app.get(RedisService);
     const redisClient = redisService.getConnection();
 
-    const store = new RedisStore({
+    const store = new (RedisStore as any)({
       client: redisClient,
       prefix: 'sess:',
     });
@@ -108,10 +108,13 @@ async function setupSession(
         secret: configService.get<string>('SESSION_SECRET', 'changeme'),
         resave: false,
         saveUninitialized: false,
-        rolling: false,
+        rolling: true,
         cookie: {
           ...sessionCookieConfig,
-          secure: isProd,
+          secure: isProd || configService.get<boolean>('ENABLE_HTTPS', false),
+          maxAge:
+            configService.get<number>('SESSION_MAX_AGE') ??
+            sessionCookieConfig.maxAge,
         },
       }),
     );
@@ -151,6 +154,8 @@ function setupCors(app: NestExpressApplication, configService: ConfigService) {
 //       'Authorization',
 //       'X-Requested-With',
 //       'x-csrf-token',
+//       'csrf-token',
+//       'X-CSRF-Token',
 //     ],
 //   });
 // }
