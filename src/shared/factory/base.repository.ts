@@ -9,11 +9,10 @@ import {
 } from '../../common/utils/api-features.util';
 import * as crypto from 'crypto';
 
-type Sanitizer<T> = (data: any) => T;
-
 @Injectable()
 export class BaseRepository<
   T extends { id: string; deletedAt?: Date | null },
+  S = T,
   K extends keyof PrismaClient = keyof PrismaClient,
 > {
   protected readonly logger = new Logger(BaseRepository.name);
@@ -25,7 +24,7 @@ export class BaseRepository<
     protected readonly searchableFields: string[] = [],
     protected readonly defaultSelect: Record<string, any> = {},
     protected readonly useSoftDelete = true,
-    private readonly sanitizeFn: Sanitizer<T> = (d) => d,
+    private readonly sanitizeFn: (data: T) => S = (d: T) => d as unknown as S,
     private readonly cacheTTL = process.env.NODE_ENV === 'production'
       ? 3600
       : 30,
@@ -130,7 +129,7 @@ export class BaseRepository<
     });
   }
 
-  async create(data: any, select: any = this.defaultSelect): Promise<T> {
+  async create(data: any, select: any = this.defaultSelect): Promise<S> {
     return this.executeWrite('create', async (tx) => {
       const doc = await (tx[this.modelKey] as any).create({ data, select });
       return this.sanitizeFn(doc);
@@ -141,7 +140,7 @@ export class BaseRepository<
     id: string,
     data: any,
     select: any = this.defaultSelect,
-  ): Promise<T> {
+  ): Promise<S> {
     return this.executeWrite(
       'update',
       async (tx) => {
@@ -218,7 +217,7 @@ export class BaseRepository<
     where: Record<string, any>,
     select: any = this.defaultSelect,
     useCache = true,
-  ): Promise<T> {
+  ): Promise<S> {
     const cacheKey = this.buildCacheKey('findOne', { where, select });
     return this.withCache(
       cacheKey,
@@ -260,7 +259,7 @@ export class BaseRepository<
     where: Record<string, any> = {},
     select: Record<string, any> = this.defaultSelect,
     useCache = true,
-  ): Promise<{ items: T[] } & Partial<PaginationResult>> {
+  ): Promise<{ items: S[] } & Partial<PaginationResult>> {
     const cacheKey = this.buildCacheKey('findAll', {
       queryString,
       where,

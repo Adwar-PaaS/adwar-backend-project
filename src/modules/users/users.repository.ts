@@ -12,7 +12,10 @@ import { userSelector } from '../../common/selectors/user.selector';
 type UserWithRelations = Prisma.UserGetPayload<{ select: typeof userSelector }>;
 
 @Injectable()
-export class UsersRepository extends BaseRepository<User> {
+export class UsersRepository extends BaseRepository<
+  User,
+  Omit<User, 'password'>
+> {
   constructor(
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
@@ -23,6 +26,8 @@ export class UsersRepository extends BaseRepository<User> {
       'user',
       ['email', 'firstName', 'lastName'],
       userSelector,
+      true,
+      sanitizeUser,
     );
   }
 
