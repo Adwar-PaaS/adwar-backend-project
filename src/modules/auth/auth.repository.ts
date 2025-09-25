@@ -16,7 +16,7 @@ export class AuthRepository {
   // }
 
   async findUserByEmail(email: string) {
-    return this.usersRepo.getByEmail(email);
+    return this.usersRepo.getByEmailForAuth(email);
   }
 
   async findUserById(userId: string) {
