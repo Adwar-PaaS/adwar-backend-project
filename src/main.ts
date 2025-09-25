@@ -141,6 +141,23 @@ function setupCors(app: NestExpressApplication, configService: ConfigService) {
   });
 }
 
+// function setupCors(app: NestExpressApplication, configService: ConfigService) {
+//   const allowedOrigins = configService
+//     .get<string>('CORS_ORIGINS')
+//     ?.split(',') || ['http://localhost:5173'];
+//   app.enableCors({
+//     origin: allowedOrigins,
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+//     allowedHeaders: [
+//       'Content-Type',
+//       'Authorization',
+//       'X-Requested-With',
+//       'x-csrf-token',
+//     ],
+//   });
+// }
+
 function setupPerformanceLogger(app: NestExpressApplication, logger: Logger) {
   app.use((req: any, res: any, next: any) => {
     const start = process.hrtime.bigint();
