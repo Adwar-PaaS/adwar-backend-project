@@ -7,31 +7,38 @@ import {
 import { PrismaService } from '../../../db/prisma/prisma.service';
 import { mapPrismaUserToAuthUser } from '../mappers/auth.mapper';
 import { Status, RoleName } from '@prisma/client';
+import { RedisService } from 'src/db/redis/redis.service';
+import { AuthUser } from '../interfaces/auth-user.interface';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
-
     const userId = req?.session?.userId;
-    if (!userId) {
-      throw new UnauthorizedException('Not authenticated');
-    }
+    if (!userId) throw new UnauthorizedException('Not authenticated');
 
-    const user = await this.findUserWithRelations(userId);
+    const cacheKey = `auth:user:${userId}`;
+    let user = await this.redis.get<AuthUser>(cacheKey);
 
-    if (!user || user.status !== Status.ACTIVE) {
-      throw new UnauthorizedException('User not found or inactive');
+    if (!user) {
+      const prismaUser = await this.findUserWithRelations(userId);
+      if (!prismaUser || prismaUser.status !== Status.ACTIVE) {
+        throw new UnauthorizedException('User not found or inactive');
+      }
+      user = mapPrismaUserToAuthUser(prismaUser);
+      await this.redis.set(cacheKey, user, 3600); // 1 hour TTL
     }
 
     const { domain, tenantSlug, isCustomerDomain } =
       this.extractDomainInfo(req);
-
     // this.validateAccess(user, tenantSlug, isCustomerDomain);
 
-    req.user = mapPrismaUserToAuthUser(user);
+    req.user = user;
     return true;
   }
 

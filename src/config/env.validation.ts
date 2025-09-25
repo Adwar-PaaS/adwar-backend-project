@@ -19,6 +19,7 @@ export default Joi.object({
   SESSION_COOKIE_NAME: Joi.string().required(),
   SESSION_SECRET: Joi.string().required(),
   SESSION_MAX_AGE: Joi.number().default(604800000),
+  ENABLE_HTTPS: Joi.boolean().default(false),
 
   THROTTLE_TTL: Joi.number().default(60),
   THROTTLE_LIMIT: Joi.number().default(100),

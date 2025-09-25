@@ -11,8 +11,28 @@ export class BranchRepository extends BaseRepository<IBranch> {
     protected readonly redis: RedisService,
   ) {
     super(prisma, redis, 'branch', ['code', 'name'], {
-      tenant: true,
-      address: true,
+      id: true,
+      name: true,
+      code: true,
+      status: true,
+      type: true,
+      category: true,
+      createdAt: true,
+      updatedAt: true,
+      tenant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      address: {
+        select: {
+          id: true,
+          city: true,
+          country: true,
+        },
+      },
     });
   }
 }

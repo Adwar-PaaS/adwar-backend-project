@@ -1,23 +1,54 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { IDatabase } from '../interfaces/db.interface';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements IDatabase<PrismaClient>
+  implements IDatabase<PrismaClient>, OnModuleInit, OnModuleDestroy
 {
   readonly name = 'Prisma';
+  private readonly logger = new Logger(PrismaService.name);
   private connected = false;
+
+  constructor() {
+    super({
+      log: ['query', 'info', 'warn', 'error'],
+    });
+  }
+
+  async onModuleInit() {
+    await this.connect();
+
+    if (process.env.DEBUG_QUERIES === 'true') {
+      this.$on(
+        'query' as never,
+        (e: { query: string; params: string; duration: number }) => {
+          this.logger.debug(
+            `Query: ${e.query}\nParams: ${e.params}\nDuration: ${e.duration}ms`,
+          );
+        },
+      );
+    }
+  }
+
+  async onModuleDestroy() {
+    await this.disconnect();
+  }
 
   async connect(): Promise<void> {
     if (!this.connected) {
       try {
         await this.$connect();
         this.connected = true;
-        console.log('[Prisma] Connected');
+        this.logger.log('[Prisma] Connected');
       } catch (err) {
-        console.error('[Prisma] Connection failed:', err);
+        this.logger.error('[Prisma] Connection failed:', err);
         throw new Error('Failed to connect to Prisma');
       }
     }
@@ -27,7 +58,7 @@ export class PrismaService
     if (this.connected) {
       await this.$disconnect();
       this.connected = false;
-      console.log('[Prisma] Disconnected');
+      this.logger.log('[Prisma] Disconnected');
     }
   }
 
@@ -36,7 +67,7 @@ export class PrismaService
       await this.$queryRaw`SELECT 1`;
       return true;
     } catch (err) {
-      console.error('[Prisma] Health check failed:', err);
+      this.logger.error('[Prisma] Health check failed:', err);
       return false;
     }
   }

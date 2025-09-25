@@ -4,7 +4,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { DatabaseFactoryService } from './services/db-factory.service';
 import { DatabaseManagerService } from './services/db-manager.service';
-import { DatabaseType } from './constants/db-type.enum';
 
 @Global()
 @Module({
@@ -16,9 +15,6 @@ export class DbModule implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly dbManager: DatabaseManagerService) {}
 
   async onModuleInit() {
-    [DatabaseType.PRISMA, DatabaseType.REDIS].forEach((t) =>
-      this.dbManager.register(t),
-    );
     await this.dbManager.connectAll();
   }
 

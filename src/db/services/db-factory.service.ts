@@ -5,27 +5,23 @@ import { DATABASE_TOKEN } from '../constants/db-token.constant';
 
 @Injectable()
 export class DatabaseFactoryService {
+  private readonly registry = new Map<DatabaseType, IDatabase>();
+
   constructor(
-    @Inject(DATABASE_TOKEN.PRISMA)
-    @Optional()
-    private readonly prisma?: IDatabase,
-    @Inject(DATABASE_TOKEN.REDIS)
-    @Optional()
-    private readonly redis?: IDatabase,
-  ) {}
+    @Inject(DATABASE_TOKEN.PRISMA) @Optional() prisma?: IDatabase,
+    @Inject(DATABASE_TOKEN.REDIS) @Optional() redis?: IDatabase,
+  ) {
+    if (prisma) this.registry.set(DatabaseType.PRISMA, prisma);
+    if (redis) this.registry.set(DatabaseType.REDIS, redis);
+  }
 
   create(type: DatabaseType): IDatabase {
-    switch (type) {
-      case DatabaseType.PRISMA:
-        if (!this.prisma) throw new Error('[Factory] Prisma not available');
-        return this.prisma;
+    const db = this.registry.get(type);
+    if (!db) throw new Error(`[Factory] ${type} not available`);
+    return db;
+  }
 
-      case DatabaseType.REDIS:
-        if (!this.redis) throw new Error('[Factory] Redis not available');
-        return this.redis;
-
-      default:
-        throw new Error(`[Factory] Unsupported database type: ${type}`);
-    }
+  getAll(): Map<DatabaseType, IDatabase> {
+    return this.registry;
   }
 }

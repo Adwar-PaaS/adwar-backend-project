@@ -59,8 +59,12 @@ export class PickUpController {
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdatePickupDto) {
-    const pickup = await this.pickupService.updatePickup(id, dto);
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePickupDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const pickup = await this.pickupService.updatePickup(id, dto, user);
     return APIResponse.success(
       { pickup },
       'Pickup updated successfully',

@@ -1,45 +1,58 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown, Logger } from '@nestjs/common';
 import { IDatabase } from '../interfaces/db.interface';
 import { DatabaseType } from '../constants/db-type.enum';
 import { DatabaseFactoryService } from './db-factory.service';
 
 @Injectable()
-export class DatabaseManagerService {
+export class DatabaseManagerService implements OnApplicationShutdown {
+  private readonly logger = new Logger(DatabaseManagerService.name);
   private readonly databases = new Map<DatabaseType, IDatabase>();
 
-  constructor(private readonly factory: DatabaseFactoryService) {}
+  constructor(private readonly factory: DatabaseFactoryService) {
+    this.autoRegister();
+  }
 
-  register(type: DatabaseType): void {
-    if (!this.databases.has(type)) {
-      this.databases.set(type, this.factory.create(type));
+  private autoRegister(): void {
+    for (const type of Object.values(DatabaseType)) {
+      try {
+        const db = this.factory.create(type);
+        this.databases.set(type, db);
+        this.log(`Registered ${db.name} (${type})`);
+      } catch (err) {
+        this.warn(`Skipped ${type}: ${err.message}`);
+      }
     }
+  }
+
+  private async runOnAll(
+    action: 'connect' | 'disconnect',
+    validateHealth = false,
+  ): Promise<void> {
+    await Promise.all(
+      Array.from(this.databases.entries()).map(async ([type, db]) => {
+        try {
+          await db[action]();
+
+          if (validateHealth && !(await db.isHealthy())) {
+            throw new Error(`${db.name} is unhealthy`);
+          }
+
+          this.log(
+            `${db.name} (${type}) ${action}${validateHealth ? 'ed & healthy' : 'ed'}`,
+          );
+        } catch (err) {
+          this.error(`Failed to ${action} ${type}`, err);
+        }
+      }),
+    );
   }
 
   async connectAll(): Promise<void> {
-    for (const [type, db] of this.databases) {
-      try {
-        await db.connect();
-        if (!(await db.isHealthy())) {
-          throw new Error(`${db.name} is unhealthy`);
-        }
-        console.log(
-          `[DatabaseManager] ${db.name} (${type}) connected & healthy`,
-        );
-      } catch (err) {
-        console.error(`[DatabaseManager] Failed to connect ${type}:`, err);
-      }
-    }
+    await this.runOnAll('connect', true);
   }
 
   async disconnectAll(): Promise<void> {
-    for (const [type, db] of this.databases) {
-      try {
-        await db.disconnect();
-        console.log(`[DatabaseManager] ${db.name} (${type}) disconnected`);
-      } catch (err) {
-        console.error(`[DatabaseManager] Failed to disconnect ${type}:`, err);
-      }
-    }
+    await this.runOnAll('disconnect');
   }
 
   get(type: DatabaseType): IDatabase | undefined {
@@ -48,5 +61,20 @@ export class DatabaseManagerService {
 
   getAll(): IDatabase[] {
     return [...this.databases.values()];
+  }
+
+  async onApplicationShutdown(signal?: string): Promise<void> {
+    this.log(`Shutdown signal received: ${signal}`);
+    await this.disconnectAll();
+  }
+
+  private log(msg: string) {
+    this.logger.log(msg);
+  }
+  private warn(msg: string) {
+    this.logger.warn(msg);
+  }
+  private error(msg: string, err: unknown) {
+    this.logger.error(`${msg}: ${err instanceof Error ? err.message : err}`);
   }
 }

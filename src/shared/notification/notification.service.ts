@@ -10,6 +10,7 @@ import {
   NotificationCategory,
   NotificationChannel,
   PriorityStatus,
+  EntityType,
 } from '@prisma/client';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { WebsocketService } from '../../shared/websocket/websocket.service';
@@ -54,9 +55,7 @@ export class NotificationService {
           scheduledFor: dto.scheduledFor ?? null,
           expiresAt: dto.expiresAt ?? null,
           recipients: {
-            create: recipients.map((recipientId) => ({
-              recipientId,
-            })),
+            create: recipients.map((recipientId) => ({ recipientId })),
           },
         },
         include: { recipients: true },
@@ -67,7 +66,34 @@ export class NotificationService {
     return notification;
   }
 
-  async broadcastToAll(
+  async notifyUsers(
+    senderId: string,
+    recipientIds: string[],
+    title: string,
+    message: string,
+    relatedId: string,
+    options?: Partial<{
+      relatedType: EntityType;
+      category: NotificationCategory;
+      priority: PriorityStatus;
+      channels: NotificationChannel[];
+    }>,
+  ) {
+    if (!recipientIds?.length) return null;
+    return this.create({
+      senderId,
+      recipientIds,
+      title,
+      message,
+      relatedId,
+      relatedType: options?.relatedType ?? EntityType.PICKUP,
+      category: options?.category ?? NotificationCategory.ACTION,
+      priority: options?.priority ?? PriorityStatus.HIGH,
+      channels: options?.channels ?? [NotificationChannel.IN_APP],
+    });
+  }
+
+  async broadcast(
     dto: Omit<CreateNotificationDto, 'recipientIds'>,
   ): Promise<Notification> {
     const users = await this.prisma.user.findMany({
@@ -79,34 +105,11 @@ export class NotificationService {
       throw new BadRequestException('No users found for broadcast');
     }
 
-    const notification = await this.prisma.$transaction(async (tx) =>
-      tx.notification.create({
-        data: {
-          senderId: dto.senderId ?? null,
-          title: dto.title,
-          message: dto.message,
-          relatedId: dto.relatedId ?? null,
-          relatedType: dto.relatedType ?? null,
-          category: dto.category ?? NotificationCategory.SYSTEM,
-          channels: dto.channels?.length
-            ? dto.channels
-            : [NotificationChannel.IN_APP],
-          priority: dto.priority ?? PriorityStatus.MEDIUM,
-          scheduledFor: dto.scheduledFor ?? null,
-          expiresAt: dto.expiresAt ?? null,
-          recipients: {
-            createMany: {
-              data: users.map((u) => ({ recipientId: u.id })),
-              skipDuplicates: true,
-            },
-          },
-        },
-        include: { recipients: true },
-      }),
-    );
-
-    await this.deliver(notification, { emitSocket: true });
-    return notification;
+    return this.create({
+      ...dto,
+      recipientIds: users.map((u) => u.id),
+      category: dto.category ?? NotificationCategory.SYSTEM,
+    });
   }
 
   async markRead(notificationId: string, userId: string) {

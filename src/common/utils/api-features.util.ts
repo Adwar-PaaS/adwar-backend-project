@@ -12,6 +12,15 @@ export interface PaginationResult {
   prevPage: number | null;
 }
 
+type PrismaFindManyArgs = {
+  where?: Record<string, any>;
+  orderBy?: any;
+  select?: Record<string, boolean>;
+  include?: Record<string, any>;
+  take?: number;
+  skip?: number;
+};
+
 export class ApiFeatures<
   TModel extends {
     findMany: (args?: any) => Promise<any>;
@@ -21,47 +30,24 @@ export class ApiFeatures<
 > {
   private readonly logger = new Logger(ApiFeatures.name);
 
-  private queryOptions: {
-    where?: TWhere;
-    orderBy?: any;
-    select?: Record<string, boolean>;
-    include?: Record<string, any>;
-    take?: number;
-    skip?: number;
-  } = {};
-
+  private queryOptions: PrismaFindManyArgs = {};
   private paginationResult: PaginationResult | null = null;
 
   constructor(
     private readonly prismaModel: TModel,
     private readonly queryString: Record<string, any> = {},
-    private readonly searchableFields: (keyof TWhere & string)[] = [],
+    private readonly searchableFields: Extract<keyof TWhere, string>[] = [],
   ) {}
 
-  filter(): this {
-    const { page, sort, limit, fields, search, ...filters } = this.queryString;
-
-    for (const [key, rawValue] of Object.entries(filters)) {
-      if (!rawValue) continue;
-
-      const parsed = this.parseFilterValue(key, String(rawValue).trim());
-      if (parsed === undefined) {
-        throw new HttpException(
-          `Invalid value for filter "${key}"`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      this.queryOptions.where = {
-        ...(this.queryOptions.where ?? ({} as TWhere)),
-        [key]: parsed,
-      } as TWhere;
-    }
-
-    return this;
+  private normalizeFilters(filters: Record<string, any>): Record<string, any> {
+    return Object.fromEntries(
+      Object.entries(filters)
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => [k.trim(), typeof v === 'string' ? v.trim() : v]),
+    );
   }
 
-  private parseFilterValue(key: string, value: string): unknown {
+  private parseFilterValue(_: string, value: string): unknown {
     if (value.includes(',')) {
       const items = value.split(',').map((v) => v.trim());
       return { in: items.map((v) => this.detectAndConvertSingle(v)) };
@@ -80,9 +66,7 @@ export class ApiFeatures<
       return { [opMap[op]]: parsed };
     }
 
-    // Boolean
     if (value === 'true' || value === 'false') return value === 'true';
-
     return this.detectAndConvertSingle(value);
   }
 
@@ -92,27 +76,45 @@ export class ApiFeatures<
     return value;
   }
 
+  filter(): this {
+    const { page, sort, limit, fields, search, ...rawFilters } =
+      this.queryString;
+    const filters = this.normalizeFilters(rawFilters);
+
+    for (const [key, rawValue] of Object.entries(filters)) {
+      const parsed = this.parseFilterValue(key, String(rawValue));
+      if (parsed === undefined) {
+        throw new HttpException(
+          `Invalid value for filter "${key}"`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      this.queryOptions.where = {
+        ...(this.queryOptions.where ?? {}),
+        [key]: parsed,
+      };
+    }
+
+    return this;
+  }
+
   search(): this {
     if (!this.queryString.search || !this.searchableFields.length) return this;
 
-    const searchTerm = String(this.queryString.search).trim().toLowerCase();
+    const searchTerm = String(this.queryString.search).trim();
     if (!searchTerm) return this;
 
     const normalized = searchTerm.replace(/\s+/g, '');
-    const orConditions: TWhere[] = [];
-
-    for (const field of this.searchableFields) {
-      orConditions.push(
-        { [field]: { contains: searchTerm, mode: 'insensitive' } } as TWhere,
-        { [field]: { contains: normalized, mode: 'insensitive' } } as TWhere,
-      );
-    }
+    const orConditions = this.searchableFields.flatMap((field) => [
+      { [field]: { contains: searchTerm, mode: 'insensitive' } } as TWhere,
+      { [field]: { contains: normalized, mode: 'insensitive' } } as TWhere,
+    ]);
 
     if (orConditions.length) {
       this.queryOptions.where = {
-        ...(this.queryOptions.where ?? ({} as TWhere)),
+        ...(this.queryOptions.where ?? {}),
         OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
-      } as TWhere;
+      };
     }
 
     return this;
@@ -120,15 +122,13 @@ export class ApiFeatures<
 
   sort(): this {
     const { sort } = this.queryString;
-
-    if (typeof sort === 'string' && sort.trim()) {
-      this.queryOptions.orderBy = sort.split(',').map((field) => {
-        const isDesc = field.startsWith('-');
-        return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
-      });
-    } else {
-      this.queryOptions.orderBy = [{ createdAt: 'desc' }];
-    }
+    this.queryOptions.orderBy =
+      typeof sort === 'string' && sort.trim()
+        ? sort.split(',').map((field) => {
+            const isDesc = field.startsWith('-');
+            return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
+          })
+        : [{ createdAt: 'desc' }];
 
     return this;
   }
@@ -141,21 +141,18 @@ export class ApiFeatures<
       .split(',')
       .map((f: string) => f.trim())
       .filter(Boolean);
-
     if (selected.length) {
       this.queryOptions.select = selected.reduce(
         (acc, f) => ({ ...acc, [f]: true }),
-        {} as Record<string, boolean>,
+        {},
       );
     }
-
     return this;
   }
 
   private async calculateTotal(): Promise<number> {
-    return (
-      (await this.prismaModel.count?.({ where: this.queryOptions.where })) ?? 0
-    );
+    if (!this.prismaModel.count) return 0;
+    return await this.prismaModel.count({ where: this.queryOptions.where });
   }
 
   async paginate(): Promise<this> {
@@ -169,7 +166,6 @@ export class ApiFeatures<
     if (totalRecords === 0) {
       this.queryOptions.take = limit;
       this.queryOptions.skip = 0;
-
       this.paginationResult = {
         totalRecords: 0,
         totalPages: 0,
@@ -180,7 +176,6 @@ export class ApiFeatures<
         nextPage: null,
         prevPage: null,
       };
-
       return this;
     }
 
@@ -189,7 +184,6 @@ export class ApiFeatures<
 
     this.queryOptions.take = limit;
     this.queryOptions.skip = (safePage - 1) * limit;
-
     this.paginationResult = {
       totalRecords,
       totalPages,
@@ -204,6 +198,21 @@ export class ApiFeatures<
     return this;
   }
 
+  // include(includeObj: Record<string, any>): this {
+  //   // no-op: prevent Prisma include usage
+  //   // merge into select instead for consistency with BaseRepository
+  //   if (includeObj && Object.keys(includeObj).length > 0) {
+  //     this.queryOptions.select = {
+  //       ...(this.queryOptions.select || {}),
+  //       ...Object.keys(includeObj).reduce(
+  //         (acc, key) => ({ ...acc, [key]: includeObj[key] ?? true }),
+  //         {},
+  //       ),
+  //     };
+  //   }
+  //   return this;
+  // }
+
   include(includeObj: Record<string, any>): this {
     this.queryOptions.include = {
       ...(this.queryOptions.include || {}),
@@ -213,21 +222,22 @@ export class ApiFeatures<
   }
 
   mergeFilter(filter: TWhere): this {
-    this.queryOptions.where = {
-      ...(this.queryOptions.where || ({} as TWhere)),
-      ...filter,
-    };
+    this.queryOptions.where = { ...(this.queryOptions.where || {}), ...filter };
     return this;
   }
 
-  async query<TRecord extends { password?: string } = any>(): Promise<{
-    data: TRecord[];
-    pagination?: PaginationResult;
-  }> {
+  getPagination(): PaginationResult | null {
+    return this.paginationResult;
+  }
+
+  async query<TRecord = any>(
+    withPagination = false,
+  ): Promise<{ data: TRecord[]; pagination?: PaginationResult }> {
     try {
+      if (withPagination && !this.paginationResult) await this.paginate();
       const data = await this.prismaModel.findMany(this.queryOptions);
-      return this.paginationResult
-        ? { data, pagination: this.paginationResult }
+      return withPagination
+        ? { data, pagination: this.paginationResult! }
         : { data };
     } catch (error: any) {
       this.logger.error(`Error executing query: ${error.message}`, error.stack);
@@ -236,5 +246,15 @@ export class ApiFeatures<
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  getQueryOptions(): PrismaFindManyArgs {
+    return { ...this.queryOptions };
+  }
+
+  reset(): this {
+    this.queryOptions = {};
+    this.paginationResult = null;
+    return this;
   }
 }

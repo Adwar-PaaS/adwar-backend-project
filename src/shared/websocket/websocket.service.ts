@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
-import type { AuthUser } from '../../modules/auth/interfaces/auth-user.interface';
+import { Server } from 'socket.io';
 import type { SocketWithUser } from './websocket.gateway';
 
 @Injectable()
