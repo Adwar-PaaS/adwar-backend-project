@@ -96,7 +96,7 @@ async function setupSession(
     const redisService = app.get(RedisService);
     const redisClient = redisService.getConnection();
 
-    const store = new (RedisStore as any)({
+    const store = new RedisStore({
       client: redisClient,
       prefix: 'sess:',
     });
@@ -108,13 +108,10 @@ async function setupSession(
         secret: configService.get<string>('SESSION_SECRET', 'changeme'),
         resave: false,
         saveUninitialized: false,
-        rolling: true,
+        rolling: false,
         cookie: {
           ...sessionCookieConfig,
-          secure: isProd || configService.get<boolean>('ENABLE_HTTPS', false),
-          maxAge:
-            configService.get<number>('SESSION_MAX_AGE') ??
-            sessionCookieConfig.maxAge,
+          secure: isProd,
         },
       }),
     );

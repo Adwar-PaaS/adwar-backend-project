@@ -280,10 +280,9 @@ export class BaseRepository<
           .sort()
           .limitFields();
         await apiFeatures.paginate();
-        apiFeatures.include({}); // enforce select-only
         const opts = apiFeatures.getQueryOptions();
         opts.select = { ...(opts.select || {}), ...select };
-        const { data, pagination } = await apiFeatures.query();
+        const { data, pagination } = await apiFeatures.query(true);
         const items = data.map((d: any) => this.sanitizeFn(d));
         return { items, ...(pagination ?? {}) };
       },

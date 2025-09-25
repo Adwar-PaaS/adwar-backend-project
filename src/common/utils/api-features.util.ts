@@ -198,28 +198,26 @@ export class ApiFeatures<
     return this;
   }
 
-  // include(includeObj: Record<string, any>): this {
-  //   // no-op: prevent Prisma include usage
-  //   // merge into select instead for consistency with BaseRepository
-  //   if (includeObj && Object.keys(includeObj).length > 0) {
-  //     this.queryOptions.select = {
-  //       ...(this.queryOptions.select || {}),
-  //       ...Object.keys(includeObj).reduce(
-  //         (acc, key) => ({ ...acc, [key]: includeObj[key] ?? true }),
-  //         {},
-  //       ),
-  //     };
-  //   }
-  //   return this;
-  // }
-
   include(includeObj: Record<string, any>): this {
-    this.queryOptions.include = {
-      ...(this.queryOptions.include || {}),
-      ...includeObj,
-    };
+    if (includeObj && Object.keys(includeObj).length > 0) {
+      this.queryOptions.select = {
+        ...(this.queryOptions.select || {}),
+        ...Object.keys(includeObj).reduce(
+          (acc, key) => ({ ...acc, [key]: includeObj[key] ?? true }),
+          {},
+        ),
+      };
+    }
     return this;
   }
+
+  // include(includeObj: Record<string, any>): this {
+  //   this.queryOptions.include = {
+  //     ...(this.queryOptions.include || {}),
+  //     ...includeObj,
+  //   };
+  //   return this;
+  // }
 
   mergeFilter(filter: TWhere): this {
     this.queryOptions.where = { ...(this.queryOptions.where || {}), ...filter };
