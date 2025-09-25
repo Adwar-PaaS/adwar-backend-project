@@ -9,6 +9,7 @@ import { mapPrismaUserToAuthUser } from '../mappers/auth.mapper';
 import { Status, RoleName } from '@prisma/client';
 import { RedisService } from 'src/db/redis/redis.service';
 import { AuthUser } from '../interfaces/auth-user.interface';
+import { userSelector } from 'src/common/selectors/user.selector';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -45,15 +46,7 @@ export class SessionGuard implements CanActivate {
   private async findUserWithRelations(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId, deletedAt: null },
-      include: {
-        role: { include: { permissions: true } },
-        memberships: {
-          include: {
-            tenant: true,
-            permissions: true,
-          },
-        },
-      },
+      select: userSelector,
     });
   }
 
@@ -115,42 +108,3 @@ export class SessionGuard implements CanActivate {
     }
   }
 }
-
-//     if (!user) {
-//       const prismaUser = await this.findUserWithRelations(userId);
-//       if (!prismaUser || prismaUser.status !== Status.ACTIVE) {
-//         throw new UnauthorizedException('User not found or inactive');
-//       }
-//       user = mapPrismaUserToAuthUser(prismaUser);
-//       await this.redis.set(cacheKey, user, 3600); // 1 hour TTL
-//     }
-
-//     const { domain, tenantSlug, isCustomerDomain } =
-//       this.extractDomainInfo(req);
-//     // this.validateAccess(user, tenantSlug, isCustomerDomain);
-
-//     req.user = user;
-//     return true;
-//   }
-
-//   private async findUserWithRelations(userId: string) {
-//     return this.prisma.user.findUnique({
-//       where: { id: userId, deletedAt: null },
-//       select: userSelector,
-//     });
-//   }
-
-// include: {
-//         role: { include: { permissions: true } },
-//         memberships: {
-//           where: {
-//             deletedAt: null,
-//             OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-//             tenant: { status: Status.ACTIVE, deletedAt: null },
-//           },
-//           include: {
-//             tenant: true,
-//             permissions: { where: { deletedAt: null } },
-//           },
-//         },
-//       },
