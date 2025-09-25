@@ -177,14 +177,6 @@ export class UsersRepository extends BaseRepository<User> {
       select: userSelector,
     });
   }
-
-  async updateStatus(id: string, status: Status): Promise<UserWithRelations> {
-    return this.prisma.user.update({
-      where: { id },
-      data: { status },
-      select: userSelector,
-    });
-  }
 }
 
 // import {

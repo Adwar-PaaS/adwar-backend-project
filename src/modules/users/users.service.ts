@@ -92,6 +92,6 @@ export class UsersService {
   }
 
   async updateStatus(id: string, status: Status) {
-    return this.usersRepo.updateStatus(id, status);
+    return this.usersRepo.update(id, status);
   }
 }
