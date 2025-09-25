@@ -11,7 +11,7 @@ export const userFields = {
   firstName: true,
   lastName: true,
   avatar: true,
-  phone: true,
+  phone: true,  
   status: true,
   lastLoginAt: true,
   joinedAt: true,

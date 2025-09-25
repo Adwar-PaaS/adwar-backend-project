@@ -60,6 +60,10 @@ function setupParsers(app: NestExpressApplication, isProd: boolean) {
     }),
   );
   app.use(cookieParser());
+
+  if (isProd) {
+    app.set('trust proxy', 1);
+  }
 }
 
 function setupGlobal(app: NestExpressApplication) {
