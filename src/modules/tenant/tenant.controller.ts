@@ -34,7 +34,7 @@ import { IBranch } from '../branch/interfaces/branch.interface';
 import { IOrder } from '../order/interfaces/order.interface';
 import { OrderService } from '../order/order.service';
 import { PickUpService } from '../pickup/pickup.service';
-import { PickUp } from '@prisma/client';
+import { Branch, PickUp } from '@prisma/client';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -125,7 +125,7 @@ export class TenantController {
   async getTenantBranches(
     @Query() query: Record<string, any>,
     @Param('tenantId') tenantId: string,
-  ): Promise<APIResponse<{ branches: IBranch[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ branches: Branch[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.branchService.getTenantBranches(
       query,
       tenantId,

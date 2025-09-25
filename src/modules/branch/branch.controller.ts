@@ -14,7 +14,7 @@ import {
 import { BranchService } from './branch.service';
 import { APIResponse } from '../../common/utils/api-response.util';
 import { Permissions } from '../../common/decorators/permission.decorator';
-import { EntityType, ActionType, PickUp } from '@prisma/client';
+import { EntityType, ActionType, PickUp, Branch } from '@prisma/client';
 import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CreateBranchDto } from './dto/create-branch.dto';
@@ -54,7 +54,7 @@ export class BranchController {
   @Permissions(EntityType.BRANCH, ActionType.READ)
   async findAll(
     @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ branches: IBranch[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ branches: Branch[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.branchService.findAll(query);
     return APIResponse.success(
       { branches: items, ...pagination },

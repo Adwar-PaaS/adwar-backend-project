@@ -28,7 +28,7 @@ export class BaseRepository<
     private readonly sanitizeFn: Sanitizer<T> = (d) => d,
     private readonly cacheTTL = process.env.NODE_ENV === 'production'
       ? 3600
-      : 300,
+      : 30,
   ) {}
 
   private get delegate(): any {
@@ -282,7 +282,7 @@ export class BaseRepository<
         await apiFeatures.paginate();
         apiFeatures.include({}); // enforce select-only
         const opts = apiFeatures.getQueryOptions();
-        opts.select = { ...select, ...(opts.select || {}) };
+        opts.select = { ...(opts.select || {}), ...select };
         const { data, pagination } = await apiFeatures.query();
         const items = data.map((d: any) => this.sanitizeFn(d));
         return { items, ...(pagination ?? {}) };
