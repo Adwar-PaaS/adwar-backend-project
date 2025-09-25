@@ -10,6 +10,7 @@ export default Joi.object({
   CORS_ORIGINS: Joi.string().default('http://localhost:3000'),
 
   DATABASE_URL: Joi.string().uri().required(),
+  DEBUG_QUERIES: Joi.boolean().default(false),
 
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().default(6379),
