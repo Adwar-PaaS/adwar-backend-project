@@ -171,10 +171,17 @@ export class UsersRepository extends BaseRepository<User> {
     });
   }
 
+  // async findById(id: string): Promise<UserWithRelations | null> {
+  //   return this.prisma.user.findUnique({
+  //     where: { id },
+  //     include: userSelector,
+  //   });
+  // }
+
   async findById(id: string): Promise<UserWithRelations | null> {
     return this.prisma.user.findUnique({
       where: { id },
-      select: userSelector,
+      include: { ...userSelector, role: { include: { permissions: true } } },
     });
   }
 
