@@ -277,10 +277,9 @@ export class BaseRepository<
           .search()
           .mergeFilter(this.applySoftDelete(where))
           .sort()
-          .limitFields();
+          .limitFields()
+          .mergeSelect(select);
         await apiFeatures.paginate();
-        const opts = apiFeatures.getQueryOptions();
-        opts.select = { ...(opts.select || {}), ...select };
         const { data, pagination } = await apiFeatures.query(true);
         const items = data.map((d: any) => this.sanitizeFn(d));
         return { items, ...(pagination ?? {}) };

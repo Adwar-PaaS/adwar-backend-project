@@ -40,7 +40,6 @@ async function seed() {
         password: hashedPassword,
         firstName: 'Super',
         lastName: 'Administrator',
-        businessType: null,
         status: Status.ACTIVE,
         roleId: superAdminRole.id,
       },

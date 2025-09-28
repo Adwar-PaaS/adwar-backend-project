@@ -3,6 +3,7 @@ import { baseFields, minimalFields } from './base.selector';
 import { roleSelector } from './role.selector';
 import { userPermissionSelector } from './permission.selector';
 import { tenantSelector } from './tenant.selector';
+import { addressSelector } from './address.selector';
 import { makeSelector } from '../utils/selector.util';
 
 export const userFields = {
@@ -11,7 +12,7 @@ export const userFields = {
   firstName: true,
   lastName: true,
   avatar: true,
-  phone: true,  
+  phone: true,
   status: true,
   lastLoginAt: true,
   joinedAt: true,
@@ -25,6 +26,14 @@ export const userSelector = makeSelector<Prisma.UserSelect>({
     select: {
       tenant: { select: tenantSelector },
       permissions: { select: userPermissionSelector },
+    },
+  },
+  addresses: {
+    select: {
+      type: true,
+      isPrimary: true,
+      isDefault: true,
+      address: { select: addressSelector },
     },
   },
 });

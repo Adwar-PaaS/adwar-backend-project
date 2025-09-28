@@ -211,16 +211,16 @@ export class ApiFeatures<
     return this;
   }
 
-  // include(includeObj: Record<string, any>): this {
-  //   this.queryOptions.include = {
-  //     ...(this.queryOptions.include || {}),
-  //     ...includeObj,
-  //   };
-  //   return this;
-  // }
-
   mergeFilter(filter: TWhere): this {
     this.queryOptions.where = { ...(this.queryOptions.where || {}), ...filter };
+    return this;
+  }
+
+  mergeSelect(mergedSelect: Record<string, any>): this {
+    this.queryOptions.select = {
+      ...(this.queryOptions.select || {}),
+      ...mergedSelect,
+    };
     return this;
   }
 

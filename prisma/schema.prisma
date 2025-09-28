@@ -16,7 +16,6 @@ model User {
   phone             String?
   avatar            String?
   status            Status    @default(ACTIVE)
-  customerSubdomain String?   @unique // not need it
   roleId            String    @db.Uuid
   isVerified        Boolean   @default(false)
   lastLoginAt       DateTime?
@@ -42,7 +41,6 @@ model User {
   orderNotes            OrderNote[]             @relation("OrderNoteAuthor")
 
   @@index([email])
-  @@index([customerSubdomain])
   @@index([status])
   @@index([roleId])
   @@index([deletedAt])

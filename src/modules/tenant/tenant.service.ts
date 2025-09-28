@@ -147,8 +147,6 @@ export class TenantService {
       phone: u.phone,
       status: u.status,
       avatar: u.avatar ?? null,
-      customerSubdomain: u.customerSubdomain ?? null,
-      businessType: u.businessType ?? null,
       branchId: u.branchId ?? null,
       tenantId: tenantId,
       isVerified: u.isVerified ?? false,

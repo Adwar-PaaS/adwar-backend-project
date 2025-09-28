@@ -32,6 +32,7 @@ import {
   CacheInterceptor,
   InvalidateCacheInterceptor,
 } from '../../common/interceptors/cache.interceptor';
+import { mapUserView, mapUserViews, UserView } from './mappers/user.mapper';
 
 @Controller('users')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -84,13 +85,13 @@ export class UsersController {
   @UseInterceptors(CacheInterceptor)
   @Cacheable((req) => `users:page:${req.query.page || 1}`, 60)
   @Permissions(EntityType.USER, ActionType.READ)
-  @Get()
   async findAll(
     @Query() query: Record<string, any>,
-  ): Promise<APIResponse<{ users: any[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ users: UserView[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.usersService.findAll(query);
+    const users = mapUserViews(items);
     return APIResponse.success(
-      { users: items, ...pagination },
+      { users, ...pagination },
       'Fetched users successfully',
       HttpStatus.OK,
     );

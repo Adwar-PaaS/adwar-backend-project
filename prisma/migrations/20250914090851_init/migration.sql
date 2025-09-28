@@ -81,7 +81,6 @@ CREATE TABLE "public"."users" (
     "phone" TEXT,
     "avatar" TEXT,
     "status" "public"."Status" NOT NULL DEFAULT 'ACTIVE',
-    "customerSubdomain" TEXT,
     "roleId" UUID NOT NULL,
     "isVerified" BOOLEAN NOT NULL DEFAULT false,
     "lastLoginAt" TIMESTAMP(3),
@@ -556,13 +555,7 @@ CREATE INDEX "scanner_devices_branchId_idx" ON "public"."scanner_devices"("branc
 CREATE UNIQUE INDEX "users_email_key" ON "public"."users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_customerSubdomain_key" ON "public"."users"("customerSubdomain");
-
--- CreateIndex
 CREATE INDEX "users_email_idx" ON "public"."users"("email");
-
--- CreateIndex
-CREATE INDEX "users_customerSubdomain_idx" ON "public"."users"("customerSubdomain");
 
 -- CreateIndex
 CREATE INDEX "users_status_idx" ON "public"."users"("status");
