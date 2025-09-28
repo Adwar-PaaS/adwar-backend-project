@@ -27,6 +27,7 @@ import { CsrfMiddleware } from './common/middleware/csrf.middleware';
 import { RedisService } from './db/redis/redis.service';
 import { CustomerModule } from './modules/customer/customer.module';
 import { ScannerModule } from './modules/scanner-device/scanner.module';
+import { ClusterService } from './common/services/cluster.service';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { ScannerModule } from './modules/scanner-device/scanner.module';
   controllers: [AppController],
   providers: [
     AppService,
+    ClusterService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

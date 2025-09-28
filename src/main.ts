@@ -11,6 +11,8 @@ import { RedisService } from './db/redis/redis.service';
 import { sessionCookieConfig } from './config/cookie.config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import * as express from 'express';
+import { ClusterService } from './common/services/cluster.service';
+import cluster from 'node:cluster';
 
 function setupSecurity(app: NestExpressApplication, isProd: boolean) {
   app.use(helmet.hidePoweredBy());
@@ -112,28 +114,35 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const isProd = process.env.NODE_ENV === 'production';
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bufferLogs: true,
-    abortOnError: false,
-    cors: false,
-    logger: isProd
-      ? ['error', 'warn', 'log']
-      : ['debug', 'error', 'warn', 'log'],
-  });
+  if (cluster.isPrimary) {
+    const clusterService = new ClusterService();
+    clusterService.createWorkers();
+    logger.log(`Primary ${process.pid} is running`);
+  } else {
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+      bufferLogs: true,
+      abortOnError: false,
+      cors: false,
+      logger: isProd
+        ? ['error', 'warn', 'log']
+        : ['debug', 'error', 'warn', 'log'],
+    });
 
-  const configService = app.get(ConfigService);
+    const configService = app.get(ConfigService);
+    const clusterService = app.get(ClusterService);
 
-  setupSecurity(app, isProd);
-  setupParsers(app, isProd);
-  setupGlobal(app);
+    setupSecurity(app, isProd);
+    setupParsers(app, isProd);
+    setupGlobal(app);
+    await setupSession(app, configService, isProd, logger);
+    setupCors(app, configService);
 
-  await setupSession(app, configService, isProd, logger);
+    clusterService.setupWorkerProcess(app);
 
-  setupCors(app, configService);
-
-  const port = configService.get<number>('PORT', 3000);
-  await app.listen(port, '0.0.0.0');
-  logger.log(`🚀 App running on http://localhost:${port}`);
+    const port = configService.get<number>('PORT', 3000);
+    await app.listen(port, '0.0.0.0');
+    logger.log(`🚀 Worker ${process.pid} running on http://localhost:${port}`);
+  }
 }
 
 void bootstrap();

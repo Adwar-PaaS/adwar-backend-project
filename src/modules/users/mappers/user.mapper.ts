@@ -1,4 +1,3 @@
-import { User } from '@prisma/client';
 import { UserViewDto } from '../dto/user-view.dto';
 import { plainToInstance } from 'class-transformer';
 

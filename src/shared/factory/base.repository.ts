@@ -45,13 +45,39 @@ export class BaseRepository<
     fetchFn: () => Promise<R>,
     useCache = true,
   ): Promise<R> {
-    if (!useCache) return fetchFn();
+    if (!useCache) {
+      this.logger.debug(
+        `[${String(this.modelKey)}] Cache disabled → fetching from DB`,
+      );
+      return fetchFn();
+    }
+
     const cached = await this.cacheGet<R>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.debug(`[${String(this.modelKey)}] Cache hit → key=${key}`);
+      return cached;
+    }
+
+    this.logger.debug(
+      `[${String(this.modelKey)}] Cache miss → fetching from DB, key=${key}`,
+    );
     const result = await fetchFn();
     await this.cacheSet(key, result);
     return result;
   }
+
+  // private async withCache<R>(
+  //   key: string,
+  //   fetchFn: () => Promise<R>,
+  //   useCache = true,
+  // ): Promise<R> {
+  //   if (!useCache) return fetchFn();
+  //   const cached = await this.cacheGet<R>(key);
+  //   if (cached) return cached;
+  //   const result = await fetchFn();
+  //   await this.cacheSet(key, result);
+  //   return result;
+  // }
 
   private buildCacheKey(action: string, extra: any = {}): string {
     const entries = Object.entries(extra).sort(([a], [b]) =>
