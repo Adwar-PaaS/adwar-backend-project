@@ -19,7 +19,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'order', ['orderNumber'], {
+    super(prisma, 'order', ['orderNumber'], {
       pickup: true,
       customer: true,
       items: {

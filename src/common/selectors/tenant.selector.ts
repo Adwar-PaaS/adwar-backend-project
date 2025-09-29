@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { baseFields, minimalFields } from './base.selector';
+import { addressSelector } from './address.selector';
+import { limitedUserSelector } from './user.selector';
 
 export const tenantFields = {
   name: true,
@@ -27,6 +29,8 @@ export const limitedTenantFields = {
 export const tenantSelector: Prisma.TenantSelect = {
   ...baseFields,
   ...tenantFields,
+  address: { select: addressSelector },
+  creator: { select: limitedUserSelector },
 };
 
 export const limitedTenantSelector: Prisma.TenantSelect = {

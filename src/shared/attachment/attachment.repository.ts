@@ -11,7 +11,7 @@ export class AttachmentRepository extends BaseRepository<Attachment> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'attachment', ['filename']);
+    super(prisma, 'attachment', ['filename']);
   }
 
   async findManyByEntity(

@@ -12,6 +12,6 @@ export class BranchRepository extends BaseRepository<Branch> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'branch', ['code', 'name'], branchSelector);
+    super(prisma, 'branch', ['code', 'name'], branchSelector);
   }
 }

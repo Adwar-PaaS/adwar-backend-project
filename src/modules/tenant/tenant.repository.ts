@@ -3,6 +3,7 @@ import { PrismaService } from '../../db/prisma/prisma.service';
 import { Tenant } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { RedisService } from 'src/db/redis/redis.service';
+import { tenantSelector } from 'src/common/selectors/tenant.selector';
 
 @Injectable()
 export class TenantRepository extends BaseRepository<Tenant> {
@@ -10,9 +11,6 @@ export class TenantRepository extends BaseRepository<Tenant> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'tenant', ['name', 'email'], {
-      creator: true,
-      address: true,
-    });
+    super(prisma, 'tenant', ['name', 'email'], tenantSelector);
   }
 }

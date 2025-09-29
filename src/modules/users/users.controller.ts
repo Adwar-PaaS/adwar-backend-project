@@ -24,6 +24,14 @@ import { PaginationResult } from '../../common/utils/api-features.util';
 import { EntityType, ActionType } from '@prisma/client';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import {
+  Cacheable,
+  InvalidateCache,
+} from '../../common/decorators/cache.decorator';
+import {
+  CacheInterceptor,
+  InvalidateCacheInterceptor,
+} from '../../common/interceptors/cache.interceptor';
 import { mapUserView, mapUserViews, UserView } from './mappers/user.mapper';
 
 @Controller('users')
@@ -32,6 +40,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*')
   // @Permissions(EntityType.USER, ActionType.CREATE)
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
@@ -43,6 +53,8 @@ export class UsersController {
   }
 
   @Post('super-admin/create-user')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*')
   @Permissions(EntityType.USER, ActionType.CREATE)
   async createAdminUserViaSuperAdminWithRole(@Body() dto: CreateUserDto) {
     const user = await this.usersService.createUserViaSuperAdminWithRole(dto);
@@ -54,6 +66,8 @@ export class UsersController {
   }
 
   @Post('create-user-tenant')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*')
   // @Permissions(EntityType.USER, ActionType.CREATE)
   async createTenantUser(
     @Body() dto: CreateUserDto,
@@ -68,6 +82,8 @@ export class UsersController {
   }
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable((req) => `users:page:${req.query.page || 1}`, 60)
   @Permissions(EntityType.USER, ActionType.READ)
   async findAll(
     @Query() query: Record<string, any>,
@@ -82,6 +98,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseInterceptors(CacheInterceptor)
+  @Cacheable((req) => `users:${req.params.id}`, 60)
   // @Permissions(EntityType.USER, ActionType.READ)
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
@@ -89,6 +107,8 @@ export class UsersController {
   }
 
   @Put(':id')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache('users:*', (req) => `users:${req.params.id}`)
   @Permissions(EntityType.USER, ActionType.UPDATE)
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const updatedUser = await this.usersService.update(id, dto);
@@ -96,6 +116,8 @@ export class UsersController {
   }
 
   @Patch(':id/status')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache((req) => `users:${req.params.id}`, 'users:*')
   @Permissions(EntityType.USER, ActionType.UPDATE)
   async updateStatus(
     @Param('id') id: string,
@@ -106,6 +128,8 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @UseInterceptors(InvalidateCacheInterceptor)
+  @InvalidateCache((req) => `users:${req.params.id}`, 'users:*')
   @Permissions(EntityType.USER, ActionType.DELETE)
   async delete(@Param('id') id: string) {
     await this.usersService.delete(id);
@@ -143,14 +167,6 @@ export class UsersController {
 // import { EntityType, ActionType } from '@prisma/client';
 // import { AuthUser } from '../auth/interfaces/auth-user.interface';
 // import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-// import {
-//   Cacheable,
-//   InvalidateCache,
-// } from '../../common/decorators/cache.decorator';
-// import {
-//   CacheInterceptor,
-//   InvalidateCacheInterceptor,
-// } from '../../common/interceptors/cache.interceptor';
 // import { mapUserView, mapUserViews, UserView } from './mappers/user.mapper';
 
 // @Controller('users')
@@ -159,8 +175,6 @@ export class UsersController {
 //   constructor(private readonly usersService: UsersService) {}
 
 //   @Post()
-//   @UseInterceptors(InvalidateCacheInterceptor)
-//   @InvalidateCache('users:*')
 //   // @Permissions(EntityType.USER, ActionType.CREATE)
 //   async create(@Body() dto: CreateUserDto) {
 //     const user = await this.usersService.create(dto);
@@ -172,8 +186,6 @@ export class UsersController {
 //   }
 
 //   @Post('super-admin/create-user')
-//   @UseInterceptors(InvalidateCacheInterceptor)
-//   @InvalidateCache('users:*')
 //   @Permissions(EntityType.USER, ActionType.CREATE)
 //   async createAdminUserViaSuperAdminWithRole(@Body() dto: CreateUserDto) {
 //     const user = await this.usersService.createUserViaSuperAdminWithRole(dto);
@@ -185,8 +197,6 @@ export class UsersController {
 //   }
 
 //   @Post('create-user-tenant')
-//   @UseInterceptors(InvalidateCacheInterceptor)
-//   @InvalidateCache('users:*')
 //   // @Permissions(EntityType.USER, ActionType.CREATE)
 //   async createTenantUser(
 //     @Body() dto: CreateUserDto,
@@ -201,8 +211,6 @@ export class UsersController {
 //   }
 
 //   @Get()
-//   @UseInterceptors(CacheInterceptor)
-//   @Cacheable((req) => `users:page:${req.query.page || 1}`, 60)
 //   @Permissions(EntityType.USER, ActionType.READ)
 //   async findAll(
 //     @Query() query: Record<string, any>,
@@ -217,8 +225,6 @@ export class UsersController {
 //   }
 
 //   @Get(':id')
-//   @UseInterceptors(CacheInterceptor)
-//   @Cacheable((req) => `users:${req.params.id}`, 60)
 //   // @Permissions(EntityType.USER, ActionType.READ)
 //   async findOne(@Param('id') id: string) {
 //     const user = await this.usersService.findById(id);
@@ -226,8 +232,6 @@ export class UsersController {
 //   }
 
 //   @Put(':id')
-//   @UseInterceptors(InvalidateCacheInterceptor)
-//   @InvalidateCache('users:*', (req) => `users:${req.params.id}`)
 //   @Permissions(EntityType.USER, ActionType.UPDATE)
 //   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
 //     const updatedUser = await this.usersService.update(id, dto);
@@ -235,8 +239,6 @@ export class UsersController {
 //   }
 
 //   @Patch(':id/status')
-//   @UseInterceptors(InvalidateCacheInterceptor)
-//   @InvalidateCache((req) => `users:${req.params.id}`, 'users:*')
 //   @Permissions(EntityType.USER, ActionType.UPDATE)
 //   async updateStatus(
 //     @Param('id') id: string,
@@ -247,8 +249,6 @@ export class UsersController {
 //   }
 
 //   @Delete(':id')
-//   @UseInterceptors(InvalidateCacheInterceptor)
-//   @InvalidateCache((req) => `users:${req.params.id}`, 'users:*')
 //   @Permissions(EntityType.USER, ActionType.DELETE)
 //   async delete(@Param('id') id: string) {
 //     await this.usersService.delete(id);

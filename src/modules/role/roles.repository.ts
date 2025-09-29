@@ -10,7 +10,7 @@ export class RolesRepository extends BaseRepository<Role> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'role', ['name']);
+    super(prisma, 'role', ['name']);
   }
 
   async createRoleWithPermissions(

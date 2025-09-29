@@ -10,7 +10,7 @@ export class ShipmentRepository extends BaseRepository<IShipment> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'shipment', ['shipmentNumber'], {
+    super(prisma, 'shipment', ['shipmentNumber'], {
       senderAddress: {
         select: { id: true, address1: true, city: true, country: true },
       },

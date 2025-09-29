@@ -22,11 +22,10 @@ export class UsersRepository extends BaseRepository<
   ) {
     super(
       prisma,
-      redis,
       'user',
       ['email', 'firstName', 'lastName'],
       userSelector,
-      true,
+      true, // undefined
       sanitizeUser,
     );
   }

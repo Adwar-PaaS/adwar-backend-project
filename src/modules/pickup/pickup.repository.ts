@@ -10,7 +10,7 @@ export class PickUpRepository extends BaseRepository<PickUp> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'pickUp', ['code'], {
+    super(prisma, 'pickUp', ['code'], {
       branch: true,
       driver: true,
       address: true,

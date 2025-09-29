@@ -11,7 +11,7 @@ export class AddressRepository extends BaseRepository<Address> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'address', ['label', 'city', 'country']);
+    super(prisma, 'address', ['label', 'city', 'country']);
   }
 
   attachToUser(

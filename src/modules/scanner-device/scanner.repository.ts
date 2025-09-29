@@ -10,7 +10,7 @@ export class ScannerRepository extends BaseRepository<ScannerDevice> {
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, redis, 'scannerDevice', ['deviceId'], {
+    super(prisma, 'scannerDevice', ['deviceId'], {
       include: { branch: true },
     });
   }
