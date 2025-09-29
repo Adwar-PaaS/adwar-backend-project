@@ -1,5 +1,4 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 
 export interface PaginationResult {
   totalRecords: number;
@@ -16,7 +15,6 @@ type PrismaFindManyArgs = {
   where?: Record<string, any>;
   orderBy?: any;
   select?: Record<string, boolean>;
-  include?: Record<string, any>;
   take?: number;
   skip?: number;
 };
@@ -47,17 +45,41 @@ export class ApiFeatures<
     );
   }
 
-  private parseFilterValue(_: string, value: string): unknown {
+  private parseFilterValue(key: string, value: string): unknown {
+    value = value.trim();
+
     if (value.includes(',')) {
       const items = value.split(',').map((v) => v.trim());
       return { in: items.map((v) => this.detectAndConvertSingle(v)) };
+    }
+
+    if (value.startsWith('!=')) {
+      const raw = value.slice(2).trim();
+      const parsed = this.detectAndConvertSingle(raw);
+      return { not: parsed };
+    }
+
+    if (value.startsWith('~')) {
+      const raw = value.slice(1).trim();
+      return { contains: raw, mode: 'insensitive' };
+    }
+
+    if (value.startsWith('=')) {
+      const raw = value.slice(1).trim();
+      return this.detectAndConvertSingle(raw);
     }
 
     const match = value.match(/^([<>]=?)(.+)$/);
     if (match) {
       const [, op, raw] = match;
       const parsed = this.detectAndConvertSingle(raw.trim());
-      const opMap: Record<string, keyof Prisma.IntFilter> = {
+      if (typeof parsed === 'string') {
+        throw new HttpException(
+          `Invalid value for operator ${op} in filter "${key}", must be number or date`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const opMap: Record<string, string> = {
         '>': 'gt',
         '>=': 'gte',
         '<': 'lt',
@@ -67,11 +89,13 @@ export class ApiFeatures<
     }
 
     if (value === 'true' || value === 'false') return value === 'true';
+
     return this.detectAndConvertSingle(value);
   }
 
   private detectAndConvertSingle(value: string): string | number | Date {
-    if (/^\d+$/.test(value)) return Number(value);
+    const numRegex = /^-?\d*\.?\d+$/;
+    if (numRegex.test(value)) return Number(value);
     if (!isNaN(Date.parse(value))) return new Date(value);
     return value;
   }
@@ -83,12 +107,6 @@ export class ApiFeatures<
 
     for (const [key, rawValue] of Object.entries(filters)) {
       const parsed = this.parseFilterValue(key, String(rawValue));
-      if (parsed === undefined) {
-        throw new HttpException(
-          `Invalid value for filter "${key}"`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
       this.queryOptions.where = {
         ...(this.queryOptions.where ?? {}),
         [key]: parsed,
@@ -122,13 +140,15 @@ export class ApiFeatures<
 
   sort(): this {
     const { sort } = this.queryString;
-    this.queryOptions.orderBy =
-      typeof sort === 'string' && sort.trim()
-        ? sort.split(',').map((field) => {
-            const isDesc = field.startsWith('-');
-            return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
-          })
-        : [{ createdAt: 'desc' }];
+    if (typeof sort !== 'string' || !sort.trim()) {
+      this.queryOptions.orderBy = [{ createdAt: 'desc' }];
+      return this;
+    }
+
+    this.queryOptions.orderBy = sort.split(',').map((field) => {
+      const isDesc = field.startsWith('-');
+      return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
+    });
 
     return this;
   }
@@ -152,7 +172,9 @@ export class ApiFeatures<
 
   private async calculateTotal(): Promise<number> {
     if (!this.prismaModel.count) return 0;
-    return await this.prismaModel.count({ where: this.queryOptions.where });
+    return this.prismaModel.count({
+      where: this.queryOptions.where,
+    });
   }
 
   async paginate(): Promise<this> {
@@ -198,25 +220,12 @@ export class ApiFeatures<
     return this;
   }
 
-  include(includeObj: Record<string, any>): this {
-    if (includeObj && Object.keys(includeObj).length > 0) {
-      this.queryOptions.select = {
-        ...(this.queryOptions.select || {}),
-        ...Object.keys(includeObj).reduce(
-          (acc, key) => ({ ...acc, [key]: includeObj[key] ?? true }),
-          {},
-        ),
-      };
-    }
-    return this;
-  }
-
   mergeFilter(filter: TWhere): this {
     this.queryOptions.where = { ...(this.queryOptions.where || {}), ...filter };
     return this;
   }
 
-  mergeSelect(mergedSelect: Record<string, any>): this {
+  mergeSelect(mergedSelect: Record<string, boolean>): this {
     this.queryOptions.select = {
       ...(this.queryOptions.select || {}),
       ...mergedSelect,

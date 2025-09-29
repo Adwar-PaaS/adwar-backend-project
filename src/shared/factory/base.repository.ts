@@ -68,6 +68,7 @@ export class BaseRepository<
     } = {},
   ): Promise<R> {
     return this.prisma.$transaction(cb, {
+      maxWait: options.timeout || 5000,
       timeout: options.timeout || 10000,
       isolationLevel: options.isolationLevel,
     });
@@ -171,33 +172,20 @@ export class BaseRepository<
         whereKeys.length === 1 && uniqueFields.includes(whereKeys[0]);
 
       const doc = isUniqueQuery
-        ? await this.delegate.findUnique(payload)
-        : await this.delegate.findFirst(payload);
-
-      if (!doc) {
-        throw new ApiError('Not found', HttpStatus.NOT_FOUND);
-      }
+        ? await this.delegate.findUniqueOrThrow(payload)
+        : await this.delegate.findFirstOrThrow(payload);
 
       return this.sanitizeFn(doc);
     } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        throw new ApiError('Not found', HttpStatus.NOT_FOUND);
+      }
       this.handleError('findOne', err);
     }
   }
-
-  // async findOne(
-  //   where: Record<string, any>,
-  //   select: any = this.defaultSelect,
-  // ): Promise<S> {
-  //   try {
-  //     const doc = await this.delegate.findUnique(
-  //       this.buildPrismaPayload({ where: this.applySoftDelete(where), select }),
-  //     );
-  //     if (!doc) throw new ApiError(`Not found`, HttpStatus.NOT_FOUND);
-  //     return this.sanitizeFn(doc);
-  //   } catch (err) {
-  //     this.handleError('findOne', err);
-  //   }
-  // }
 
   async findMany(
     where: Record<string, any> = {},
@@ -254,11 +242,11 @@ export class BaseRepository<
   }
 
   async exists(where: Record<string, any>): Promise<boolean> {
-    const record = await this.delegate.findFirst({
+    const count = await this.delegate.count({
       where: this.applySoftDelete(where),
-      select: { id: true },
+      take: 1,
     });
-    return !!record;
+    return count > 0;
   }
 }
 
