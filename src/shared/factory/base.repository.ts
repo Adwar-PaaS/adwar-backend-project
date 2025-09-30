@@ -242,13 +242,71 @@ export class BaseRepository<
   }
 
   async exists(where: Record<string, any>): Promise<boolean> {
-    const count = await this.delegate.count({
+    const record = await this.delegate.findFirst({
       where: this.applySoftDelete(where),
-      take: 1,
+      select: { id: true },
     });
-    return count > 0;
+    return !!record;
+  }
+
+  async queryRaw<T = any>(
+    query: TemplateStringsArray | Prisma.Sql,
+    ...values: any[]
+  ): Promise<T[]> {
+    try {
+      return await this.prisma.$queryRaw<T[]>(query as any, ...values);
+    } catch (err) {
+      this.handleError('queryRaw', err);
+    }
+  }
+
+  async executeRaw(query: TemplateStringsArray | Prisma.Sql, ...values: any[]) {
+    try {
+      return await this.prisma.$executeRaw(query as any, ...values);
+    } catch (err) {
+      this.handleError('executeRaw', err);
+    }
+  }
+
+  async groupBy(
+    field: keyof T,
+    where: Record<string, any> = {},
+    aggregations: {
+      count?: boolean;
+      sum?: Record<string, true>;
+      avg?: Record<string, true>;
+      min?: Record<string, true>;
+      max?: Record<string, true>;
+    } = { count: true },
+  ) {
+    try {
+      return await this.delegate.groupBy({
+        by: [field as string],
+        where: this.applySoftDelete(where),
+        _count: aggregations.count ? { _all: true } : undefined,
+        _sum: aggregations.sum,
+        _avg: aggregations.avg,
+        _min: aggregations.min,
+        _max: aggregations.max,
+      });
+    } catch (err) {
+      this.handleError('groupBy', err);
+    }
   }
 }
+
+// Where to use them in your current codebase
+
+// In BranchService.create → check uniqueness before insert:
+
+// const branchExists = await this.branchRepo.exists({ code: dto.code });
+// if (branchExists) {
+//   throw new BadRequestException('Branch code already in use');
+// }
+
+// In BranchService.getTenantBranches or controller queries → get total branch count for tenant dashboards:
+
+// const totalBranches = await this.branchRepo.count({ tenantId });
 
 // import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 // import { Prisma, PrismaClient } from '@prisma/client';
