@@ -63,8 +63,7 @@ export class TenantService {
   }
 
   async getRolesForTenant(tenantId: string) {
-    const { items } = await this.rolesRepo.findAll({}, { tenantId });
-    return items;
+    return await this.rolesRepo.findMany({ tenantId });
   }
 
   findAll(query: Record<string, any>) {
