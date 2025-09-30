@@ -43,6 +43,14 @@ class OrderItemViewDto {
   scannedAt!: string | null;
 }
 
+class PickupViewDto {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  pickupNumber!: string;
+}
+
 class CustomerViewDto {
   @Expose()
   id!: string;
@@ -98,6 +106,10 @@ export class OrderViewDto {
   @Expose()
   @Transform(dateToISOString)
   updatedAt!: string;
+
+  @Expose()
+  @Type(() => PickupViewDto)
+  pickup?: PickupViewDto | null;
 
   @Expose()
   @Type(() => CustomerViewDto)
