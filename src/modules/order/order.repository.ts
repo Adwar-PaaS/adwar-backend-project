@@ -20,6 +20,20 @@ export class OrderRepository extends BaseRepository<IOrder> {
     protected readonly redis: RedisService,
   ) {
     super(prisma, 'order', ['orderNumber'], {
+      id: true,
+      orderNumber: true,
+      referenceNumber: true,
+      totalWeight: true,
+      totalValue: true,
+      packageCount: true,
+      specialInstructions: true,
+      status: true,
+      failedReason: true,
+      priority: true,
+      estimatedDelivery: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
       pickup: true,
       customer: true,
       items: {

@@ -155,21 +155,6 @@ export class BaseRepository<
     });
   }
 
-  // async findOne(
-  //   where: Record<string, any>,
-  //   select: any = this.defaultSelect,
-  // ): Promise<S> {
-  //   try {
-  //     const doc = await this.delegate.findUnique(
-  //       this.buildPrismaPayload({ where: this.applySoftDelete(where), select }),
-  //     );
-  //     if (!doc) throw new ApiError(`Not found`, HttpStatus.NOT_FOUND);
-  //     return this.sanitizeFn(doc);
-  //   } catch (err) {
-  //     this.handleError('findOne', err);
-  //   }
-  // }
-
   async findOne(
     where: Record<string, any>,
     select: any = this.defaultSelect,
@@ -201,6 +186,21 @@ export class BaseRepository<
       this.handleError('findOne', err);
     }
   }
+
+  // async findOne(
+  //   where: Record<string, any>,
+  //   select: any = this.defaultSelect,
+  // ): Promise<S> {
+  //   try {
+  //     const doc = await this.delegate.findUnique(
+  //       this.buildPrismaPayload({ where: this.applySoftDelete(where), select }),
+  //     );
+  //     if (!doc) throw new ApiError(`Not found`, HttpStatus.NOT_FOUND);
+  //     return this.sanitizeFn(doc);
+  //   } catch (err) {
+  //     this.handleError('findOne', err);
+  //   }
+  // }
 
   async findMany(
     where: Record<string, any> = {},
@@ -257,11 +257,14 @@ export class BaseRepository<
   }
 
   async exists(where: Record<string, any>): Promise<boolean> {
-    const record = await this.delegate.findFirst({
-      where: this.applySoftDelete(where),
-      select: { id: true },
-    });
-    return !!record;
+    try {
+      return !!(await this.delegate.findFirst({
+        where: this.applySoftDelete(where),
+        select: { id: true },
+      }));
+    } catch (err) {
+      this.handleError('exists', err);
+    }
   }
 
   async queryRaw<T = any>(
