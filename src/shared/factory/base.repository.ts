@@ -155,6 +155,21 @@ export class BaseRepository<
     });
   }
 
+  // async findOne(
+  //   where: Record<string, any>,
+  //   select: any = this.defaultSelect,
+  // ): Promise<S> {
+  //   try {
+  //     const doc = await this.delegate.findUnique(
+  //       this.buildPrismaPayload({ where: this.applySoftDelete(where), select }),
+  //     );
+  //     if (!doc) throw new ApiError(`Not found`, HttpStatus.NOT_FOUND);
+  //     return this.sanitizeFn(doc);
+  //   } catch (err) {
+  //     this.handleError('findOne', err);
+  //   }
+  // }
+
   async findOne(
     where: Record<string, any>,
     select: any = this.defaultSelect,

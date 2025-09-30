@@ -30,11 +30,10 @@ import { SessionGuard } from '../../modules/auth/guards/session.guard';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { BranchService } from '../branch/branch.service';
-import { IBranch } from '../branch/interfaces/branch.interface';
-import { IOrder } from '../order/interfaces/order.interface';
 import { OrderService } from '../order/order.service';
 import { PickUpService } from '../pickup/pickup.service';
-import { Branch, PickUp } from '@prisma/client';
+import { Branch, PickUp, Order } from '@prisma/client';
+import { mapOrderViews, OrderView } from '../order/mappers/order.mapper';
 
 @Controller('tenants')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -141,13 +140,14 @@ export class TenantController {
   async getTenantOrders(
     @Query() query: Record<string, any>,
     @Param('tenantId') tenantId: string,
-  ): Promise<APIResponse<{ orders: IOrder[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ orders: OrderView[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.orderService.getTenantOrders(
       query,
       tenantId,
     );
+    const orders = mapOrderViews(items as unknown as Order[]);
     return APIResponse.success(
-      { orders: items, ...pagination },
+      { orders, ...pagination },
       'Tenant orders fetched successfully',
       HttpStatus.OK,
     );
