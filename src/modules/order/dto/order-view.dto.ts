@@ -61,7 +61,6 @@ export class OrderViewDto {
   @Expose()
   orderNumber!: string;
 
-  // ✅ Explicitly nullable for Prisma String?
   @Expose()
   referenceNumber?: string | null;
 
@@ -81,6 +80,16 @@ export class OrderViewDto {
 
   @Expose()
   priority!: string;
+
+  @Expose()
+  @Transform(dateToISOString)
+  estimatedDelivery!: string;
+
+  @Expose()
+  specialInstructions?: string | null;
+
+  @Expose()
+  failedReason!: string;
 
   @Expose()
   @Transform(dateToISOString)
