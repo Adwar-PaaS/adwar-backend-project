@@ -26,7 +26,7 @@ export class UsersRepository extends BaseRepository<
     super(
       prisma,
       prisma.user,
-      ['email', 'firstName', 'lastName', 'role.name'],
+      ['email', 'firstName', 'lastName'],
       userSelector,
       true,
       sanitizeUser,
