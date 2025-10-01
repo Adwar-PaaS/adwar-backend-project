@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RedisService } from '../../db/redis/redis.service';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, from, of, throwError } from 'rxjs';
+import { switchMap, tap, catchError } from 'rxjs/operators';
 import { CacheKey } from '../decorators/cache.decorator';
 
 @Injectable()
@@ -26,9 +26,7 @@ export class CacheInterceptor implements NestInterceptor {
       context.getHandler(),
     );
 
-    if (!cacheMeta) {
-      return next.handle();
-    }
+    if (!cacheMeta) return next.handle();
 
     const req = context.switchToHttp().getRequest();
     const cacheKey =
@@ -39,28 +37,34 @@ export class CacheInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    return new Observable((subscriber) => {
-      this.redisService.get(cacheKey).then((cached) => {
+    return from(this.redisService.get(cacheKey)).pipe(
+      switchMap((cached) => {
         if (cached) {
           this.logger.log(`Cache hit [key=${cacheKey}]`);
-          subscriber.next(cached);
-          subscriber.complete();
-        } else {
-          this.logger.log(`Cache miss [key=${cacheKey}]`);
-          next
-            .handle()
-            .pipe(
-              tap((result) => {
-                this.redisService.set(cacheKey, result, cacheMeta.ttl);
-                this.logger.log(
-                  `Cache set [key=${cacheKey}, ttl=${cacheMeta.ttl}s]`,
-                );
-              }),
-            )
-            .subscribe(subscriber);
+          return of(cached);
         }
-      });
-    });
+        this.logger.log(`Cache miss [key=${cacheKey}]`);
+        return next.handle().pipe(
+          tap(async (result) => {
+            try {
+              await this.redisService.set(cacheKey, result, cacheMeta.ttl);
+              this.logger.log(
+                `Cache set [key=${cacheKey}, ttl=${cacheMeta.ttl}s]`,
+              );
+            } catch (err) {
+              this.logger.error(
+                `Cache write failed [key=${cacheKey}]:`,
+                err as Error,
+              );
+            }
+          }),
+        );
+      }),
+      catchError((err) => {
+        this.logger.error(`Handler error [key=${cacheKey}]`, err as Error);
+        return throwError(() => err);
+      }),
+    );
   }
 }
 
@@ -79,9 +83,7 @@ export class InvalidateCacheInterceptor implements NestInterceptor {
       context.getHandler(),
     );
 
-    if (!keys || keys.length === 0) {
-      return next.handle();
-    }
+    if (!keys?.length) return next.handle();
 
     const req = context.switchToHttp().getRequest();
 
@@ -89,26 +91,32 @@ export class InvalidateCacheInterceptor implements NestInterceptor {
       tap(async () => {
         for (const key of keys) {
           let resolvedKey: string | null = null;
-
           try {
             resolvedKey = typeof key === 'function' ? key(req) : key;
           } catch (err) {
-            this.logger.error(`Failed to resolve key from function`, err);
+            this.logger.error('Failed to resolve key from function', err);
           }
 
-          if (!resolvedKey || resolvedKey.trim().length === 0) {
+          if (!resolvedKey || !resolvedKey.trim()) {
             this.logger.warn(`Skipping invalid cache key: ${key}`);
             continue;
           }
 
-          if (resolvedKey.includes('*')) {
-            await this.redisService.delByPattern(resolvedKey);
-            this.logger.log(
-              `Cache invalidated by pattern [pattern=${resolvedKey}]`,
+          try {
+            if (resolvedKey.includes('*')) {
+              await this.redisService.delByPattern(resolvedKey);
+              this.logger.log(
+                `Cache invalidated by pattern [pattern=${resolvedKey}]`,
+              );
+            } else {
+              await this.redisService.del(resolvedKey);
+              this.logger.log(`Cache invalidated [key=${resolvedKey}]`);
+            }
+          } catch (err) {
+            this.logger.error(
+              `Failed to invalidate [key=${resolvedKey}]`,
+              err as Error,
             );
-          } else {
-            await this.redisService.del(resolvedKey);
-            this.logger.log(`Cache invalidated [key=${resolvedKey}]`);
           }
         }
       }),

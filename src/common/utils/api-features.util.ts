@@ -141,6 +141,30 @@ export class ApiFeatures<
     return this.detectAndConvertSingle(value);
   }
 
+  private buildNestedFilter(key: string, value: any): Record<string, any> {
+    const parts = key.split('.');
+    let current = value;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      current = { [parts[i]]: current };
+    }
+    return current;
+  }
+
+  private deepMerge(
+    target: Record<string, any>,
+    source: Record<string, any>,
+  ): Record<string, any> {
+    const result = { ...target };
+    for (const [key, value] of Object.entries(source)) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = this.deepMerge(result[key] || {}, value);
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
   filter(): this {
     const { page, sort, limit, fields, search, ...rawFilters } =
       this.queryString;
@@ -154,10 +178,11 @@ export class ApiFeatures<
         const parsedValue = this.parseFilterValue(key, rawValue);
 
         if (parsedValue !== undefined) {
-          this.queryOptions.where = {
-            ...(this.queryOptions.where ?? {}),
-            [key]: parsedValue,
-          };
+          const nestedFilter = this.buildNestedFilter(key, parsedValue);
+          this.queryOptions.where = this.deepMerge(
+            this.queryOptions.where ?? {},
+            nestedFilter,
+          );
         }
       } catch (error) {
         this.logger.warn(
@@ -312,10 +337,10 @@ export class ApiFeatures<
       return this;
     }
 
-    this.queryOptions.where = {
-      ...(this.queryOptions.where || {}),
-      ...extraWhere,
-    };
+    this.queryOptions.where = this.deepMerge(
+      this.queryOptions.where || {},
+      extraWhere,
+    );
 
     return this;
   }

@@ -37,6 +37,7 @@ export class BaseRepository<
   S = T,
   D extends {
     create: any;
+    createMany?: any;
     update: any;
     updateMany: any;
     delete: any;
@@ -49,7 +50,7 @@ export class BaseRepository<
     upsert: any;
   } = any,
 > {
-  protected readonly logger: Logger;
+  protected readonly logger = new Logger(this.constructor.name);
 
   constructor(
     protected readonly prisma: PrismaService,
@@ -58,44 +59,38 @@ export class BaseRepository<
     protected readonly defaultSelect: Record<string, any> = {},
     protected readonly useSoftDelete = true,
     private readonly sanitizeFn: (data: T) => S = (d: T) => d as unknown as S,
-  ) {
-    this.logger = new Logger(this.constructor.name);
-  }
+  ) {}
 
   private applySoftDelete(
     where: Record<string, any> = {},
   ): Record<string, any> {
-    if (!this.useSoftDelete) return where;
-    return { ...where, deletedAt: null };
+    return this.useSoftDelete ? { ...where, deletedAt: null } : where;
   }
 
   private handleError(action: string, error: unknown, id?: string): never {
     const err = error as { code?: string; message?: string };
 
-    if (err.code === 'P2025') {
-      throw new ApiError(
-        id ? `No record found with id ${id}` : 'Record not found',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    if (err.code === 'P2002') {
-      throw new ApiError(
-        'A record with this unique field already exists',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    if (err.code === 'P2003') {
-      throw new ApiError(
-        'Foreign key constraint failed',
-        HttpStatus.BAD_REQUEST,
-      );
+    switch (err.code) {
+      case 'P2025':
+        throw new ApiError(
+          id ? `No record found with id ${id}` : 'Record not found',
+          HttpStatus.NOT_FOUND,
+        );
+      case 'P2002':
+        throw new ApiError(
+          'A record with this unique field already exists',
+          HttpStatus.CONFLICT,
+        );
+      case 'P2003':
+        throw new ApiError(
+          'Foreign key constraint failed',
+          HttpStatus.BAD_REQUEST,
+        );
     }
 
     this.logger.error(
       `[${this.delegate.constructor.name}] ${action} failed`,
-      err.message || error,
+      err.message || String(error),
       (error as Error).stack,
     );
 
@@ -118,21 +113,17 @@ export class BaseRepository<
     options: TransactionOptions = {},
   ): Promise<R> {
     return this.prisma.$transaction(cb, {
-      maxWait: options.timeout || 5000,
-      timeout: options.timeout || 10000,
+      maxWait: options.timeout ?? 5000,
+      timeout: options.timeout ?? 10000,
       isolationLevel: options.isolationLevel,
     });
   }
 
   private buildPrismaPayload({ where, data, select }: PayloadOptions): any {
     const payload: any = {};
-
-    if (where !== undefined) payload.where = where;
-    if (data !== undefined) payload.data = data;
-    if (select && Object.keys(select).length > 0) {
-      payload.select = select;
-    }
-
+    if (where) payload.where = where;
+    if (data) payload.data = data;
+    if (select && Object.keys(select).length > 0) payload.select = select;
     return payload;
   }
 
@@ -150,17 +141,15 @@ export class BaseRepository<
     select: any = this.defaultSelect,
   ): Promise<S[]> {
     if (data.length === 0) return [];
-
-    return this.executeWrite('createMany', async (tx) => {
+    return this.executeWrite('createMany', async () => {
+      if (this.delegate.createMany) {
+        // bulk create supported
+        await this.delegate.createMany({ data });
+        return this.findMany({ id: { in: data.map((d) => d.id) } }, select);
+      }
+      // fallback to individual creates
       const created = await Promise.all(
-        data.map((item) =>
-          (tx as any)[
-            this.delegate.constructor.name.replace('Delegate', '').toLowerCase()
-          ].create({
-            data: item,
-            select,
-          }),
-        ),
+        data.map((item) => this.delegate.create({ data: item, select })),
       );
       return created.map((d: T) => this.sanitizeFn(d));
     });
@@ -172,9 +161,12 @@ export class BaseRepository<
     select: any = this.defaultSelect,
   ): Promise<S> {
     return this.executeWrite('update', async () => {
-      const where = this.applySoftDelete({ id });
       const doc = await this.delegate.update(
-        this.buildPrismaPayload({ where, data, select }),
+        this.buildPrismaPayload({
+          where: this.applySoftDelete({ id }),
+          data,
+          select,
+        }),
       );
       return this.sanitizeFn(doc);
     });
@@ -186,16 +178,12 @@ export class BaseRepository<
     select: any = this.defaultSelect,
   ): Promise<S[]> {
     if (ids.length === 0) return [];
-
     return this.executeWrite('updateMany', async () => {
       const where = this.applySoftDelete({ id: { in: ids } });
-
       await this.delegate.updateMany({ where, data });
-
       const updated = await this.delegate.findMany(
         this.buildPrismaPayload({ where, select }),
       );
-
       return updated.map((d: T) => this.sanitizeFn(d));
     });
   }
@@ -203,12 +191,8 @@ export class BaseRepository<
   async delete(id: string): Promise<void> {
     return this.executeWrite('delete', async () => {
       const where = this.applySoftDelete({ id });
-
       if (this.useSoftDelete) {
-        await this.delegate.update({
-          where,
-          data: { deletedAt: new Date() },
-        });
+        await this.delegate.update({ where, data: { deletedAt: new Date() } });
       } else {
         await this.delegate.delete({ where });
       }
@@ -217,20 +201,15 @@ export class BaseRepository<
 
   async deleteMany(ids: string[]): Promise<number> {
     if (ids.length === 0) return 0;
-
     return this.executeWrite('deleteMany', async () => {
       const where = this.applySoftDelete({ id: { in: ids } });
-
-      if (this.useSoftDelete) {
-        const result = await this.delegate.updateMany({
-          where,
-          data: { deletedAt: new Date() },
-        });
-        return result.count || 0;
-      } else {
-        const result = await this.delegate.deleteMany({ where });
-        return result.count || 0;
-      }
+      const result = this.useSoftDelete
+        ? await this.delegate.updateMany({
+            where,
+            data: { deletedAt: new Date() },
+          })
+        : await this.delegate.deleteMany({ where });
+      return result.count ?? 0;
     });
   }
 
@@ -239,21 +218,16 @@ export class BaseRepository<
     select: any = this.defaultSelect,
   ): Promise<S | null> {
     try {
-      const effectiveWhere = this.applySoftDelete(where);
       const doc = await this.delegate.findFirst(
-        this.buildPrismaPayload({ where: effectiveWhere, select }),
+        this.buildPrismaPayload({ where: this.applySoftDelete(where), select }),
       );
-
       return doc ? this.sanitizeFn(doc) : null;
     } catch (err) {
       this.handleError('findOne', err);
     }
   }
 
-  async findById(
-    id: string,
-    select: any = this.defaultSelect,
-  ): Promise<S | null> {
+  findById(id: string, select: any = this.defaultSelect): Promise<S | null> {
     return this.findOne({ id }, select);
   }
 
@@ -262,11 +236,7 @@ export class BaseRepository<
     select: any = this.defaultSelect,
   ): Promise<S> {
     const doc = await this.findOne(where, select);
-
-    if (!doc) {
-      throw new ApiError('Record not found', HttpStatus.NOT_FOUND);
-    }
-
+    if (!doc) throw new ApiError('Record not found', HttpStatus.NOT_FOUND);
     return doc;
   }
 
@@ -280,15 +250,10 @@ export class BaseRepository<
         where: this.applySoftDelete(where),
         select,
       });
-
-      if (options.limit !== undefined) {
+      if (options.limit !== undefined)
         payload.take = Math.max(0, options.limit);
-      }
-
-      if (options.offset !== undefined) {
+      if (options.offset !== undefined)
         payload.skip = Math.max(0, options.offset);
-      }
-
       const docs = await this.delegate.findMany(payload);
       return docs.map((d: T) => this.sanitizeFn(d));
     } catch (err) {
@@ -315,7 +280,6 @@ export class BaseRepository<
         .mergeSelect(select);
 
       const { data, pagination } = await apiFeatures.query(true);
-
       return {
         items: data.map((d: T) => this.sanitizeFn(d)),
         ...(pagination ?? {}),
@@ -327,24 +291,11 @@ export class BaseRepository<
 
   async count(where: Record<string, any> = {}): Promise<number> {
     try {
-      return await this.delegate.count({
-        where: this.applySoftDelete(where),
-      });
+      return await this.delegate.count({ where: this.applySoftDelete(where) });
     } catch (err) {
       this.handleError('count', err);
     }
   }
-
-  // async exists(where: Record<string, any>): Promise<boolean> {
-  //   try {
-  //     return !!(await this.delegate.findFirst({
-  //       where: this.applySoftDelete(where),
-  //       select: { id: true },
-  //     }));
-  //   } catch (err) {
-  //     this.handleError('exists', err);
-  //   }
-  // }
 
   async exists(where: Record<string, any>): Promise<boolean> {
     try {
@@ -404,16 +355,15 @@ export class BaseRepository<
   async restore(id: string, select: any = this.defaultSelect): Promise<S> {
     if (!this.useSoftDelete) {
       throw new ApiError(
-        'Restore operation not supported for hard delete',
+        'Restore not supported for hard delete',
         HttpStatus.BAD_REQUEST,
       );
     }
-
     return this.executeWrite('restore', async () => {
       const doc = await this.delegate.update({
         where: { id, deletedAt: { not: null } },
         data: { deletedAt: null },
-        select: this.buildPrismaPayload({ select }).select,
+        select,
       });
       return this.sanitizeFn(doc);
     });
@@ -426,12 +376,7 @@ export class BaseRepository<
     select: any = this.defaultSelect,
   ): Promise<S> {
     return this.executeWrite('upsert', async () => {
-      const doc = await this.delegate.upsert({
-        where,
-        create,
-        update,
-        select: this.buildPrismaPayload({ select }).select,
-      });
+      const doc = await this.delegate.upsert({ where, create, update, select });
       return this.sanitizeFn(doc);
     });
   }

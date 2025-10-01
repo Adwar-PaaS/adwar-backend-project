@@ -2,7 +2,6 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantRepository } from './tenant.repository';
-import { ITenant } from './interfaces/tenant.interface';
 import { UploadService } from '../../shared/upload/upload.service';
 import { RoleName, Status, Tenant } from '@prisma/client';
 import { AddressService } from 'src/shared/address/address.service';
@@ -28,16 +27,16 @@ export class TenantService {
     creatorId: string,
     file?: Express.Multer.File,
   ): Promise<Tenant> {
-    const logoUrl = file
-      ? await this.uploadService.uploadImage(file)
-      : dto.logoUrl;
-
     const slug = slugify(dto.name, { lower: true, strict: true });
 
     await checkUnique(this.prismaService, 'tenant', {
       email: dto.email,
       slug,
     });
+
+    const logoUrl = file
+      ? await this.uploadService.uploadImage(file)
+      : dto.logoUrl;
 
     const { logoUrl: _, address, ...cleanDto } = dto;
 

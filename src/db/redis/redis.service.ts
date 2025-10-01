@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { createClient, RedisClientType } from 'redis';
 import { ConfigService } from '@nestjs/config';
 import { IDatabase } from '../interfaces/db.interface';
@@ -9,6 +14,7 @@ export class RedisService
 {
   readonly name = 'Redis';
   private readonly client: RedisClientType;
+  private readonly logger = new Logger(RedisService.name);
 
   constructor(private readonly config: ConfigService) {
     const host = this.config.get<string>('REDIS_HOST');
@@ -27,7 +33,7 @@ export class RedisService
         host,
         port,
         reconnectStrategy: (retries) => {
-          console.warn(`[Redis] Reconnect attempt #${retries}`);
+          this.logger.warn(`Reconnect attempt #${retries}`);
           return Math.min(retries * 100, 3000);
         },
       },
@@ -37,10 +43,10 @@ export class RedisService
   }
 
   private _setupEvents() {
-    this.client.on('connect', () => console.log('[Redis] Connecting...'));
-    this.client.on('ready', () => console.log('[Redis] Ready'));
-    this.client.on('error', (err) => console.error('[Redis] Error:', err));
-    this.client.on('end', () => console.warn('[Redis] Connection closed'));
+    this.client.on('connect', () => this.logger.log('Connecting...'));
+    this.client.on('ready', () => this.logger.log('Ready'));
+    this.client.on('error', (err) => this.logger.error('Error', err));
+    this.client.on('end', () => this.logger.warn('Connection closed'));
   }
 
   async onModuleInit() {
@@ -67,32 +73,38 @@ export class RedisService
     try {
       return (await this.client.ping()) === 'PONG';
     } catch (err) {
-      console.error('[Redis] Health check failed:', err);
+      this.logger.error('Health check failed', err);
       return false;
     }
   }
 
   async set(key: string, value: unknown, ttl?: number) {
-    const serialized = JSON.stringify(value);
-    ttl
-      ? await this.client.set(key, serialized, { EX: ttl })
-      : await this.client.set(key, serialized);
-  }
-
-  async get<T = unknown>(key: string): Promise<T | null> {
-    const data = await this.client.get(key);
-    if (!data) return null;
-
     try {
-      return JSON.parse(data) as T;
-    } catch {
-      return data as unknown as T;
+      const serialized = JSON.stringify(value);
+      if (ttl) {
+        await this.client.set(key, serialized, { EX: ttl });
+      } else {
+        await this.client.set(key, serialized);
+      }
+    } catch (err) {
+      this.logger.error(`Set failed [key=${key}]`, err);
     }
   }
 
-  async del(key?: string) {
-    if (!key || typeof key !== 'string' || key.trim().length === 0) {
-      console.warn('[Redis] Skipping delete: invalid key', key);
+  async get<T = unknown>(key: string): Promise<T | null> {
+    try {
+      const data = await this.client.get(key);
+      if (!data) return null;
+      return JSON.parse(data) as T;
+    } catch (err) {
+      this.logger.error(`Get failed [key=${key}]`, err);
+      return null;
+    }
+  }
+
+  async del(key: string) {
+    if (!key?.trim()) {
+      this.logger.warn('Skipping delete: invalid key');
       return;
     }
     await this.client.del(key);

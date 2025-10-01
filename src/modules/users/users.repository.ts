@@ -5,7 +5,6 @@ import { BaseRepository } from '../../shared/factory/base.repository';
 import { RedisService } from 'src/db/redis/redis.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { checkUnique } from '../../common/utils/check-unique.util';
 import { sanitizeUser } from '../../common/utils/sanitize-user.util';
 import { userSelector } from '../../common/selectors/user.selector';
 
@@ -27,7 +26,7 @@ export class UsersRepository extends BaseRepository<
     super(
       prisma,
       prisma.user,
-      ['email', 'firstName', 'lastName'],
+      ['email', 'firstName', 'lastName', 'role.name'],
       userSelector,
       true,
       sanitizeUser,
@@ -35,7 +34,11 @@ export class UsersRepository extends BaseRepository<
   }
 
   async createUser(data: CreateUserDto): Promise<UserWithRelations> {
-    await checkUnique(this.prisma, 'user', { email: data.email });
+    if (await this.exists({ email: data.email })) {
+      throw new BadRequestException(
+        `User with email "${data.email}" already exists`,
+      );
+    }
 
     const role = await this.prisma.role.create({
       data: {
@@ -66,7 +69,11 @@ export class UsersRepository extends BaseRepository<
       throw new BadRequestException('tenantId is required');
     }
 
-    await checkUnique(this.prisma, 'user', { email: data.email });
+    if (await this.exists({ email: data.email })) {
+      throw new BadRequestException(
+        `User with email "${data.email}" already exists`,
+      );
+    }
 
     if (data.roleName !== RoleName.CUSTOMER) {
       const existingRole = await this.prisma.role.findFirst({
@@ -116,7 +123,11 @@ export class UsersRepository extends BaseRepository<
       throw new BadRequestException('roleId and tenantId are required');
     }
 
-    await checkUnique(this.prisma, 'user', { email: data.email });
+    if (await this.exists({ email: data.email })) {
+      throw new BadRequestException(
+        `User with email "${data.email}" already exists`,
+      );
+    }
 
     const user = await this.prisma.user.create({
       data: {
@@ -154,8 +165,10 @@ export class UsersRepository extends BaseRepository<
     id: string,
     data: UpdateUserDto,
   ): Promise<UserWithRelations> {
-    if (data.email) {
-      await checkUnique(this.prisma, 'user', { email: data.email }, id);
+    if (await this.exists({ email: data.email })) {
+      throw new BadRequestException(
+        `User with email "${data.email}" already exists`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
