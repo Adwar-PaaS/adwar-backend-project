@@ -17,9 +17,9 @@ import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../auth/guards/session.guard';
 import { UpdatePickupAndOrdersStatusDto } from './dto/update-pickup-and-orders-status.dto';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
-import { IOrder } from '../order/interfaces/order.interface';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
+import { Order } from '@prisma/client';
 
 @Controller('pickups')
 @UseGuards(SessionGuard)
@@ -39,7 +39,7 @@ export class PickUpController {
   @Get(':id/orders')
   async getPickupOrders(
     @Param('id') id: string,
-  ): Promise<APIResponse<{ orders: IOrder[] }>> {
+  ): Promise<APIResponse<{ orders: Order[] }>> {
     const orders = await this.pickupService.getPickupOrders(id);
     return APIResponse.success(
       { orders },

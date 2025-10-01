@@ -83,7 +83,28 @@ export class UsersController {
 
   @Get()
   @UseInterceptors(CacheInterceptor)
-  @Cacheable((req) => `users:page:${req.query.page || 1}`, 60)
+  @Cacheable((req) => {
+    const {
+      page = '1',
+      search,
+      sort,
+      limit,
+      fields,
+      ...otherFilters
+    } = req.query;
+
+    if (
+      search ||
+      sort ||
+      limit ||
+      fields ||
+      Object.keys(otherFilters).length > 0
+    ) {
+      return null;
+    }
+
+    return `users:page:${page}`;
+  }, 60)
   @Permissions(EntityType.USER, ActionType.READ)
   async findAll(
     @Query() query: Record<string, any>,

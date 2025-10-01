@@ -5,10 +5,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { OrderRepository } from './order.repository';
-import { IOrder } from './interfaces/order.interface';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { OrderStatus } from '@prisma/client';
+import { Order, OrderStatus } from '@prisma/client';
 import {
   ScanUpdateStatusDto,
   BulkScanUpdateDto,
@@ -38,11 +37,11 @@ export class OrderService {
     private readonly scannerDeviceService: ScannerDeviceService,
   ) {}
 
-  async create(user: AuthUser, dto: CreateOrderDto): Promise<IOrder> {
+  async create(user: AuthUser, dto: CreateOrderDto): Promise<Order> {
     return this.orderRepo.createWithProducts(user, dto);
   }
 
-  async update(id: string, dto: UpdateOrderDto): Promise<IOrder> {
+  async update(id: string, dto: UpdateOrderDto): Promise<Order> {
     if (dto.items !== undefined) {
       return this.orderRepo.updateWithProducts(id, dto);
     }
@@ -52,7 +51,7 @@ export class OrderService {
   async updateItemsInOrder(
     orderId: string,
     items: Partial<UpdateItemsInOrderDto['items'][0]>[],
-  ): Promise<IOrder> {
+  ): Promise<Order> {
     return this.orderRepo.updateItemsInOrder(orderId, items);
   }
 
@@ -60,9 +59,17 @@ export class OrderService {
     return this.orderRepo.findAll(query);
   }
 
-  async findOne(id: string): Promise<IOrder | null> {
-    return this.orderRepo.findOne({ id });
+  async findOne(id: string): Promise<Order> {
+    const order = await this.orderRepo.findOne({ id });
+    if (!order) {
+      throw new Error(`Order with id ${id} not found`);
+    }
+    return order;
   }
+
+  // async findOne(id: string): Promise<Order | null> {
+  //   return this.orderRepo.findOne({ id });
+  // }
 
   async getCustomerOrders(customerId: string, query: Record<string, any> = {}) {
     return this.orderRepo.findAll(query, { customerId });
@@ -161,7 +168,7 @@ export class OrderService {
     signature?: string,
     rawBody?: Buffer,
   ): Promise<{
-    order: IOrder;
+    order: Order;
     itemScanned: boolean;
     orderStatusUpdated: boolean;
     completionStatus: OrderCompletionStatusDto;
@@ -273,7 +280,7 @@ export class OrderService {
     }
 
     return {
-      order: await this.orderRepo.findOne({ id: order.id }),
+      order: await this.findOne(order.id),
       itemScanned: true,
       orderStatusUpdated,
       completionStatus,
@@ -452,7 +459,7 @@ export class OrderService {
     dto: ScanUpdateStatusDto,
     signature?: string,
     rawBody?: Buffer,
-  ): Promise<IOrder> {
+  ): Promise<Order> {
     this.verifyWebhook(signature, rawBody, dto.deviceId);
 
     const where =
@@ -514,7 +521,7 @@ export class OrderService {
       });
     });
 
-    return this.orderRepo.findOne({ id: order.id });
+    return this.findOne(order.id);
   }
 
   // Get order completion status
@@ -561,7 +568,7 @@ export class OrderService {
     orderId: string,
     signature?: string,
     rawBody?: Buffer,
-  ): Promise<{ resetCount: number; order: IOrder }> {
+  ): Promise<{ resetCount: number; order: Order }> {
     this.verifyWebhook(signature, rawBody);
 
     const order = await this.orderRepo.findOne(
@@ -590,7 +597,7 @@ export class OrderService {
 
     return {
       resetCount: resetResult.count,
-      order: await this.orderRepo.findOne({ id: orderId }),
+      order: await this.findOne(orderId),
     };
   }
 
@@ -599,7 +606,7 @@ export class OrderService {
     dto: ScanUpdateStatusDto,
     signature?: string,
     rawBody?: Buffer,
-  ): Promise<IOrder> {
+  ): Promise<Order> {
     this.verifyWebhook(signature, rawBody, dto.deviceId);
 
     if (dto.codeType === CodeType.SKU) {
@@ -683,7 +690,7 @@ export class OrderService {
         });
       }
 
-      return this.orderRepo.findOne({ id: order.id });
+      return this.findOne(order.id);
     }
 
     // Complete order scan by id or orderNumber

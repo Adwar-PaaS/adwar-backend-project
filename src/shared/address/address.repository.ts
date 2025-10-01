@@ -2,16 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { BaseRepository } from '../factory/base.repository';
 import { PrismaService } from 'src/db/prisma/prisma.service';
 import { RedisService } from 'src/db/redis/redis.service';
+import { Address, AddressType, Prisma } from '@prisma/client';
 
-import { Address, AddressType } from '@prisma/client';
+export type SafeAddress = Address;
 
 @Injectable()
-export class AddressRepository extends BaseRepository<Address> {
+export class AddressRepository extends BaseRepository<
+  Address,
+  SafeAddress,
+  Prisma.AddressDelegate
+> {
   constructor(
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, 'address', ['label', 'city', 'country']);
+    super(prisma, prisma.address, ['label', 'city', 'country']);
   }
 
   attachToUser(

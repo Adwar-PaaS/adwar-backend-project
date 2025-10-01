@@ -1,16 +1,22 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { EntityType, ActionType, RoleName, Role } from '@prisma/client';
+import { EntityType, ActionType, RoleName, Role, Prisma } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { RedisService } from 'src/db/redis/redis.service';
 
+export type SafeRole = Role;
+
 @Injectable()
-export class RolesRepository extends BaseRepository<Role> {
+export class RolesRepository extends BaseRepository<
+  Role,
+  SafeRole,
+  Prisma.RoleDelegate
+> {
   constructor(
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, 'role', ['name']);
+    super(prisma, prisma.role, ['name']);
   }
 
   async createRoleWithPermissions(

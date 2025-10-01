@@ -11,201 +11,288 @@ export interface PaginationResult {
   prevPage: number | null;
 }
 
-type PrismaFindManyArgs = {
+export type PrismaFindManyArgs = {
   where?: Record<string, any>;
-  orderBy?: any;
+  orderBy?: Record<string, 'asc' | 'desc'>[];
   select?: Record<string, boolean>;
   take?: number;
   skip?: number;
 };
 
+type FilterOperator = 'in' | 'not' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte';
+
 export class ApiFeatures<
   TModel extends {
-    findMany: (args?: any) => Promise<any>;
-    count?: (args?: any) => Promise<number>;
+    findMany: (args?: PrismaFindManyArgs) => Promise<any[]>;
+    count: (args?: { where?: Record<string, any> }) => Promise<number>;
   },
-  TWhere extends Record<string, any>,
 > {
   private readonly logger = new Logger(ApiFeatures.name);
+  private readonly MAX_LIMIT = 200;
+  private readonly DEFAULT_LIMIT = 50;
+  private readonly MIN_LIMIT = 1;
 
   private queryOptions: PrismaFindManyArgs = {};
   private paginationResult: PaginationResult | null = null;
+  private totalRecordsCache: number | null = null;
 
   constructor(
     private readonly prismaModel: TModel,
-    private readonly queryString: Record<string, any> = {},
-    private readonly searchableFields: Extract<keyof TWhere, string>[] = [],
+    private readonly queryString: Record<string, string | undefined> = {},
+    private readonly searchableFields: string[] = [],
   ) {}
 
   private normalizeFilters(filters: Record<string, any>): Record<string, any> {
     return Object.fromEntries(
-      Object.entries(filters)
-        .filter(([, v]) => v !== undefined && v !== null && v !== '')
-        .map(([k, v]) => [k.trim(), typeof v === 'string' ? v.trim() : v]),
+      Object.entries(filters).filter(
+        ([, v]) => v !== undefined && v !== null && v !== '',
+      ),
     );
   }
 
-  private parseFilterValue(key: string, value: string): unknown {
-    value = value.trim();
+  private detectAndConvertSingle(value: string): string | number | Date {
+    const trimmed = value.trim();
+
+    const numRegex = /^-?\d*\.?\d+$/;
+    if (numRegex.test(trimmed)) {
+      return Number(trimmed);
+    }
+
+    const isoDateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/;
+    if (isoDateRegex.test(trimmed)) {
+      const date = new Date(trimmed);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+
+    return trimmed;
+  }
+
+  private parseFilterValue(key: string, raw: string): unknown {
+    const value = raw.trim();
 
     if (value.includes(',')) {
-      const items = value.split(',').map((v) => v.trim());
-      return { in: items.map((v) => this.detectAndConvertSingle(v)) };
+      const values = value
+        .split(',')
+        .map((v) => this.detectAndConvertSingle(v.trim()))
+        .filter((v) => v !== '');
+
+      return values.length > 0 ? { in: values } : undefined;
     }
 
     if (value.startsWith('!=')) {
-      const raw = value.slice(2).trim();
-      const parsed = this.detectAndConvertSingle(raw);
+      const parsed = this.detectAndConvertSingle(value.slice(2).trim());
       return { not: parsed };
     }
 
     if (value.startsWith('~')) {
-      const raw = value.slice(1).trim();
-      return { contains: raw, mode: 'insensitive' };
+      return {
+        contains: value.slice(1).trim(),
+        mode: 'insensitive' as const,
+      };
+    }
+
+    if (value.startsWith('^')) {
+      return {
+        startsWith: value.slice(1).trim(),
+        mode: 'insensitive' as const,
+      };
+    }
+
+    if (value.startsWith('$')) {
+      return {
+        endsWith: value.slice(1).trim(),
+        mode: 'insensitive' as const,
+      };
     }
 
     if (value.startsWith('=')) {
-      const raw = value.slice(1).trim();
-      return this.detectAndConvertSingle(raw);
+      return this.detectAndConvertSingle(value.slice(1).trim());
     }
 
-    const match = value.match(/^([<>]=?)(.+)$/);
-    if (match) {
-      const [, op, raw] = match;
-      const parsed = this.detectAndConvertSingle(raw.trim());
+    const comparisonMatch = value.match(/^([<>]=?)(.+)$/);
+    if (comparisonMatch) {
+      const [, op, rawValue] = comparisonMatch;
+      const parsed = this.detectAndConvertSingle(rawValue.trim());
+
       if (typeof parsed === 'string') {
         throw new HttpException(
-          `Invalid value for operator ${op} in filter "${key}", must be number or date`,
+          `Invalid value for operator ${op} in filter "${key}". Must be number or date.`,
           HttpStatus.BAD_REQUEST,
         );
       }
-      const opMap: Record<string, string> = {
+
+      const opMap: Record<string, FilterOperator> = {
         '>': 'gt',
         '>=': 'gte',
         '<': 'lt',
         '<=': 'lte',
       };
+
       return { [opMap[op]]: parsed };
     }
 
-    if (value === 'true' || value === 'false') return value === 'true';
+    const lowerValue = value.toLowerCase();
+    if (['true', 'false'].includes(lowerValue)) {
+      return lowerValue === 'true';
+    }
 
     return this.detectAndConvertSingle(value);
-  }
-
-  private detectAndConvertSingle(value: string): string | number | Date {
-    const numRegex = /^-?\d*\.?\d+$/;
-    if (numRegex.test(value)) return Number(value);
-    if (!isNaN(Date.parse(value))) return new Date(value);
-    return value;
   }
 
   filter(): this {
     const { page, sort, limit, fields, search, ...rawFilters } =
       this.queryString;
+
     const filters = this.normalizeFilters(rawFilters);
 
     for (const [key, rawValue] of Object.entries(filters)) {
-      const parsed = this.parseFilterValue(key, String(rawValue));
-      this.queryOptions.where = {
-        ...(this.queryOptions.where ?? {}),
-        [key]: parsed,
-      };
+      if (typeof rawValue !== 'string') continue;
+
+      try {
+        const parsedValue = this.parseFilterValue(key, rawValue);
+
+        if (parsedValue !== undefined) {
+          this.queryOptions.where = {
+            ...(this.queryOptions.where ?? {}),
+            [key]: parsedValue,
+          };
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to parse filter for key "${key}": ${(error as Error).message}`,
+        );
+        throw error;
+      }
     }
 
     return this;
   }
 
   search(): this {
-    if (!this.queryString.search || !this.searchableFields.length) return this;
+    const searchTerm = this.queryString.search?.trim();
+    if (!searchTerm || !this.searchableFields.length) return this;
 
-    const searchTerm = String(this.queryString.search).trim();
-    if (!searchTerm) return this;
+    const words = searchTerm.split(/\s+/).filter(Boolean);
+    if (!words.length) return this;
 
-    const normalized = searchTerm.replace(/\s+/g, '');
-    const orConditions = this.searchableFields.flatMap((field) => [
-      { [field]: { contains: searchTerm, mode: 'insensitive' } } as TWhere,
-      { [field]: { contains: normalized, mode: 'insensitive' } } as TWhere,
-    ]);
+    const orConditions = this.searchableFields.flatMap((field) => {
+      const fieldPath = field.split('.');
+      return words.map((word) => {
+        const condition = { contains: word, mode: 'insensitive' as const };
 
-    if (orConditions.length) {
-      this.queryOptions.where = {
-        ...(this.queryOptions.where ?? {}),
-        OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
-      };
-    }
+        if (fieldPath.length === 1) {
+          return { [fieldPath[0]]: condition };
+        }
+
+        return fieldPath
+          .reverse()
+          .reduce<
+            Record<string, any>
+          >((acc, part) => ({ [part]: acc }), condition);
+      });
+    });
+
+    this.queryOptions.where = {
+      ...(this.queryOptions.where ?? {}),
+      OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
+    };
 
     return this;
   }
 
   sort(): this {
-    const { sort } = this.queryString;
-    if (typeof sort !== 'string' || !sort.trim()) {
+    const sortStr = this.queryString.sort?.trim();
+
+    if (!sortStr) {
       this.queryOptions.orderBy = [{ createdAt: 'desc' }];
       return this;
     }
 
-    this.queryOptions.orderBy = sort.split(',').map((field) => {
-      const isDesc = field.startsWith('-');
-      return { [field.replace(/^-/, '')]: isDesc ? 'desc' : 'asc' };
-    });
+    try {
+      this.queryOptions.orderBy = sortStr.split(',').map((field) => {
+        const trimmedField = field.trim();
+        const isDesc = trimmedField.startsWith('-');
+        const fieldName = trimmedField.replace(/^-/, '');
+
+        return {
+          [fieldName]: isDesc ? ('desc' as const) : ('asc' as const),
+        };
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to parse sort: ${(error as Error).message}`);
+      this.queryOptions.orderBy = [{ createdAt: 'desc' }];
+    }
 
     return this;
   }
 
   limitFields(): this {
-    const { fields } = this.queryString;
-    if (!fields) return this;
+    const fieldsStr = this.queryString.fields?.trim();
 
-    const selected = fields
+    if (!fieldsStr) return this;
+
+    const selected = fieldsStr
       .split(',')
-      .map((f: string) => f.trim())
+      .map((f) => f.trim())
       .filter(Boolean);
-    if (selected.length) {
-      this.queryOptions.select = selected.reduce(
+
+    if (selected.length > 0) {
+      this.queryOptions.select = selected.reduce<Record<string, true>>(
         (acc, f) => ({ ...acc, [f]: true }),
         {},
       );
+
+      if (!this.queryOptions.select.id) {
+        this.queryOptions.select.id = true;
+      }
     }
+
     return this;
   }
 
   private async calculateTotal(): Promise<number> {
-    if (!this.prismaModel.count) return 0;
-    return this.prismaModel.count({
-      where: this.queryOptions.where,
-    });
+    if (this.totalRecordsCache !== null) {
+      return this.totalRecordsCache;
+    }
+
+    try {
+      this.totalRecordsCache = await this.prismaModel.count({
+        where: this.queryOptions.where,
+      });
+      return this.totalRecordsCache;
+    } catch (error) {
+      this.logger.error(
+        `Failed to calculate total: ${(error as Error).message}`,
+      );
+      throw new HttpException(
+        'Failed to calculate total records',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   async paginate(): Promise<this> {
     const totalRecords = await this.calculateTotal();
+
     const page = Math.max(Number(this.queryString.page) || 1, 1);
+
     const limit = Math.min(
-      Math.max(Number(this.queryString.limit) || 50, 1),
-      200,
+      Math.max(
+        Number(this.queryString.limit) || this.DEFAULT_LIMIT,
+        this.MIN_LIMIT,
+      ),
+      this.MAX_LIMIT,
     );
 
-    if (totalRecords === 0) {
-      this.queryOptions.take = limit;
-      this.queryOptions.skip = 0;
-      this.paginationResult = {
-        totalRecords: 0,
-        totalPages: 0,
-        currentPage: 1,
-        limit,
-        hasNext: false,
-        hasPrev: false,
-        nextPage: null,
-        prevPage: null,
-      };
-      return this;
-    }
+    const totalPages = totalRecords > 0 ? Math.ceil(totalRecords / limit) : 0;
 
-    const totalPages = Math.ceil(totalRecords / limit);
-    const safePage = Math.min(page, totalPages);
+    const safePage = totalPages > 0 ? Math.min(page, totalPages) : 1;
 
     this.queryOptions.take = limit;
     this.queryOptions.skip = (safePage - 1) * limit;
+
     this.paginationResult = {
       totalRecords,
       totalPages,
@@ -220,16 +307,29 @@ export class ApiFeatures<
     return this;
   }
 
-  mergeFilter(filter: TWhere): this {
-    this.queryOptions.where = { ...(this.queryOptions.where || {}), ...filter };
+  mergeFilter(extraWhere: Record<string, any>): this {
+    if (!extraWhere || Object.keys(extraWhere).length === 0) {
+      return this;
+    }
+
+    this.queryOptions.where = {
+      ...(this.queryOptions.where || {}),
+      ...extraWhere,
+    };
+
     return this;
   }
 
-  mergeSelect(mergedSelect: Record<string, boolean>): this {
+  mergeSelect(extraSelect: Record<string, any>): this {
+    if (!extraSelect || Object.keys(extraSelect).length === 0) {
+      return this;
+    }
+
     this.queryOptions.select = {
       ...(this.queryOptions.select || {}),
-      ...mergedSelect,
+      ...extraSelect,
     };
+
     return this;
   }
 
@@ -241,15 +341,23 @@ export class ApiFeatures<
     withPagination = false,
   ): Promise<{ data: TRecord[]; pagination?: PaginationResult }> {
     try {
-      if (withPagination && !this.paginationResult) await this.paginate();
+      if (withPagination && !this.paginationResult) {
+        await this.paginate();
+      }
+
       const data = await this.prismaModel.findMany(this.queryOptions);
+
       return withPagination
-        ? { data, pagination: this.paginationResult! }
+        ? { data, pagination: this.paginationResult ?? undefined }
         : { data };
-    } catch (error: any) {
-      this.logger.error(`Error executing query: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const message = (error as Error).message || 'Unknown error';
+      this.logger.error(
+        `Error executing query: ${message}`,
+        (error as Error).stack,
+      );
       throw new HttpException(
-        `Failed to execute query: ${error.message}`,
+        `Failed to execute query: ${message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -262,6 +370,15 @@ export class ApiFeatures<
   reset(): this {
     this.queryOptions = {};
     this.paginationResult = null;
+    this.totalRecordsCache = null;
     return this;
+  }
+
+  clone(): ApiFeatures<TModel> {
+    const cloned = new ApiFeatures(this.prismaModel, { ...this.queryString }, [
+      ...this.searchableFields,
+    ]);
+    cloned.queryOptions = { ...this.queryOptions };
+    return cloned;
   }
 }

@@ -1,25 +1,27 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
-import { IOrder } from './interfaces/order.interface';
 import { PrismaService } from 'src/db/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateItemsInOrderDto } from './dto/update-order-items.dto';
 import { RedisService } from 'src/db/redis/redis.service';
+import { Prisma, Order } from '@prisma/client';
+
+export type SafeOrder = Order;
 
 @Injectable()
-export class OrderRepository extends BaseRepository<IOrder> {
+export class OrderRepository extends BaseRepository<
+  Order,
+  SafeOrder,
+  Prisma.OrderDelegate
+> {
   constructor(
     protected readonly prisma: PrismaService,
     protected readonly redis: RedisService,
   ) {
-    super(prisma, 'order', ['orderNumber'], {
+    super(prisma, prisma.order, ['orderNumber'], {
       id: true,
       orderNumber: true,
       referenceNumber: true,
@@ -115,7 +117,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
   async createWithProducts(
     user: AuthUser,
     dto: CreateOrderDto,
-  ): Promise<IOrder> {
+  ): Promise<Order> {
     return this.prisma.$transaction(async (tx) => {
       const { validItems, itemsForCreate } = await this.prepareOrderItems(
         dto.items || [],
@@ -147,7 +149,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
     });
   }
 
-  async updateWithProducts(id: string, dto: UpdateOrderDto): Promise<IOrder> {
+  async updateWithProducts(id: string, dto: UpdateOrderDto): Promise<Order> {
     const { validItems, itemsForCreate } = await this.prepareOrderItems(
       dto.items || [],
     );
@@ -178,7 +180,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
   async updateItemsInOrder(
     orderId: string,
     items: Partial<UpdateItemsInOrderDto['items'][0]>[],
-  ): Promise<IOrder> {
+  ): Promise<Order> {
     return this.prisma.$transaction(async (tx) => {
       for (const dto of items) {
         if (!dto.id) continue;

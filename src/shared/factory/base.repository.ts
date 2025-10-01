@@ -13,43 +13,92 @@ type PayloadOptions = {
   select?: Record<string, any>;
 };
 
+interface TransactionOptions {
+  timeout?: number;
+  isolationLevel?: Prisma.TransactionIsolationLevel;
+}
+
+interface FindManyOptions {
+  limit?: number;
+  offset?: number;
+}
+
+interface GroupByAggregations {
+  count?: boolean | Record<string, boolean>;
+  sum?: Record<string, boolean>;
+  avg?: Record<string, boolean>;
+  min?: Record<string, boolean>;
+  max?: Record<string, boolean>;
+}
+
 @Injectable()
 export class BaseRepository<
   T extends { id: string; deletedAt?: Date | null },
   S = T,
-  K extends keyof PrismaClient = keyof PrismaClient,
+  D extends {
+    create: any;
+    update: any;
+    updateMany: any;
+    delete: any;
+    deleteMany: any;
+    findUnique: any;
+    findFirst: any;
+    findMany: any;
+    count: any;
+    groupBy: any;
+    upsert: any;
+  } = any,
 > {
-  protected readonly logger = new Logger(BaseRepository.name);
+  protected readonly logger: Logger;
 
   constructor(
     protected readonly prisma: PrismaService,
-    private readonly modelKey: K,
+    protected readonly delegate: D,
     protected readonly searchableFields: string[] = [],
     protected readonly defaultSelect: Record<string, any> = {},
     protected readonly useSoftDelete = true,
     private readonly sanitizeFn: (data: T) => S = (d: T) => d as unknown as S,
-  ) {}
-
-  private get delegate(): any {
-    return this.prisma[this.modelKey];
+  ) {
+    this.logger = new Logger(this.constructor.name);
   }
 
   private applySoftDelete(
     where: Record<string, any> = {},
   ): Record<string, any> {
-    return this.useSoftDelete ? { ...where, deletedAt: null } : where;
+    if (!this.useSoftDelete) return where;
+    return { ...where, deletedAt: null };
   }
 
-  private handleError(action: string, error: any, id?: string): never {
-    if (error?.code === 'P2025') {
+  private handleError(action: string, error: unknown, id?: string): never {
+    const err = error as { code?: string; message?: string };
+
+    if (err.code === 'P2025') {
       throw new ApiError(
         id ? `No record found with id ${id}` : 'Record not found',
         HttpStatus.NOT_FOUND,
       );
     }
+
+    if (err.code === 'P2002') {
+      throw new ApiError(
+        'A record with this unique field already exists',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    if (err.code === 'P2003') {
+      throw new ApiError(
+        'Foreign key constraint failed',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     this.logger.error(
-      `[${String(this.modelKey)}] ${action} failed: ${error?.message || error}`,
+      `[${this.delegate.constructor.name}] ${action} failed`,
+      err.message || error,
+      (error as Error).stack,
     );
+
     throw new ApiError(`Failed to ${action}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
@@ -57,15 +106,16 @@ export class BaseRepository<
     action: string,
     fn: (tx: PrismaClient) => Promise<R>,
   ): Promise<R> {
-    return this.transaction(fn).catch((e) => this.handleError(action, e));
+    try {
+      return await this.transaction(fn);
+    } catch (e) {
+      this.handleError(action, e);
+    }
   }
 
   async transaction<R>(
-    cb: (tx: Omit<PrismaClient, '$connect' | '$disconnect'>) => Promise<R>,
-    options: {
-      timeout?: number;
-      isolationLevel?: Prisma.TransactionIsolationLevel;
-    } = {},
+    cb: (tx: PrismaClient) => Promise<R>,
+    options: TransactionOptions = {},
   ): Promise<R> {
     return this.prisma.$transaction(cb, {
       maxWait: options.timeout || 5000,
@@ -76,20 +126,43 @@ export class BaseRepository<
 
   private buildPrismaPayload({ where, data, select }: PayloadOptions): any {
     const payload: any = {};
-    if (where) payload.where = where;
-    if (data) payload.data = data;
+
+    if (where !== undefined) payload.where = where;
+    if (data !== undefined) payload.data = data;
     if (select && Object.keys(select).length > 0) {
       payload.select = select;
     }
+
     return payload;
   }
 
   async create(data: any, select: any = this.defaultSelect): Promise<S> {
-    return this.executeWrite('create', async (tx) => {
-      const doc = await (tx[this.modelKey] as any).create(
+    return this.executeWrite('create', async () => {
+      const doc = await this.delegate.create(
         this.buildPrismaPayload({ data, select }),
       );
       return this.sanitizeFn(doc);
+    });
+  }
+
+  async createMany(
+    data: any[],
+    select: any = this.defaultSelect,
+  ): Promise<S[]> {
+    if (data.length === 0) return [];
+
+    return this.executeWrite('createMany', async (tx) => {
+      const created = await Promise.all(
+        data.map((item) =>
+          (tx as any)[
+            this.delegate.constructor.name.replace('Delegate', '').toLowerCase()
+          ].create({
+            data: item,
+            select,
+          }),
+        ),
+      );
+      return created.map((d: T) => this.sanitizeFn(d));
     });
   }
 
@@ -98,9 +171,10 @@ export class BaseRepository<
     data: any,
     select: any = this.defaultSelect,
   ): Promise<S> {
-    return this.executeWrite('update', async (tx) => {
-      const doc = await (tx[this.modelKey] as any).update(
-        this.buildPrismaPayload({ where: { id }, data, select }),
+    return this.executeWrite('update', async () => {
+      const where = this.applySoftDelete({ id });
+      const doc = await this.delegate.update(
+        this.buildPrismaPayload({ where, data, select }),
       );
       return this.sanitizeFn(doc);
     });
@@ -111,46 +185,51 @@ export class BaseRepository<
     data: any,
     select: any = this.defaultSelect,
   ): Promise<S[]> {
-    return this.executeWrite('updateMany', async (tx) => {
-      await (tx[this.modelKey] as any).updateMany({
-        where: this.applySoftDelete({ id: { in: ids } }),
-        data,
-      });
+    if (ids.length === 0) return [];
 
-      const updated = await (tx[this.modelKey] as any).findMany(
-        this.buildPrismaPayload({
-          where: this.applySoftDelete({ id: { in: ids } }),
-          select,
-        }),
+    return this.executeWrite('updateMany', async () => {
+      const where = this.applySoftDelete({ id: { in: ids } });
+
+      await this.delegate.updateMany({ where, data });
+
+      const updated = await this.delegate.findMany(
+        this.buildPrismaPayload({ where, select }),
       );
-      return updated.map((d: any) => this.sanitizeFn(d));
+
+      return updated.map((d: T) => this.sanitizeFn(d));
     });
   }
 
   async delete(id: string): Promise<void> {
-    return this.executeWrite('delete', async (tx) => {
+    return this.executeWrite('delete', async () => {
+      const where = this.applySoftDelete({ id });
+
       if (this.useSoftDelete) {
-        await (tx[this.modelKey] as any).update({
-          where: { id },
+        await this.delegate.update({
+          where,
           data: { deletedAt: new Date() },
         });
       } else {
-        await (tx[this.modelKey] as any).delete({ where: { id } });
+        await this.delegate.delete({ where });
       }
     });
   }
 
-  async deleteMany(ids: string[]): Promise<void> {
-    return this.executeWrite('deleteMany', async (tx) => {
+  async deleteMany(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+
+    return this.executeWrite('deleteMany', async () => {
+      const where = this.applySoftDelete({ id: { in: ids } });
+
       if (this.useSoftDelete) {
-        await (tx[this.modelKey] as any).updateMany({
-          where: { id: { in: ids } },
+        const result = await this.delegate.updateMany({
+          where,
           data: { deletedAt: new Date() },
         });
+        return result.count || 0;
       } else {
-        await (tx[this.modelKey] as any).deleteMany({
-          where: { id: { in: ids } },
-        });
+        const result = await this.delegate.deleteMany({ where });
+        return result.count || 0;
       }
     });
   }
@@ -158,64 +237,60 @@ export class BaseRepository<
   async findOne(
     where: Record<string, any>,
     select: any = this.defaultSelect,
-  ): Promise<S> {
+  ): Promise<S | null> {
     try {
-      const payload = this.buildPrismaPayload({
-        where: this.applySoftDelete(where),
-        select,
-      });
+      const effectiveWhere = this.applySoftDelete(where);
+      const doc = await this.delegate.findFirst(
+        this.buildPrismaPayload({ where: effectiveWhere, select }),
+      );
 
-      const uniqueFields = ['id'];
-      const whereKeys = Object.keys(where);
-
-      const isUniqueQuery =
-        whereKeys.length === 1 && uniqueFields.includes(whereKeys[0]);
-
-      const doc = isUniqueQuery
-        ? await this.delegate.findUniqueOrThrow(payload)
-        : await this.delegate.findFirstOrThrow(payload);
-
-      return this.sanitizeFn(doc);
+      return doc ? this.sanitizeFn(doc) : null;
     } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2025'
-      ) {
-        throw new ApiError('Not found', HttpStatus.NOT_FOUND);
-      }
       this.handleError('findOne', err);
     }
   }
 
-  // async findOne(
-  //   where: Record<string, any>,
-  //   select: any = this.defaultSelect,
-  // ): Promise<S> {
-  //   try {
-  //     const doc = await this.delegate.findUnique(
-  //       this.buildPrismaPayload({ where: this.applySoftDelete(where), select }),
-  //     );
-  //     if (!doc) throw new ApiError(`Not found`, HttpStatus.NOT_FOUND);
-  //     return this.sanitizeFn(doc);
-  //   } catch (err) {
-  //     this.handleError('findOne', err);
-  //   }
-  // }
+  async findById(
+    id: string,
+    select: any = this.defaultSelect,
+  ): Promise<S | null> {
+    return this.findOne({ id }, select);
+  }
+
+  async findOneOrFail(
+    where: Record<string, any>,
+    select: any = this.defaultSelect,
+  ): Promise<S> {
+    const doc = await this.findOne(where, select);
+
+    if (!doc) {
+      throw new ApiError('Record not found', HttpStatus.NOT_FOUND);
+    }
+
+    return doc;
+  }
 
   async findMany(
     where: Record<string, any> = {},
     select: any = this.defaultSelect,
-    options: { limit?: number } = {},
+    options: FindManyOptions = {},
   ): Promise<S[]> {
     try {
       const payload = this.buildPrismaPayload({
         where: this.applySoftDelete(where),
         select,
       });
-      if (options.limit) payload.take = options.limit;
+
+      if (options.limit !== undefined) {
+        payload.take = Math.max(0, options.limit);
+      }
+
+      if (options.offset !== undefined) {
+        payload.skip = Math.max(0, options.offset);
+      }
 
       const docs = await this.delegate.findMany(payload);
-      return docs.map((d: any) => this.sanitizeFn(d));
+      return docs.map((d: T) => this.sanitizeFn(d));
     } catch (err) {
       this.handleError('findMany', err);
     }
@@ -239,10 +314,12 @@ export class BaseRepository<
         .limitFields()
         .mergeSelect(select);
 
-      await apiFeatures.paginate();
       const { data, pagination } = await apiFeatures.query(true);
-      const items = data.map((d: any) => this.sanitizeFn(d));
-      return { items, ...(pagination ?? {}) };
+
+      return {
+        items: data.map((d: T) => this.sanitizeFn(d)),
+        ...(pagination ?? {}),
+      };
     } catch (err) {
       this.handleError('findAll', err);
     }
@@ -250,35 +327,52 @@ export class BaseRepository<
 
   async count(where: Record<string, any> = {}): Promise<number> {
     try {
-      return this.delegate.count({ where: this.applySoftDelete(where) });
+      return await this.delegate.count({
+        where: this.applySoftDelete(where),
+      });
     } catch (err) {
       this.handleError('count', err);
     }
   }
 
+  // async exists(where: Record<string, any>): Promise<boolean> {
+  //   try {
+  //     return !!(await this.delegate.findFirst({
+  //       where: this.applySoftDelete(where),
+  //       select: { id: true },
+  //     }));
+  //   } catch (err) {
+  //     this.handleError('exists', err);
+  //   }
+  // }
+
   async exists(where: Record<string, any>): Promise<boolean> {
     try {
-      return !!(await this.delegate.findFirst({
+      const count = await this.delegate.count({
         where: this.applySoftDelete(where),
-        select: { id: true },
-      }));
+        take: 1,
+      });
+      return count > 0;
     } catch (err) {
       this.handleError('exists', err);
     }
   }
 
-  async queryRaw<T = any>(
+  async queryRaw<R = any>(
     query: TemplateStringsArray | Prisma.Sql,
     ...values: any[]
-  ): Promise<T[]> {
+  ): Promise<R[]> {
     try {
-      return await this.prisma.$queryRaw<T[]>(query as any, ...values);
+      return await this.prisma.$queryRaw<R[]>(query as any, ...values);
     } catch (err) {
       this.handleError('queryRaw', err);
     }
   }
 
-  async executeRaw(query: TemplateStringsArray | Prisma.Sql, ...values: any[]) {
+  async executeRaw(
+    query: TemplateStringsArray | Prisma.Sql,
+    ...values: any[]
+  ): Promise<number> {
     try {
       return await this.prisma.$executeRaw(query as any, ...values);
     } catch (err) {
@@ -287,21 +381,16 @@ export class BaseRepository<
   }
 
   async groupBy(
-    field: keyof T,
+    by: (keyof T)[],
     where: Record<string, any> = {},
-    aggregations: {
-      count?: boolean;
-      sum?: Record<string, true>;
-      avg?: Record<string, true>;
-      min?: Record<string, true>;
-      max?: Record<string, true>;
-    } = { count: true },
-  ) {
+    aggregations: GroupByAggregations = { count: true },
+  ): Promise<any[]> {
     try {
       return await this.delegate.groupBy({
-        by: [field as string],
+        by: by as string[],
         where: this.applySoftDelete(where),
-        _count: aggregations.count ? { _all: true } : undefined,
+        _count:
+          aggregations.count === true ? { _all: true } : aggregations.count,
         _sum: aggregations.sum,
         _avg: aggregations.avg,
         _min: aggregations.min,
@@ -311,349 +400,39 @@ export class BaseRepository<
       this.handleError('groupBy', err);
     }
   }
+
+  async restore(id: string, select: any = this.defaultSelect): Promise<S> {
+    if (!this.useSoftDelete) {
+      throw new ApiError(
+        'Restore operation not supported for hard delete',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return this.executeWrite('restore', async () => {
+      const doc = await this.delegate.update({
+        where: { id, deletedAt: { not: null } },
+        data: { deletedAt: null },
+        select: this.buildPrismaPayload({ select }).select,
+      });
+      return this.sanitizeFn(doc);
+    });
+  }
+
+  async upsert(
+    where: Record<string, any>,
+    create: any,
+    update: any,
+    select: any = this.defaultSelect,
+  ): Promise<S> {
+    return this.executeWrite('upsert', async () => {
+      const doc = await this.delegate.upsert({
+        where,
+        create,
+        update,
+        select: this.buildPrismaPayload({ select }).select,
+      });
+      return this.sanitizeFn(doc);
+    });
+  }
 }
-
-// Where to use them in your current codebase
-
-// In BranchService.create → check uniqueness before insert:
-
-// const branchExists = await this.branchRepo.exists({ code: dto.code });
-// if (branchExists) {
-//   throw new BadRequestException('Branch code already in use');
-// }
-
-// In BranchService.getTenantBranches or controller queries → get total branch count for tenant dashboards:
-
-// const totalBranches = await this.branchRepo.count({ tenantId });
-
-// import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-// import { Prisma, PrismaClient } from '@prisma/client';
-// import { PrismaService } from 'src/db/prisma/prisma.service';
-// import { RedisService } from 'src/db/redis/redis.service';
-// import { ApiError } from '../../common/exceptions/api-error.exception';
-// import {
-//   ApiFeatures,
-//   PaginationResult,
-// } from '../../common/utils/api-features.util';
-// import * as crypto from 'crypto';
-
-// @Injectable()
-// export class BaseRepository<
-//   T extends { id: string; deletedAt?: Date | null },
-//   S = T,
-//   K extends keyof PrismaClient = keyof PrismaClient,
-// > {
-//   protected readonly logger = new Logger(BaseRepository.name);
-
-//   constructor(
-//     protected readonly prisma: PrismaService,
-//     protected readonly redis: RedisService,
-//     private readonly modelKey: K,
-//     protected readonly searchableFields: string[] = [],
-//     protected readonly defaultSelect: Record<string, any> = {},
-//     protected readonly useSoftDelete = true,
-//     private readonly sanitizeFn: (data: T) => S = (d: T) => d as unknown as S,
-//     private readonly cacheTTL = process.env.NODE_ENV === 'production'
-//       ? 3600
-//       : 30,
-//   ) {}
-
-//   private get delegate(): any {
-//     return this.prisma[this.modelKey];
-//   }
-
-//   private applySoftDelete(
-//     where: Record<string, any> = {},
-//   ): Record<string, any> {
-//     return this.useSoftDelete ? { ...where, deletedAt: null } : where;
-//   }
-
-//   private async withCache<R>(
-//     key: string,
-//     fetchFn: () => Promise<R>,
-//     useCache = true,
-//   ): Promise<R> {
-//     if (!useCache) {
-//       this.logger.debug(
-//         `[${String(this.modelKey)}] Cache disabled → fetching from DB`,
-//       );
-//       return fetchFn();
-//     }
-
-//     const cached = await this.cacheGet<R>(key);
-//     if (cached) {
-//       this.logger.debug(`[${String(this.modelKey)}] Cache hit → key=${key}`);
-//       return cached;
-//     }
-
-//     this.logger.debug(
-//       `[${String(this.modelKey)}] Cache miss → fetching from DB, key=${key}`,
-//     );
-//     const result = await fetchFn();
-//     await this.cacheSet(key, result);
-//     return result;
-//   }
-
-//   // private async withCache<R>(
-//   //   key: string,
-//   //   fetchFn: () => Promise<R>,
-//   //   useCache = true,
-//   // ): Promise<R> {
-//   //   if (!useCache) return fetchFn();
-//   //   const cached = await this.cacheGet<R>(key);
-//   //   if (cached) return cached;
-//   //   const result = await fetchFn();
-//   //   await this.cacheSet(key, result);
-//   //   return result;
-//   // }
-
-//   private buildCacheKey(action: string, extra: any = {}): string {
-//     const entries = Object.entries(extra).sort(([a], [b]) =>
-//       a.localeCompare(b),
-//     );
-//     const normalized = JSON.stringify(Object.fromEntries(entries));
-//     const hash = crypto.createHash('md5').update(normalized).digest('hex');
-//     return `${String(this.modelKey)}:${action}:${hash}`;
-//   }
-
-//   private async cacheGet<T = any>(key: string): Promise<T | null> {
-//     try {
-//       return await this.redis.get<T>(key);
-//     } catch {
-//       return null;
-//     }
-//   }
-
-//   private async cacheSet(key: string, value: any, ttl = this.cacheTTL) {
-//     try {
-//       await this.redis.set(key, value, ttl);
-//     } catch {}
-//   }
-
-//   private async invalidateRelatedCache(ids?: string | string[]) {
-//     const idArray = Array.isArray(ids) ? ids : ids ? [ids] : [];
-//     const patterns = [
-//       `${String(this.modelKey)}:findAll:*`,
-//       `${String(this.modelKey)}:findMany:*`,
-//     ];
-//     idArray.forEach((id) =>
-//       patterns.push(`${String(this.modelKey)}:findOne:*${id}*`),
-//     );
-//     await Promise.all(patterns.map((p) => this.redis.delByPattern(p)));
-//   }
-
-//   private handleError(action: string, error: any, id?: string): never {
-//     if (error?.code === 'P2025') {
-//       throw new ApiError(
-//         id ? `No record found with id ${id}` : 'Record not found',
-//         HttpStatus.NOT_FOUND,
-//       );
-//     }
-//     this.logger.error(
-//       `[${String(this.modelKey)}] ${action} failed: ${error?.message || error}`,
-//     );
-//     throw new ApiError(`Failed to ${action}`, HttpStatus.INTERNAL_SERVER_ERROR);
-//   }
-
-//   private async executeWrite<R>(
-//     action: string,
-//     fn: (tx: PrismaClient) => Promise<R>,
-//     ids?: string | string[],
-//   ): Promise<R> {
-//     return this.transaction(fn)
-//       .then(async (res) => {
-//         await this.invalidateRelatedCache(ids);
-//         return res;
-//       })
-//       .catch((e) =>
-//         this.handleError(action, e, Array.isArray(ids) ? ids[0] : ids),
-//       );
-//   }
-
-//   async transaction<R>(
-//     cb: (tx: Omit<PrismaClient, '$connect' | '$disconnect'>) => Promise<R>,
-//     options: {
-//       timeout?: number;
-//       isolationLevel?: Prisma.TransactionIsolationLevel;
-//     } = {},
-//   ): Promise<R> {
-//     return this.prisma.$transaction(cb, {
-//       timeout: options.timeout || 10000,
-//       isolationLevel: options.isolationLevel,
-//     });
-//   }
-
-//   async create(data: any, select: any = this.defaultSelect): Promise<S> {
-//     return this.executeWrite('create', async (tx) => {
-//       const doc = await (tx[this.modelKey] as any).create({ data, select });
-//       return this.sanitizeFn(doc);
-//     });
-//   }
-
-//   async update(
-//     id: string,
-//     data: any,
-//     select: any = this.defaultSelect,
-//   ): Promise<S> {
-//     return this.executeWrite(
-//       'update',
-//       async (tx) => {
-//         const doc = await (tx[this.modelKey] as any).update({
-//           where: { id },
-//           data,
-//           select,
-//         });
-//         return this.sanitizeFn(doc);
-//       },
-//       id,
-//     );
-//   }
-
-//   async updateMany(
-//     ids: string[],
-//     data: any,
-//     select: any = this.defaultSelect,
-//   ): Promise<T[]> {
-//     return this.executeWrite(
-//       'updateMany',
-//       async (tx) => {
-//         await (tx[this.modelKey] as any).updateMany({
-//           where: { id: { in: ids } },
-//           data,
-//         });
-//         const updated = await (tx[this.modelKey] as any).findMany({
-//           where: this.applySoftDelete({ id: { in: ids } }),
-//           select,
-//         });
-//         return updated.map((d: any) => this.sanitizeFn(d));
-//       },
-//       ids,
-//     );
-//   }
-
-//   async delete(id: string): Promise<void> {
-//     return this.executeWrite(
-//       'delete',
-//       async (tx) => {
-//         if (this.useSoftDelete) {
-//           await (tx[this.modelKey] as any).update({
-//             where: { id },
-//             data: { deletedAt: new Date() },
-//           });
-//         } else {
-//           await (tx[this.modelKey] as any).delete({ where: { id } });
-//         }
-//       },
-//       id,
-//     );
-//   }
-
-//   async deleteMany(ids: string[]): Promise<void> {
-//     return this.executeWrite(
-//       'deleteMany',
-//       async (tx) => {
-//         if (this.useSoftDelete) {
-//           await (tx[this.modelKey] as any).updateMany({
-//             where: { id: { in: ids } },
-//             data: { deletedAt: new Date() },
-//           });
-//         } else {
-//           await (tx[this.modelKey] as any).deleteMany({
-//             where: { id: { in: ids } },
-//           });
-//         }
-//       },
-//       ids,
-//     );
-//   }
-
-//   async findOne(
-//     where: Record<string, any>,
-//     select: any = this.defaultSelect,
-//     useCache = true,
-//   ): Promise<S> {
-//     const cacheKey = this.buildCacheKey('findOne', { where, select });
-//     return this.withCache(
-//       cacheKey,
-//       async () => {
-//         const doc = await this.delegate.findUnique({
-//           where: this.applySoftDelete(where),
-//           select,
-//         });
-//         if (!doc) throw new ApiError(`Not found`, HttpStatus.NOT_FOUND);
-//         return this.sanitizeFn(doc);
-//       },
-//       useCache,
-//     );
-//   }
-
-//   async findMany(
-//     where: Record<string, any> = {},
-//     select: any = this.defaultSelect,
-//     options: { limit?: number; useCache?: boolean } = {},
-//   ): Promise<T[]> {
-//     const { limit, useCache = true } = options;
-//     const cacheKey = this.buildCacheKey('findMany', { where, select, limit });
-//     return this.withCache(
-//       cacheKey,
-//       async () => {
-//         const docs = await this.delegate.findMany({
-//           where: this.applySoftDelete(where),
-//           select,
-//           ...(limit ? { take: limit } : {}),
-//         });
-//         return docs.map((d: any) => this.sanitizeFn(d));
-//       },
-//       useCache,
-//     );
-//   }
-
-//   async findAll(
-//     queryString: Record<string, any> = {},
-//     where: Record<string, any> = {},
-//     select: Record<string, any> = this.defaultSelect,
-//     useCache = true,
-//   ): Promise<{ items: S[] } & Partial<PaginationResult>> {
-//     const cacheKey = this.buildCacheKey('findAll', {
-//       queryString,
-//       where,
-//       select,
-//     });
-//     return this.withCache(
-//       cacheKey,
-//       async () => {
-//         const apiFeatures = new ApiFeatures(
-//           this.delegate,
-//           queryString,
-//           this.searchableFields,
-//         )
-//           .filter()
-//           .search()
-//           .mergeFilter(this.applySoftDelete(where))
-//           .sort()
-//           .limitFields()
-//           .mergeSelect(select);
-//         await apiFeatures.paginate();
-//         const { data, pagination } = await apiFeatures.query(true);
-//         const items = data.map((d: any) => this.sanitizeFn(d));
-//         return { items, ...(pagination ?? {}) };
-//       },
-//       useCache,
-//     );
-//   }
-
-//   async count(where: Record<string, any> = {}): Promise<number> {
-//     const cacheKey = this.buildCacheKey('count', where);
-//     return this.withCache(cacheKey, async () => {
-//       return this.delegate.count({ where: this.applySoftDelete(where) });
-//     });
-//   }
-
-//   async exists(where: Record<string, any>): Promise<boolean> {
-//     const count = await this.delegate.count({
-//       where: this.applySoftDelete(where),
-//       take: 1,
-//     });
-//     return count > 0;
-//   }
-// }

@@ -10,9 +10,8 @@ import { APIResponse } from '../../common/utils/api-response.util';
 import { SessionGuard } from '../auth/guards/session.guard';
 import { OrderService } from '../order/order.service';
 import { PickUpService } from '../pickup/pickup.service';
-import { IOrder } from '../order/interfaces/order.interface';
 import { PaginationResult } from '../../common/utils/api-features.util';
-import { PickUp } from '@prisma/client';
+import { Order, PickUp } from '@prisma/client';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { AuthUser } from '../auth/interfaces/auth-user.interface';
 
@@ -28,7 +27,7 @@ export class CustomerController {
   async getOrdersOfCustomer(
     @Query() query: Record<string, any>,
     @Param('customerId') customerId: string,
-  ): Promise<APIResponse<{ orders: IOrder[] } & Partial<PaginationResult>>> {
+  ): Promise<APIResponse<{ orders: Order[] } & Partial<PaginationResult>>> {
     const { items, ...pagination } = await this.orderService.getCustomerOrders(
       customerId,
       query,

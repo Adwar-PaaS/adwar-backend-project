@@ -1,6 +1,6 @@
 import { SetMetadata, applyDecorators } from '@nestjs/common';
 
-export type CacheKey = string | ((req: any) => string);
+export type CacheKey = string | ((req: any) => string | null);
 
 export interface CacheOptions {
   key: CacheKey;

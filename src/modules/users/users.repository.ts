@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma/prisma.service';
-import { Prisma, User, RoleName, Status } from '@prisma/client';
+import { Prisma, User, RoleName } from '@prisma/client';
 import { BaseRepository } from '../../shared/factory/base.repository';
 import { RedisService } from 'src/db/redis/redis.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -9,12 +9,16 @@ import { checkUnique } from '../../common/utils/check-unique.util';
 import { sanitizeUser } from '../../common/utils/sanitize-user.util';
 import { userSelector } from '../../common/selectors/user.selector';
 
-type UserWithRelations = Prisma.UserGetPayload<{ select: typeof userSelector }>;
+export type SafeUser = Omit<User, 'password'>;
+export type UserWithRelations = Prisma.UserGetPayload<{
+  select: typeof userSelector;
+}>;
 
 @Injectable()
 export class UsersRepository extends BaseRepository<
   User,
-  Omit<User, 'password'>
+  SafeUser,
+  Prisma.UserDelegate
 > {
   constructor(
     protected readonly prisma: PrismaService,
@@ -22,10 +26,10 @@ export class UsersRepository extends BaseRepository<
   ) {
     super(
       prisma,
-      'user',
+      prisma.user,
       ['email', 'firstName', 'lastName'],
       userSelector,
-      true, // undefined
+      true,
       sanitizeUser,
     );
   }

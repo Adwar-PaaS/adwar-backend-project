@@ -4,7 +4,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantRepository } from './tenant.repository';
 import { ITenant } from './interfaces/tenant.interface';
 import { UploadService } from '../../shared/upload/upload.service';
-import { RoleName, Status } from '@prisma/client';
+import { RoleName, Status, Tenant } from '@prisma/client';
 import { AddressService } from 'src/shared/address/address.service';
 import slugify from 'slugify';
 import { checkUnique } from '../../common/utils/check-unique.util';
@@ -27,7 +27,7 @@ export class TenantService {
     dto: CreateTenantDto,
     creatorId: string,
     file?: Express.Multer.File,
-  ): Promise<ITenant> {
+  ): Promise<Tenant> {
     const logoUrl = file
       ? await this.uploadService.uploadImage(file)
       : dto.logoUrl;
@@ -70,19 +70,23 @@ export class TenantService {
     return this.tenantRepo.findAll(query);
   }
 
-  findById(id: string): Promise<ITenant> {
-    return this.tenantRepo.findOne({ id });
+  async findById(id: string): Promise<Tenant> {
+    const tenant = await this.tenantRepo.findOne({ id });
+    if (!tenant) {
+      throw new Error(`Tenant with id ${id} not found`);
+    }
+    return tenant;
   }
 
   async update(
     id: string,
     dto: UpdateTenantDto,
     file?: Express.Multer.File,
-  ): Promise<ITenant> {
+  ): Promise<Tenant> {
     let logoUrl = dto.logoUrl;
 
     if (file) {
-      const existing = await this.tenantRepo.findOne({ id });
+      const existing = await this.findById(id);
       if (existing.logoUrl) {
         await this.uploadService.deleteFile(existing.logoUrl);
       }
@@ -99,7 +103,7 @@ export class TenantService {
     if (dto.addressId) {
       updateData.addressId = dto.addressId;
     } else if (dto.address) {
-      const tenant = await this.tenantRepo.findOne({ id });
+      const tenant = await this.findById(id);
       if (!tenant?.addressId) {
         throw new BadRequestException('Tenant has no address to update');
       }
@@ -115,8 +119,8 @@ export class TenantService {
     return await this.tenantRepo.update(id, updateData);
   }
 
-  async toggleStatus(id: string): Promise<ITenant> {
-    const existing = await this.tenantRepo.findOne({ id });
+  async toggleStatus(id: string): Promise<Tenant> {
+    const existing = await this.findById(id);
 
     const newStatus =
       existing.status === Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE;
