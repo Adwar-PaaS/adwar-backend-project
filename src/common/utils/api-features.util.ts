@@ -20,17 +20,33 @@ export type PrismaFindManyArgs = {
 };
 
 type FilterOperator = 'in' | 'not' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte';
+type FieldType = 'string' | 'number' | 'date' | 'boolean';
+
+export interface ApiFeaturesOptions {
+  maxLimit?: number;
+  defaultLimit?: number;
+  minLimit?: number;
+  defaultSort?: Record<string, 'asc' | 'desc'>[];
+  fieldTypes?: Record<string, FieldType>;
+  enumFields?: Record<string, object>;
+}
 
 export class ApiFeatures<
   TModel extends {
-    findMany: (args?: PrismaFindManyArgs) => Promise<any[]>;
+    findMany: (args?: PrismaFindManyArgs) => Promise<TRecord[]>;
     count: (args?: { where?: Record<string, any> }) => Promise<number>;
+    aggregate?: (args: any) => Promise<any>;
   },
+  TRecord = any,
 > {
   private readonly logger = new Logger(ApiFeatures.name);
-  private readonly MAX_LIMIT = 200;
-  private readonly DEFAULT_LIMIT = 50;
-  private readonly MIN_LIMIT = 1;
+
+  private readonly MAX_LIMIT: number;
+  private readonly DEFAULT_LIMIT: number;
+  private readonly MIN_LIMIT: number;
+  private readonly DEFAULT_SORT: Record<string, 'asc' | 'desc'>[];
+  private readonly FIELD_TYPES: Record<string, FieldType>;
+  private readonly ENUM_FIELDS: Record<string, object>;
 
   private queryOptions: PrismaFindManyArgs = {};
   private paginationResult: PaginationResult | null = null;
@@ -40,9 +56,17 @@ export class ApiFeatures<
     private readonly prismaModel: TModel,
     private readonly queryString: Record<string, string | undefined> = {},
     private readonly searchableFields: string[] = [],
-  ) {}
+    options: ApiFeaturesOptions = {},
+  ) {
+    this.MAX_LIMIT = options.maxLimit ?? 200;
+    this.DEFAULT_LIMIT = options.defaultLimit ?? 50;
+    this.MIN_LIMIT = options.minLimit ?? 1;
+    this.DEFAULT_SORT = options.defaultSort ?? [{ createdAt: 'desc' }];
+    this.FIELD_TYPES = options.fieldTypes ?? {};
+    this.ENUM_FIELDS = options.enumFields ?? {};
+  }
 
-  private normalizeFilters(filters: Record<string, any>): Record<string, any> {
+  private normalizeFilters(filters: Record<string, any>) {
     return Object.fromEntries(
       Object.entries(filters).filter(
         ([, v]) => v !== undefined && v !== null && v !== '',
@@ -50,20 +74,20 @@ export class ApiFeatures<
     );
   }
 
-  private detectAndConvertSingle(value: string): string | number | Date {
+  private detectAndConvertSingle(value: string, fieldType?: FieldType) {
     const trimmed = value.trim();
+    const lower = trimmed.toLowerCase();
 
-    const numRegex = /^-?\d*\.?\d+$/;
-    if (numRegex.test(trimmed)) {
+    if (lower === 'true' || lower === 'false') return lower === 'true';
+    if ((fieldType === 'number' || !fieldType) && /^-?\d*\.?\d+$/.test(trimmed))
       return Number(trimmed);
-    }
 
-    const isoDateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/;
-    if (isoDateRegex.test(trimmed)) {
+    if (
+      (fieldType === 'date' || !fieldType) &&
+      /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/.test(trimmed)
+    ) {
       const date = new Date(trimmed);
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
+      if (!isNaN(date.getTime())) return date;
     }
 
     return trimmed;
@@ -71,79 +95,62 @@ export class ApiFeatures<
 
   private parseFilterValue(key: string, raw: string): unknown {
     const value = raw.trim();
+    const fieldType = this.FIELD_TYPES[key.split('.')[0]];
 
+    // multiple values
     if (value.includes(',')) {
       const values = value
         .split(',')
-        .map((v) => this.detectAndConvertSingle(v.trim()))
+        .map((v) => this.detectAndConvertSingle(v, fieldType))
         .filter((v) => v !== '');
-
-      return values.length > 0 ? { in: values } : undefined;
+      return values.length ? { in: values } : undefined;
     }
 
+    // not equal
     if (value.startsWith('!=')) {
-      const parsed = this.detectAndConvertSingle(value.slice(2).trim());
-      return { not: parsed };
+      return { not: this.detectAndConvertSingle(value.slice(2), fieldType) };
     }
 
-    if (value.startsWith('~')) {
-      return {
-        contains: value.slice(1).trim(),
-        mode: 'insensitive' as const,
-      };
+    // operators
+    const operatorMap: Record<string, (v: string) => any> = {
+      '~': (v) => ({ contains: v, mode: 'insensitive' as const }),
+      '^': (v) => ({ startsWith: v, mode: 'insensitive' as const }),
+      $: (v) => ({ endsWith: v, mode: 'insensitive' as const }),
+      '=': (v) => this.detectAndConvertSingle(v, fieldType),
+    };
+    if (operatorMap[value[0]]) {
+      return operatorMap[value[0]](value.slice(1).trim());
     }
 
-    if (value.startsWith('^')) {
-      return {
-        startsWith: value.slice(1).trim(),
-        mode: 'insensitive' as const,
-      };
-    }
-
-    if (value.startsWith('$')) {
-      return {
-        endsWith: value.slice(1).trim(),
-        mode: 'insensitive' as const,
-      };
-    }
-
-    if (value.startsWith('=')) {
-      return this.detectAndConvertSingle(value.slice(1).trim());
-    }
-
-    const comparisonMatch = value.match(/^([<>]=?)(.+)$/);
-    if (comparisonMatch) {
-      const [, op, rawValue] = comparisonMatch;
-      const parsed = this.detectAndConvertSingle(rawValue.trim());
-
-      if (typeof parsed === 'string') {
+    // comparison
+    const match = value.match(/^([<>]=?)(.+)$/);
+    if (match) {
+      const [, op, rawVal] = match;
+      const parsed = this.detectAndConvertSingle(rawVal.trim(), fieldType);
+      if (
+        typeof parsed === 'string' &&
+        ['number', 'date'].includes(fieldType || '')
+      ) {
         throw new HttpException(
-          `Invalid value for operator ${op} in filter "${key}". Must be number or date.`,
+          `Invalid value for operator ${op} in filter "${key}"`,
           HttpStatus.BAD_REQUEST,
         );
       }
-
       const opMap: Record<string, FilterOperator> = {
         '>': 'gt',
         '>=': 'gte',
         '<': 'lt',
         '<=': 'lte',
       };
-
       return { [opMap[op]]: parsed };
     }
 
-    const lowerValue = value.toLowerCase();
-    if (['true', 'false'].includes(lowerValue)) {
-      return lowerValue === 'true';
-    }
-
-    return this.detectAndConvertSingle(value);
+    return this.detectAndConvertSingle(value, fieldType);
   }
 
-  private buildNestedFilter(key: string, value: any): Record<string, any> {
+  private buildNestedFilter(key: string, value: any) {
     const parts = key.split('.');
-    let current = value;
+    let current: Record<string, any> = value;
     for (let i = parts.length - 1; i >= 0; i--) {
       current = { [parts[i]]: current };
     }
@@ -151,15 +158,20 @@ export class ApiFeatures<
   }
 
   private deepMerge(
-    target: Record<string, any>,
-    source: Record<string, any>,
-  ): Record<string, any> {
+    target: Record<string, any> = {},
+    source: Record<string, any> = {},
+  ) {
     const result = { ...target };
-    for (const [key, value] of Object.entries(source)) {
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        result[key] = this.deepMerge(result[key] || {}, value);
+    for (const [k, v] of Object.entries(source)) {
+      if (
+        v &&
+        typeof v === 'object' &&
+        !Array.isArray(v) &&
+        typeof result[k] === 'object'
+      ) {
+        result[k] = this.deepMerge(result[k], v);
       } else {
-        result[key] = value;
+        result[k] = v;
       }
     }
     return result;
@@ -168,129 +180,134 @@ export class ApiFeatures<
   filter(): this {
     const { page, sort, limit, fields, search, ...rawFilters } =
       this.queryString;
-
     const filters = this.normalizeFilters(rawFilters);
 
-    for (const [key, rawValue] of Object.entries(filters)) {
-      if (typeof rawValue !== 'string') continue;
-
+    for (const [key, rawVal] of Object.entries(filters)) {
+      if (typeof rawVal !== 'string') continue;
       try {
-        const parsedValue = this.parseFilterValue(key, rawValue);
-
-        if (parsedValue !== undefined) {
-          const nestedFilter = this.buildNestedFilter(key, parsedValue);
+        const parsed = this.parseFilterValue(key, rawVal);
+        if (parsed !== undefined) {
           this.queryOptions.where = this.deepMerge(
-            this.queryOptions.where ?? {},
-            nestedFilter,
+            this.queryOptions.where,
+            this.buildNestedFilter(key, parsed),
           );
         }
-      } catch (error) {
+      } catch (err) {
         this.logger.warn(
-          `Failed to parse filter for key "${key}": ${(error as Error).message}`,
+          `Failed to parse filter for "${key}": ${(err as Error).message}`,
         );
-        throw error;
+        throw err;
       }
     }
-
     return this;
   }
 
-  search(): this {
-    const searchTerm = this.queryString.search?.trim();
-    if (!searchTerm || !this.searchableFields.length) return this;
+  private isEnumField(field: string): boolean {
+    return field in this.ENUM_FIELDS;
+  }
 
-    const words = searchTerm.split(/\s+/).filter(Boolean);
+  private buildEnumCondition(
+    field: string,
+    word: string,
+  ): Record<string, any> | null {
+    const enumObj = this.ENUM_FIELDS[field];
+    const lowerWord = word.toLowerCase();
+    const matching = Object.values(enumObj).filter((val: any) =>
+      val.toString().toLowerCase().includes(lowerWord),
+    );
+    return matching.length > 0 ? { in: matching } : null;
+  }
+
+  search(): this {
+    const term = this.queryString.search?.trim();
+    if (!term || !this.searchableFields.length) return this;
+
+    const words = term.split(/\s+/).filter(Boolean);
     if (!words.length) return this;
 
-    const orConditions = this.searchableFields.flatMap((field) => {
-      const fieldPath = field.split('.');
-      return words.map((word) => {
-        const condition = { contains: word, mode: 'insensitive' as const };
-
-        if (fieldPath.length === 1) {
-          return { [fieldPath[0]]: condition };
+    const or = this.searchableFields.flatMap((field) =>
+      words.flatMap((word) => {
+        let condition: Record<string, any> | null;
+        if (this.isEnumField(field)) {
+          condition = this.buildEnumCondition(field, word);
+        } else {
+          condition = { contains: word, mode: 'insensitive' as const };
         }
+        if (!condition) return [];
 
-        return fieldPath
-          .reverse()
-          .reduce<
-            Record<string, any>
-          >((acc, part) => ({ [part]: acc }), condition);
-      });
-    });
+        return [
+          field
+            .split('.')
+            .reduceRight<
+              Record<string, any>
+            >((acc, part) => ({ [part]: acc }), condition),
+        ];
+      }),
+    );
 
     this.queryOptions.where = {
       ...(this.queryOptions.where ?? {}),
-      OR: [...(this.queryOptions.where?.OR ?? []), ...orConditions],
+      OR: [...(this.queryOptions.where?.OR ?? []), ...or],
     };
-
     return this;
   }
 
   sort(): this {
-    const sortStr = this.queryString.sort?.trim();
-
-    if (!sortStr) {
-      this.queryOptions.orderBy = [{ createdAt: 'desc' }];
+    const str = this.queryString.sort?.trim();
+    if (!str) {
+      this.queryOptions.orderBy = [...this.DEFAULT_SORT];
       return this;
     }
-
     try {
-      this.queryOptions.orderBy = sortStr.split(',').map((field) => {
-        const trimmedField = field.trim();
-        const isDesc = trimmedField.startsWith('-');
-        const fieldName = trimmedField.replace(/^-/, '');
-
-        return {
-          [fieldName]: isDesc ? ('desc' as const) : ('asc' as const),
-        };
+      this.queryOptions.orderBy = str.split(',').map((f) => {
+        const desc = f.startsWith('-');
+        const name = f.replace(/^-/, '');
+        return { [name]: desc ? 'desc' : 'asc' } as Record<
+          string,
+          'asc' | 'desc'
+        >;
       });
-    } catch (error) {
-      this.logger.warn(`Failed to parse sort: ${(error as Error).message}`);
-      this.queryOptions.orderBy = [{ createdAt: 'desc' }];
+    } catch (err) {
+      this.logger.warn(`Failed to parse sort: ${(err as Error).message}`);
+      this.queryOptions.orderBy = [...this.DEFAULT_SORT];
     }
-
     return this;
   }
 
   limitFields(): this {
-    const fieldsStr = this.queryString.fields?.trim();
+    const str = this.queryString.fields?.trim();
+    if (!str) return this;
 
-    if (!fieldsStr) return this;
-
-    const selected = fieldsStr
+    const selected = str
       .split(',')
       .map((f) => f.trim())
       .filter(Boolean);
-
-    if (selected.length > 0) {
-      this.queryOptions.select = selected.reduce<Record<string, true>>(
+    if (selected.length) {
+      this.queryOptions.select = selected.reduce(
         (acc, f) => ({ ...acc, [f]: true }),
-        {},
+        { id: true },
       );
-
-      if (!this.queryOptions.select.id) {
-        this.queryOptions.select.id = true;
-      }
     }
-
     return this;
   }
 
   private async calculateTotal(): Promise<number> {
-    if (this.totalRecordsCache !== null) {
-      return this.totalRecordsCache;
-    }
-
+    if (this.totalRecordsCache !== null) return this.totalRecordsCache;
     try {
-      this.totalRecordsCache = await this.prismaModel.count({
-        where: this.queryOptions.where,
-      });
-      return this.totalRecordsCache;
-    } catch (error) {
-      this.logger.error(
-        `Failed to calculate total: ${(error as Error).message}`,
-      );
+      if (typeof this.prismaModel.aggregate === 'function') {
+        const res = await this.prismaModel.aggregate({
+          _count: { _all: true },
+          where: this.queryOptions.where,
+        });
+        this.totalRecordsCache = res._count._all;
+      } else {
+        this.totalRecordsCache = await this.prismaModel.count({
+          where: this.queryOptions.where,
+        });
+      }
+      return this.totalRecordsCache ?? 0;
+    } catch (err) {
+      this.logger.error(`Total calculation failed: ${(err as Error).message}`);
       throw new HttpException(
         'Failed to calculate total records',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -298,11 +315,13 @@ export class ApiFeatures<
     }
   }
 
+  async getCount(): Promise<number> {
+    return this.calculateTotal();
+  }
+
   async paginate(): Promise<this> {
     const totalRecords = await this.calculateTotal();
-
     const page = Math.max(Number(this.queryString.page) || 1, 1);
-
     const limit = Math.min(
       Math.max(
         Number(this.queryString.limit) || this.DEFAULT_LIMIT,
@@ -311,9 +330,8 @@ export class ApiFeatures<
       this.MAX_LIMIT,
     );
 
-    const totalPages = totalRecords > 0 ? Math.ceil(totalRecords / limit) : 0;
-
-    const safePage = totalPages > 0 ? Math.min(page, totalPages) : 1;
+    const totalPages = totalRecords ? Math.ceil(totalRecords / limit) : 0;
+    const safePage = totalPages ? Math.min(page, totalPages) : 1;
 
     this.queryOptions.take = limit;
     this.queryOptions.skip = (safePage - 1) * limit;
@@ -328,33 +346,24 @@ export class ApiFeatures<
       nextPage: safePage < totalPages ? safePage + 1 : null,
       prevPage: safePage > 1 ? safePage - 1 : null,
     };
-
     return this;
   }
 
-  mergeFilter(extraWhere: Record<string, any>): this {
-    if (!extraWhere || Object.keys(extraWhere).length === 0) {
-      return this;
+  mergeFilter(extra: Record<string, any>): this {
+    if (extra && Object.keys(extra).length) {
+      this.queryOptions.where = this.deepMerge(this.queryOptions.where, extra);
+      this.totalRecordsCache = null;
     }
-
-    this.queryOptions.where = this.deepMerge(
-      this.queryOptions.where || {},
-      extraWhere,
-    );
-
     return this;
   }
 
-  mergeSelect(extraSelect: Record<string, any>): this {
-    if (!extraSelect || Object.keys(extraSelect).length === 0) {
-      return this;
+  mergeSelect(extra: Record<string, boolean>): this {
+    if (extra && Object.keys(extra).length) {
+      this.queryOptions.select = {
+        ...(this.queryOptions.select || {}),
+        ...extra,
+      };
     }
-
-    this.queryOptions.select = {
-      ...(this.queryOptions.select || {}),
-      ...extraSelect,
-    };
-
     return this;
   }
 
@@ -362,27 +371,20 @@ export class ApiFeatures<
     return this.paginationResult;
   }
 
-  async query<TRecord = any>(
+  async query(
     withPagination = false,
   ): Promise<{ data: TRecord[]; pagination?: PaginationResult }> {
+    if (withPagination && !this.paginationResult) await this.paginate();
     try {
-      if (withPagination && !this.paginationResult) {
-        await this.paginate();
-      }
-
       const data = await this.prismaModel.findMany(this.queryOptions);
-
       return withPagination
-        ? { data, pagination: this.paginationResult ?? undefined }
+        ? { data, pagination: this.paginationResult! }
         : { data };
-    } catch (error: unknown) {
-      const message = (error as Error).message || 'Unknown error';
-      this.logger.error(
-        `Error executing query: ${message}`,
-        (error as Error).stack,
-      );
+    } catch (err) {
+      const msg = (err as Error).message || 'Unknown error';
+      this.logger.error(`Error executing query: ${msg}`, (err as Error).stack);
       throw new HttpException(
-        `Failed to execute query: ${message}`,
+        `Failed to execute query: ${msg}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -399,11 +401,25 @@ export class ApiFeatures<
     return this;
   }
 
-  clone(): ApiFeatures<TModel> {
-    const cloned = new ApiFeatures(this.prismaModel, { ...this.queryString }, [
-      ...this.searchableFields,
-    ]);
+  clone(): ApiFeatures<TModel, TRecord> {
+    const cloned = new ApiFeatures(
+      this.prismaModel,
+      { ...this.queryString },
+      [...this.searchableFields],
+      {
+        maxLimit: this.MAX_LIMIT,
+        defaultLimit: this.DEFAULT_LIMIT,
+        minLimit: this.MIN_LIMIT,
+        defaultSort: this.DEFAULT_SORT,
+        fieldTypes: this.FIELD_TYPES,
+        enumFields: this.ENUM_FIELDS,
+      },
+    );
     cloned.queryOptions = { ...this.queryOptions };
+    cloned.paginationResult = this.paginationResult
+      ? { ...this.paginationResult }
+      : null;
+    cloned.totalRecordsCache = this.totalRecordsCache;
     return cloned;
   }
 }

@@ -26,11 +26,16 @@ export class UsersRepository extends BaseRepository<
     super(
       prisma,
       prisma.user,
-      ['email', 'firstName', 'lastName'],
+      ['email', 'firstName', 'lastName', 'role.name'],
       userSelector,
       true,
       sanitizeUser,
     );
+    this.apiFeaturesOptions = {
+      enumFields: {
+        'role.name': RoleName,
+      },
+    };
   }
 
   async createUser(data: CreateUserDto): Promise<UserWithRelations> {

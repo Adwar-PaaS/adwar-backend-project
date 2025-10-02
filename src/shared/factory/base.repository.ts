@@ -5,6 +5,7 @@ import { ApiError } from '../../common/exceptions/api-error.exception';
 import {
   ApiFeatures,
   PaginationResult,
+  ApiFeaturesOptions,
 } from '../../common/utils/api-features.util';
 
 type PayloadOptions = {
@@ -51,6 +52,8 @@ export class BaseRepository<
   } = any,
 > {
   protected readonly logger = new Logger(this.constructor.name);
+
+  protected apiFeaturesOptions: ApiFeaturesOptions = {};
 
   constructor(
     protected readonly prisma: PrismaService,
@@ -271,6 +274,7 @@ export class BaseRepository<
         this.delegate,
         queryString,
         this.searchableFields,
+        this.apiFeaturesOptions,
       )
         .filter()
         .search()
