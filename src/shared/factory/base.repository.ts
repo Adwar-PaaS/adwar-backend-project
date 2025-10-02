@@ -146,11 +146,9 @@ export class BaseRepository<
     if (data.length === 0) return [];
     return this.executeWrite('createMany', async () => {
       if (this.delegate.createMany) {
-        // bulk create supported
         await this.delegate.createMany({ data });
         return this.findMany({ id: { in: data.map((d) => d.id) } }, select);
       }
-      // fallback to individual creates
       const created = await Promise.all(
         data.map((item) => this.delegate.create({ data: item, select })),
       );
