@@ -26,7 +26,13 @@ export class UsersRepository extends BaseRepository<
     super(
       prisma,
       prisma.user,
-      ['email', 'firstName', 'lastName', 'role.name'],
+      [
+        'email',
+        'firstName',
+        'lastName',
+        'role.name',
+        'memberships.tenant.name',
+      ],
       userSelector,
       true,
       sanitizeUser,
@@ -34,6 +40,11 @@ export class UsersRepository extends BaseRepository<
     this.apiFeaturesOptions = {
       enumFields: {
         'role.name': RoleName,
+      },
+      relationConfigs: {
+        role: 'one',
+        memberships: 'many',
+        tenant: 'one',
       },
     };
   }

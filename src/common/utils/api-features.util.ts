@@ -29,6 +29,7 @@ export interface ApiFeaturesOptions {
   defaultSort?: Record<string, 'asc' | 'desc'>[];
   fieldTypes?: Record<string, FieldType>;
   enumFields?: Record<string, object>;
+  relationConfigs?: Record<string, 'one' | 'many'>;
 }
 
 export class ApiFeatures<
@@ -47,6 +48,7 @@ export class ApiFeatures<
   private readonly DEFAULT_SORT: Record<string, 'asc' | 'desc'>[];
   private readonly FIELD_TYPES: Record<string, FieldType>;
   private readonly ENUM_FIELDS: Record<string, object>;
+  private readonly RELATION_CONFIGS: Record<string, 'one' | 'many'>;
 
   private queryOptions: PrismaFindManyArgs = {};
   private paginationResult: PaginationResult | null = null;
@@ -64,6 +66,26 @@ export class ApiFeatures<
     this.DEFAULT_SORT = options.defaultSort ?? [{ createdAt: 'desc' }];
     this.FIELD_TYPES = options.fieldTypes ?? {};
     this.ENUM_FIELDS = options.enumFields ?? {};
+    this.RELATION_CONFIGS = options.relationConfigs ?? {};
+  }
+
+  private inferFieldType(key: string): FieldType {
+    if (this.FIELD_TYPES[key]) return this.FIELD_TYPES[key];
+
+    const last = key.split('.').pop()!;
+    let type: FieldType = 'string';
+    if (/id$/i.test(last)) type = 'string';
+    else if (/at$/i.test(last) || /date$/i.test(last)) type = 'date';
+    else if (/is[A-Z]/.test(last) || /^has/i.test(last)) type = 'boolean';
+    else if (
+      /count$/i.test(last) ||
+      /number$/i.test(last) ||
+      /price$/i.test(last)
+    )
+      type = 'number';
+
+    this.FIELD_TYPES[key] = type;
+    return type;
   }
 
   private normalizeFilters(filters: Record<string, any>) {
@@ -95,7 +117,7 @@ export class ApiFeatures<
 
   private parseFilterValue(key: string, raw: string): unknown {
     const value = raw.trim();
-    const fieldType = this.FIELD_TYPES[key.split('.')[0]];
+    const fieldType = this.inferFieldType(key);
 
     // multiple values
     if (value.includes(',')) {
@@ -150,11 +172,16 @@ export class ApiFeatures<
 
   private buildNestedFilter(key: string, value: any) {
     const parts = key.split('.');
-    let current: Record<string, any> = value;
-    for (let i = parts.length - 1; i >= 0; i--) {
-      current = { [parts[i]]: current };
-    }
-    return current;
+    return parts.reduceRight((acc: any, part: string) => {
+      let nested: Record<string, any> = { [part]: acc };
+      const relType = this.RELATION_CONFIGS[part];
+      if (relType === 'many') {
+        nested[part] = { some: acc };
+      } else if (relType === 'one') {
+        nested[part] = { is: acc };
+      }
+      return nested;
+    }, value);
   }
 
   private deepMerge(
@@ -231,17 +258,18 @@ export class ApiFeatures<
         if (this.isEnumField(field)) {
           condition = this.buildEnumCondition(field, word);
         } else {
-          condition = { contains: word, mode: 'insensitive' as const };
+          const fieldType = this.inferFieldType(field);
+          if (fieldType === 'string') {
+            condition = { contains: word, mode: 'insensitive' as const };
+          } else {
+            condition = {
+              equals: this.detectAndConvertSingle(word, fieldType),
+            };
+          }
         }
         if (!condition) return [];
 
-        return [
-          field
-            .split('.')
-            .reduceRight<
-              Record<string, any>
-            >((acc, part) => ({ [part]: acc }), condition),
-        ];
+        return [this.buildNestedFilter(field, condition)];
       }),
     );
 
@@ -413,6 +441,7 @@ export class ApiFeatures<
         defaultSort: this.DEFAULT_SORT,
         fieldTypes: this.FIELD_TYPES,
         enumFields: this.ENUM_FIELDS,
+        relationConfigs: this.RELATION_CONFIGS,
       },
     );
     cloned.queryOptions = { ...this.queryOptions };
