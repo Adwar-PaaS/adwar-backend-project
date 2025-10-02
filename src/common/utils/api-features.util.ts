@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 export interface PaginationResult {
   totalRecords: number;
@@ -11,13 +12,12 @@ export interface PaginationResult {
   prevPage: number | null;
 }
 
-export type PrismaFindManyArgs = {
-  where?: Record<string, any>;
-  orderBy?: Record<string, 'asc' | 'desc'>[];
-  select?: Record<string, boolean>;
-  take?: number;
-  skip?: number;
-};
+export type PrismaFindManyArgs = Partial<
+  Pick<
+    Prisma.UserFindManyArgs,
+    'where' | 'orderBy' | 'select' | 'take' | 'skip'
+  >
+>;
 
 type FilterOperator = 'in' | 'not' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte';
 type FieldType = 'string' | 'number' | 'date' | 'boolean';
@@ -54,6 +54,8 @@ export class ApiFeatures<
   private paginationResult: PaginationResult | null = null;
   private totalRecordsCache: number | null = null;
 
+  private fieldTypeCache = new Map<string, FieldType>();
+
   constructor(
     private readonly prismaModel: TModel,
     private readonly queryString: Record<string, string | undefined> = {},
@@ -70,13 +72,17 @@ export class ApiFeatures<
   }
 
   private inferFieldType(key: string): FieldType {
-    if (this.FIELD_TYPES[key]) return this.FIELD_TYPES[key];
+    if (this.fieldTypeCache.has(key)) return this.fieldTypeCache.get(key)!;
+    if (this.FIELD_TYPES[key]) {
+      this.fieldTypeCache.set(key, this.FIELD_TYPES[key]);
+      return this.FIELD_TYPES[key];
+    }
 
     const last = key.split('.').pop()!;
     let type: FieldType = 'string';
     if (/id$/i.test(last)) type = 'string';
     else if (/at$/i.test(last) || /date$/i.test(last)) type = 'date';
-    else if (/is[A-Z]/.test(last) || /^has/i.test(last)) type = 'boolean';
+    else if (/^is[A-Z]/.test(last) || /^has/i.test(last)) type = 'boolean';
     else if (
       /count$/i.test(last) ||
       /number$/i.test(last) ||
@@ -84,7 +90,7 @@ export class ApiFeatures<
     )
       type = 'number';
 
-    this.FIELD_TYPES[key] = type;
+    this.fieldTypeCache.set(key, type);
     return type;
   }
 
@@ -119,7 +125,7 @@ export class ApiFeatures<
     const value = raw.trim();
     const fieldType = this.inferFieldType(key);
 
-    // multiple values
+    // list
     if (value.includes(',')) {
       const values = value
         .split(',')
@@ -173,14 +179,10 @@ export class ApiFeatures<
   private buildNestedFilter(key: string, value: any) {
     const parts = key.split('.');
     return parts.reduceRight((acc: any, part: string) => {
-      let nested: Record<string, any> = { [part]: acc };
       const relType = this.RELATION_CONFIGS[part];
-      if (relType === 'many') {
-        nested[part] = { some: acc };
-      } else if (relType === 'one') {
-        nested[part] = { is: acc };
-      }
-      return nested;
+      if (relType === 'many') return { [part]: { some: acc } };
+      if (relType === 'one') return { [part]: { is: acc } };
+      return { [part]: acc };
     }, value);
   }
 
@@ -188,20 +190,19 @@ export class ApiFeatures<
     target: Record<string, any> = {},
     source: Record<string, any> = {},
   ) {
-    const result = { ...target };
     for (const [k, v] of Object.entries(source)) {
       if (
         v &&
         typeof v === 'object' &&
         !Array.isArray(v) &&
-        typeof result[k] === 'object'
+        typeof target[k] === 'object'
       ) {
-        result[k] = this.deepMerge(result[k], v);
+        target[k] = this.deepMerge(target[k], v);
       } else {
-        result[k] = v;
+        target[k] = v;
       }
     }
-    return result;
+    return target;
   }
 
   filter(): this {
@@ -211,38 +212,15 @@ export class ApiFeatures<
 
     for (const [key, rawVal] of Object.entries(filters)) {
       if (typeof rawVal !== 'string') continue;
-      try {
-        const parsed = this.parseFilterValue(key, rawVal);
-        if (parsed !== undefined) {
-          this.queryOptions.where = this.deepMerge(
-            this.queryOptions.where,
-            this.buildNestedFilter(key, parsed),
-          );
-        }
-      } catch (err) {
-        this.logger.warn(
-          `Failed to parse filter for "${key}": ${(err as Error).message}`,
+      const parsed = this.parseFilterValue(key, rawVal);
+      if (parsed !== undefined) {
+        this.queryOptions.where = this.deepMerge(
+          this.queryOptions.where,
+          this.buildNestedFilter(key, parsed),
         );
-        throw err;
       }
     }
     return this;
-  }
-
-  private isEnumField(field: string): boolean {
-    return field in this.ENUM_FIELDS;
-  }
-
-  private buildEnumCondition(
-    field: string,
-    word: string,
-  ): Record<string, any> | null {
-    const enumObj = this.ENUM_FIELDS[field];
-    const lowerWord = word.toLowerCase();
-    const matching = Object.values(enumObj).filter((val: any) =>
-      val.toString().toLowerCase().includes(lowerWord),
-    );
-    return matching.length > 0 ? { in: matching } : null;
   }
 
   search(): this {
@@ -253,24 +231,29 @@ export class ApiFeatures<
     if (!words.length) return this;
 
     const or = this.searchableFields.flatMap((field) =>
-      words.flatMap((word) => {
-        let condition: Record<string, any> | null;
-        if (this.isEnumField(field)) {
-          condition = this.buildEnumCondition(field, word);
-        } else {
-          const fieldType = this.inferFieldType(field);
-          if (fieldType === 'string') {
-            condition = { contains: word, mode: 'insensitive' as const };
-          } else {
-            condition = {
-              equals: this.detectAndConvertSingle(word, fieldType),
-            };
+      words
+        .map((word) => {
+          if (this.ENUM_FIELDS[field]) {
+            const enumObj = this.ENUM_FIELDS[field];
+            const lowerWord = word.toLowerCase();
+            const matching = Object.values(enumObj).filter((val: any) =>
+              val.toString().toLowerCase().includes(lowerWord),
+            );
+            return matching.length
+              ? this.buildNestedFilter(field, { in: matching })
+              : null;
           }
-        }
-        if (!condition) return [];
-
-        return [this.buildNestedFilter(field, condition)];
-      }),
+          const fieldType = this.inferFieldType(field);
+          return fieldType === 'string'
+            ? this.buildNestedFilter(field, {
+                contains: word,
+                mode: 'insensitive',
+              })
+            : this.buildNestedFilter(field, {
+                equals: this.detectAndConvertSingle(word, fieldType),
+              });
+        })
+        .filter(Boolean),
     );
 
     this.queryOptions.where = {
@@ -295,8 +278,7 @@ export class ApiFeatures<
           'asc' | 'desc'
         >;
       });
-    } catch (err) {
-      this.logger.warn(`Failed to parse sort: ${(err as Error).message}`);
+    } catch {
       this.queryOptions.orderBy = [...this.DEFAULT_SORT];
     }
     return this;
@@ -419,7 +401,7 @@ export class ApiFeatures<
   }
 
   getQueryOptions(): PrismaFindManyArgs {
-    return { ...this.queryOptions };
+    return JSON.parse(JSON.stringify(this.queryOptions)); // immutable clone
   }
 
   reset(): this {
@@ -444,7 +426,7 @@ export class ApiFeatures<
         relationConfigs: this.RELATION_CONFIGS,
       },
     );
-    cloned.queryOptions = { ...this.queryOptions };
+    cloned.queryOptions = JSON.parse(JSON.stringify(this.queryOptions));
     cloned.paginationResult = this.paginationResult
       ? { ...this.paginationResult }
       : null;
